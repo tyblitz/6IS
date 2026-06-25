@@ -9,7 +9,7 @@
 
       <div class="dashboard-cards">
 
-        <ion-card class="dashboard-card">
+        <ion-card class="dashboard-card" @click="goToCommunications">
           <ion-card-header>
             <ion-card-title>
               Communications
@@ -17,7 +17,7 @@
           </ion-card-header>
         </ion-card>
 
-        <ion-card class="dashboard-card">
+        <ion-card class="dashboard-card" @click="goToInventory">
           <ion-card-header>
             <ion-card-title>
               Inventory
@@ -34,6 +34,8 @@
 </template>
 
 <script setup lang="ts">
+import { useRouter } from 'vue-router'
+
 import MainLayout from '../layouts/MainLayout.vue'
 
 import {
@@ -41,4 +43,14 @@ import {
   IonCardHeader,
   IonCardTitle
 } from '@ionic/vue'
+
+const router = useRouter()
+
+function goToCommunications() {
+  router.push('/communications')
+}
+
+function goToInventory() {
+  router.push('/inventory')
+}
 </script>
