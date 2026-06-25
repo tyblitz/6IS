@@ -30,3 +30,26 @@ npm-debug.log*
 /platforms
 /plugins
 /www
+
+# Node
+node_modules/
+dist/
+
+# Environment Files
+.env
+.env.local
+.env.production
+
+# Database Config
+backend/config/database.php
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# OS Files
+.DS_Store
+Thumbs.db
