@@ -1,0 +1,13 @@
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    width: 100%;
+}
+
+.user-area {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}

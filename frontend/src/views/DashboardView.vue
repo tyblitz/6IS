@@ -1,50 +1,42 @@
 <template>
-  <ion-page>
 
-    <ion-header>
-      <ion-toolbar>
-        <ion-title>Dashboard</ion-title>
-      </ion-toolbar>
-    </ion-header>
+  <MainLayout
+    title="Dashboard"
+    username="Admin"
+  >
 
-    <ion-content>
+    <div class="dashboard-container">
 
-      <div class="dashboard-container">
+      <div class="dashboard-cards">
 
-        <div class="dashboard-cards">
+        <ion-card class="dashboard-card">
+          <ion-card-header>
+            <ion-card-title>
+              Communications
+            </ion-card-title>
+          </ion-card-header>
+        </ion-card>
 
-          <ion-card class="dashboard-card">
-            <ion-card-header>
-              <ion-card-title>
-                Communications
-              </ion-card-title>
-            </ion-card-header>
-          </ion-card>
-
-          <ion-card class="dashboard-card">
-            <ion-card-header>
-              <ion-card-title>
-                Inventory
-              </ion-card-title>
-            </ion-card-header>
-          </ion-card>
-
-        </div>
+        <ion-card class="dashboard-card">
+          <ion-card-header>
+            <ion-card-title>
+              Inventory
+            </ion-card-title>
+          </ion-card-header>
+        </ion-card>
 
       </div>
 
-    </ion-content>
+    </div>
 
-  </ion-page>
+  </MainLayout>
+
 </template>
 
 <script setup lang="ts">
+import MainLayout from '../layouts/MainLayout.vue'
+
 import {
-  IonPage,
-  IonHeader,
-  IonToolbar,
-  IonTitle,
-  IonContent,
   IonCard,
   IonCardHeader,
   IonCardTitle

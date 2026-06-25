@@ -11,6 +11,7 @@ import '@ionic/vue/css/core.css';
 import './assets/css/theme.css'
 import './assets/css/main.css'
 import './assets/css/dashboard.css'
+import './assets/css/layout.css'
 
 /* Basic CSS for apps built with Ionic */
 import '@ionic/vue/css/normalize.css';
