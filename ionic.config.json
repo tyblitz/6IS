@@ -1,0 +1,7 @@
+{
+  "name": "6IS",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "vue-vite"
+}
