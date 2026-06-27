@@ -1,0 +1,62 @@
+
+---
+
+# 2. docs/architecture.md
+
+```md
+# Architecture
+
+## Design Philosophy
+
+6IS is designed as a modular information system.
+
+The objective is to create independent modules that share a common user interface and coding standard.
+
+Examples include:
+
+- Communications
+- Inventory
+- Administration
+- Reports
+
+Each module can evolve independently while maintaining a consistent user experience.
+
+---
+
+## Navigation
+
+Dashboard acts as the application's module launcher.
+
+Each module has its own workspace.
+
+Every workspace contains:
+
+- Header
+- Breadcrumb
+- Module Sidebar
+- Content Area
+- Footer
+
+This prevents overcrowding a single global navigation menu while allowing the application to scale.
+
+---
+
+## Frontend
+
+Vue 3
+
+Ionic Vue
+
+TypeScript
+
+---
+
+## Backend
+
+PHP REST-style API
+
+---
+
+## Database
+
+MySQL

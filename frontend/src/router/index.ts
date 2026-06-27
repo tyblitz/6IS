@@ -3,6 +3,8 @@ import { RouteRecordRaw } from 'vue-router';
 import DashboardView  from '../views/DashboardView.vue'
 import CommunicationsView from '../views/communications/CommunicationsView.vue'
 import InventoryView from '../views/inventory/InventoryView.vue'
+import EquipmentView from '../views/inventory/EquipmentView.vue'
+import JRRSView from '../views/inventory/JRRS.vue'
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -25,6 +27,18 @@ const routes: Array<RouteRecordRaw> = [
     path: '/inventory',
     name: 'Inventory',
     component: InventoryView
+  }
+  ,
+  {
+    path: '/inventory/equipment',
+    name: 'Equipment',
+    component: EquipmentView
+  }
+  ,
+  {
+    path: '/inventory/jrrs',
+    name: 'JRRS',
+    component: JRRSView
   }
 ]
 

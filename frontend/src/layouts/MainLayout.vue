@@ -1,3 +1,4 @@
+<!-- This is the layout for the dashboard header and footer -->
 <template>
   <ion-page>
 
