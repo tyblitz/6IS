@@ -1,0 +1,29 @@
+.module-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.breadcrumb-placeholder {
+    padding: 12px 20px;
+    font-size: 14px;
+    color: #666;
+    border-bottom: 1px solid #ddd;
+}
+
+.module-body {
+    display: flex;
+    flex: 1;
+}
+
+.module-sidebar {
+    width: 220px;
+    padding: 16px;
+    border-right: 1px solid #ddd;
+    background: #f8f9fa;
+}
+
+.module-content {
+    flex: 1;
+    padding: 20px;
+}

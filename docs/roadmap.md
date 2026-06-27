@@ -5,6 +5,7 @@
 - Initial project setup
 - Dashboard
 - Main Layout
+- Module Layout
 
 ---
 
@@ -12,7 +13,6 @@
 
 Navigation Framework
 
-- Module Layout
 - Sidebar
 - Breadcrumbs
 

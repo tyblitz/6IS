@@ -10,3 +10,12 @@ Initial project setup
 - Added Main Layout
 - Added Inventory navigation
 - Added Communications navigation
+
+## v0.2.0
+
+### Added
+
+- Created reusable ModuleLayout.
+- Added shared header, footer, sidebar placeholder, and breadcrumb placeholder.
+- Refactored Inventory module to use the shared layout.
+

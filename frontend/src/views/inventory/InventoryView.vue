@@ -1,64 +1,16 @@
 <template>
-
-  <MainLayout
+  <ModuleLayout
     title="Inventory"
     username="Admin"
   >
+    <h2>Inventory Module</h2>
 
-    <div class="dashboard-container">
-
-      <div class="dashboard-cards">
-
-        <ion-card
-          class="dashboard-card"
-          @click="goToEquipment"
-        >
-          <ion-card-header>
-            <ion-card-title>
-              ICT Equipment
-            </ion-card-title>
-          </ion-card-header>
-        </ion-card>
-
-        <ion-card
-          class="dashboard-card"
-          @click="goToJRRS"
-        >
-          <ion-card-header>
-            <ion-card-title>
-              JRRS
-            </ion-card-title>
-          </ion-card-header>
-        </ion-card>
-
-      </div>
-
-    </div>
-
-  </MainLayout>
-
+    <p>
+      This is where the Inventory module content will go.
+    </p>
+  </ModuleLayout>
 </template>
 
 <script setup lang="ts">
-
-import { useRouter } from 'vue-router'
-
-import MainLayout from '../../layouts/MainLayout.vue'
-
-import {
-  IonCard,
-  IonCardHeader,
-  IonCardTitle
-} from '@ionic/vue'
-
-const router = useRouter()
-
-function goToEquipment() {
-  router.push('/inventory/equipment')
-}
-
-function goToJRRS() {
-  router.push('/inventory/jrrs')
-}
-
+import ModuleLayout from '../../layouts/ModuleLayout.vue'
 </script>
