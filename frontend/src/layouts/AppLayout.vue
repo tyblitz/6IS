@@ -1,5 +1,5 @@
 <!--
-ModuleLayout
+AppLayout
 Shared layout used by all application modules.
 Provides a consistent header, breadcrumb area, sidebar, content area, and footer.
 -->
@@ -25,22 +25,22 @@ Provides a consistent header, breadcrumb area, sidebar, content area, and footer
 
     <!-- Main Content -->
     <ion-content>
-      <div class="module-layout">
+      <div class="app-layout">
 
         <!-- Breadcrumb Placeholder -->
         <div class="breadcrumb-placeholder">
           Dashboard > {{ title }}
         </div>
 
-        <div class="module-body">
+        <div class="app-body">
 
-          <!-- Sidebar Placeholder -->
-          <aside class="module-sidebar">
-            Sidebar
-          </aside>
+          <!-- Sidebar  -->
+        <aside class="app-sidebar">
+            <ModuleSidebar :items="sidebarItems" />
+        </aside>
 
           <!-- Main Content -->
-          <main class="module-content">
+          <main class="app-content">
             <slot />
           </main>
 
@@ -71,8 +71,12 @@ import {
   IonButton
 } from '@ionic/vue'
 
-defineProps<{
-  title: string
-  username?: string
+import ModuleSidebar from "../components/ModuleSidebar.vue"
+import type { SidebarItem } from "../types/SidebarItem.js"
+
+const props = defineProps<{
+    title: string
+    username?: string
+    sidebarItems: SidebarItem[]
 }>()
 </script>

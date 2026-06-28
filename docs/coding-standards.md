@@ -39,7 +39,7 @@ kebab-case
 
 Example
 
-.module-sidebar
+.app-sidebar
 
 .dashboard-card
 

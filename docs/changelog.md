@@ -11,11 +11,16 @@ Initial project setup
 - Added Inventory navigation
 - Added Communications navigation
 
-## v0.2.0
 
-### Added
+## Unreleased
 
-- Created reusable ModuleLayout.
+- Created reusable AppLayout.
 - Added shared header, footer, sidebar placeholder, and breadcrumb placeholder.
 - Refactored Inventory module to use the shared layout.
+- Created reusable ModuleSidebar component.
+- Added support for dynamic sidebar navigation using TypeScript interfaces.
+- Implemented menu rendering using Vue props and `v-for`.
+- Added route-based navigation using Vue Router.
+
+
 

@@ -1,4 +1,18 @@
-.module-layout {
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    width: 100%;
+}
+
+.user-area {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.app-layout {
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -11,19 +25,18 @@
     border-bottom: 1px solid #ddd;
 }
 
-.module-body {
+.app-body {
     display: flex;
     flex: 1;
 }
 
-.module-sidebar {
+.app-sidebar {
     width: 220px;
     padding: 16px;
     border-right: 1px solid #ddd;
-    background: #f8f9fa;
 }
 
-.module-content {
+.app-content {
     flex: 1;
     padding: 20px;
 }

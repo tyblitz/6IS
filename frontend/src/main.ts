@@ -8,11 +8,12 @@ import { IonicVue } from '@ionic/vue';
 import '@ionic/vue/css/core.css';
 
 /*Import CSS for the app */
-import './assets/css/theme.css'
-import './assets/css/main.css'
-import './assets/css/dashboard.css'
-import './assets/css/layout.css'
-import './assets/css/module.css'
+import './assets/styles/theme.css'
+import './assets/styles/typography.css'
+import './assets/styles/layout.css'
+import './assets/styles/main.css'
+import './assets/styles/utilities.css'
+
 
 /* Basic CSS for apps built with Ionic */
 import '@ionic/vue/css/normalize.css';
@@ -37,9 +38,6 @@ import '@ionic/vue/css/display.css';
 /* @import '@ionic/vue/css/palettes/dark.always.css'; */
 /* @import '@ionic/vue/css/palettes/dark.class.css'; */
 import '@ionic/vue/css/palettes/dark.system.css';
-
-/* Theme variables */
-import './theme/variables.css';
 
 const app = createApp(App)
   .use(IonicVue)
