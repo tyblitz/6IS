@@ -1,35 +1,25 @@
-<!-- This is the layout for the dashboard header and footer -->
 <template>
   <ion-page class="main-layout">
-
     <AppHeader />
 
     <AppBreadcrumb />
 
     <div class="app-body">
-
-      <AppSidebar />
+      <ModuleSidebar />
 
       <main class="app-content">
         <slot />
       </main>
-
     </div>
 
     <AppFooter />
-
   </ion-page>
 </template>
 
 <script setup lang="ts">
-import {
-  IonPage,
-} from '@ionic/vue'
+import AppHeader from './AppHeader.vue'
+//import AppBreadcrumb from './AppBreadcrumb.vue'
+//import AppFooter from './AppFooter.vue'
 
-import AppHeader from '../layouts/AppHeader.vue';
-
-defineProps<{
-  title: string
-  username?: string
-}>()
+import ModuleSidebar from '../components/ModuleSidebar.vue'
 </script>

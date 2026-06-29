@@ -5,6 +5,7 @@ import CommunicationsView from '../views/communications/CommunicationsView.vue'
 import InventoryView from '../views/inventory/InventoryView.vue'
 import EquipmentView from '../views/inventory/EquipmentView.vue'
 import JRRSView from '../views/inventory/JRRS.vue'
+import { ModuleName } from '../types/module.js'
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -14,31 +15,46 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: '/home',
     name: 'Home',
-    component: DashboardView
+    component: DashboardView,
+    meta: {
+      module: ModuleName.Dashboard,
+    },
   }
   ,
   {
     path: '/communications',
     name: 'Communications',
-    component: CommunicationsView
+    component: CommunicationsView,
+    meta: {
+      module: ModuleName.Communications,
+    },
   }
   ,
   {
     path: '/inventory',
     name: 'Inventory',
-    component: InventoryView
+    component: InventoryView,
+    meta: {
+      module: ModuleName.Inventory,
+    },
   }
   ,
   {
     path: '/inventory/equipment',
     name: 'Equipment',
-    component: EquipmentView
+    component: EquipmentView,
+    meta: {
+      module: ModuleName.Equipment,
+    },
   }
   ,
   {
     path: '/inventory/jrrs',
     name: 'JRRS',
-    component: JRRSView
+    component: JRRSView,
+    meta: {
+      module: ModuleName.JRRS,
+    },
   }
 ]
 

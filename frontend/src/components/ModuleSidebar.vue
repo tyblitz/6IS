@@ -27,11 +27,20 @@ import {
 } from "@ionic/vue"
 
 import '../assets/styles/components/sidebar.css'
-import type { SidebarItem } from "../types/SidebarItem"
 
-defineProps<{
-    items: SidebarItem[]
-}>()
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+
+//import { moduleMenus } from '@/menus'
+import { ModuleName } from '@/types/module'
+
+const route = useRoute()
+
+const items = computed(() => {
+  const module = route.meta.module as ModuleName
+
+  return moduleMenus[module] ?? []
+})
 
 const router = useRouter()
 
