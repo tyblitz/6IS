@@ -32,7 +32,7 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { moduleMenus } from '../menus'
-import { ModuleName } from '@/types/module'
+import { ModuleName } from '../types/module'
 
 const route = useRoute()
 

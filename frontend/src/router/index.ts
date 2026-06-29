@@ -5,7 +5,7 @@ import CommunicationsView from '../views/communications/CommunicationsView.vue'
 import InventoryView from '../views/inventory/InventoryView.vue'
 import EquipmentView from '../views/inventory/EquipmentView.vue'
 import JRRSView from '../views/inventory/JRRS.vue'
-import { ModuleName } from '../types/module.js'
+import { ModuleName } from '../types/module'
 
 const routes: Array<RouteRecordRaw> = [
   {
