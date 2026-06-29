@@ -1,49 +1,29 @@
 <!-- This is the layout for the dashboard header and footer -->
 <template>
-  <ion-page>
+    <ion-page>
 
-    <ion-header>
-      <ion-toolbar>
+        <AppHeader />
 
-        <div class="app-header">
+        <AppBreadcrumb />
 
-          <ion-title>
-            {{ title }}
-          </ion-title>
+        <div class="app-body">
 
-          <div class="user-area">
+            <AppSidebar />
 
-            <span>{{ username }}</span>
-
-            <ion-button
-              fill="clear"
-              size="small"
-            >
-              Logout
-            </ion-button>
-
-          </div>
+            <main class="app-content">
+                <slot />
+            </main>
 
         </div>
 
-      </ion-toolbar>
-    </ion-header>
+        <AppFooter />
 
-    <ion-content>
-      <slot />
-    </ion-content>
-
-  </ion-page>
+    </ion-page>
 </template>
 
 <script setup lang="ts">
 import {
   IonPage,
-  IonHeader,
-  IonToolbar,
-  IonTitle,
-  IonContent,
-  IonButton
 } from '@ionic/vue'
 
 defineProps<{

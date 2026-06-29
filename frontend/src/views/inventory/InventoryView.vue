@@ -1,5 +1,5 @@
 <template>
-  <AppLayout
+  <MainLayout 
     title="Inventory"
     username="Admin"
     :sidebar-items="inventoryMenu"
@@ -9,10 +9,10 @@
     <p>
       This is where the Inventory module content will go.
     </p>
-  </AppLayout>
+  </MainLayout >
 </template>
 
 <script setup lang="ts">
-import AppLayout from '../../layouts/AppLayout.vue'
+import MainLayout  from '../../layouts/MainLayout.vue'
 import { inventoryMenu } from '../../menus/inventoryMenu'
 </script>
