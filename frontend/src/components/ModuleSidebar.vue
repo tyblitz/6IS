@@ -31,7 +31,7 @@ import '../assets/styles/components/sidebar.css'
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
-//import { moduleMenus } from '@/menus'
+import { moduleMenus } from '../menus'
 import { ModuleName } from '@/types/module'
 
 const route = useRoute()

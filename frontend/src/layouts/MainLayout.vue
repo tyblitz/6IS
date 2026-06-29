@@ -18,8 +18,8 @@
 
 <script setup lang="ts">
 import AppHeader from './AppHeader.vue'
-//import AppBreadcrumb from './AppBreadcrumb.vue'
-//import AppFooter from './AppFooter.vue'
+import AppBreadcrumb from './AppBreadcrumb.vue'
+import AppFooter from './AppFooter.vue'
 
 import ModuleSidebar from '../components/ModuleSidebar.vue'
 </script>
