@@ -26,6 +26,7 @@ import {
     IonItem
 } from "@ionic/vue"
 
+import '../assets/styles/components/sidebar.css'
 import type { SidebarItem } from "../types/SidebarItem"
 
 defineProps<{

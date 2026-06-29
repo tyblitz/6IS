@@ -20,16 +20,14 @@ Inter
 
 ---
 
-## Border Radius
+## Design Tokens
 
-Small
+The application uses CSS custom properties defined in `theme.css`.
 
-6px
+All new components should reference these variables instead of hardcoded values.
 
-Medium
+Examples:
 
-10px
-
-Large
-
-16px
+- `var(--color-primary)`
+- `var(--space-md)`
+- `var(--radius-md)`

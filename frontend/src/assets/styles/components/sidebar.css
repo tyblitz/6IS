@@ -3,7 +3,7 @@
 }
 
 .app-sidebar ion-item {
-    --border-radius: 8px;
+    --border-radius: var(--radius-sm);
     margin-bottom: 6px;
     cursor: pointer;
 }
