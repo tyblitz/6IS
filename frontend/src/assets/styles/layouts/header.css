@@ -1,0 +1,70 @@
+.app-header {
+    height: 76px;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 0 28px;
+
+    background: linear-gradient(
+        90deg,
+        #082F6D 0%,
+        #0B5ED7 100%
+    );
+
+    color: white;
+
+    box-shadow: 0 2px 8px rgba(0,0,0,.12);
+}
+
+.header-left,
+.header-right{
+    display:flex;
+    align-items:center;
+}
+
+.header-left{
+    gap:16px;
+}
+
+.header-right{
+    gap:20px;
+}
+
+.header-title{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+}
+
+.header-title h1{
+    margin:0;
+    line-height:1;
+}
+
+.header-title p{
+    margin-top:4px;
+}
+
+.menu-button,
+.header-icon-button,
+.user-button,
+.logout-button{
+
+    background:none;
+
+    border:none;
+
+    color:white;
+
+    cursor:pointer;
+
+    display:flex;
+
+    align-items:center;
+
+    gap:8px;
+
+    font:inherit;
+}
