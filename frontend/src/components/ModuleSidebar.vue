@@ -4,47 +4,46 @@ Reusable sidebar navigation for application modules.
 -->
 
 <template>
-        <ion-list>
+        <div class="app-sidebar">
 
-            <ion-item
-                v-for="item in items"
-                :key="item.route"
-                button
-                @click="goTo(item.route)"
+            <router-link
+              v-for="item in menuItems"
+              :key="item.route"
+              :to="item.route"
+              class="sidebar-item"
             >
-                {{ item.label }}
-            </ion-item>
+            <ion-icon
+                v-if="item.icon"
+                :icon="item.icon"
+                class="sidebar-icon"
+            />
 
-        </ion-list>
+            <span>{{ item.label }}</span>
+            </router-link>
+
+        </div>
 </template>
 
 <script setup lang="ts">
-import { useRouter } from "vue-router"
-
-import {
-    IonList,
-    IonItem
-} from "@ionic/vue"
-
-import '../assets/styles/components/sidebar.css'
 
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+
+import {
+  IonList,
+  IonIcon
+} from '@ionic/vue'
+
+import '../assets/styles/components/sidebar.css'
 
 import { moduleMenus } from '../menus'
 import { ModuleName } from '../types/module'
 
 const route = useRoute()
 
-const items = computed(() => {
+const menuItems = computed(() => {
   const module = route.meta.module as ModuleName
-
   return moduleMenus[module] ?? []
 })
 
-const router = useRouter()
-
-function goTo(route: string) {
-    router.push(route)
-}
 </script>
