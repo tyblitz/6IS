@@ -80,3 +80,12 @@
     --transition-normal: .3s ease;
 
 }
+
+ion-item {
+    --background: transparent;
+    --background-hover: transparent;
+    --background-focused: transparent;
+    --background-activated: transparent;
+
+    --ripple-color: transparent;
+}

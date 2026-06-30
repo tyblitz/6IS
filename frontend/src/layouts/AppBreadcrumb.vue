@@ -28,8 +28,8 @@ const pageTitle = computed(() => {
   padding: 0 24px;
   background: var(--ion-color-light, #f8f9fa);
   border-bottom: 1px solid #e5e7eb;
-  font-size: 14px;
-  color: #6b7280;
+  color:#8b98b8;
+  font-size:14px;
 }
 
 .separator {
@@ -38,6 +38,7 @@ const pageTitle = computed(() => {
 
 .app-breadcrumb span:last-child {
   font-weight: 600;
-  color: #1f2937;
+  color:#8b98b8;
+  font-size:14px;
 }
 </style>

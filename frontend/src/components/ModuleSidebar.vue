@@ -30,7 +30,6 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 import {
-  IonList,
   IonIcon
 } from '@ionic/vue'
 
