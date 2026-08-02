@@ -4,6 +4,7 @@
     "useDefineForClassFields": true,
     "module": "ESNext",
     "moduleResolution": "Node",
+    "baseUrl": ".",
     "strict": true,
     "jsx": "preserve",
     "resolveJsonModule": true,

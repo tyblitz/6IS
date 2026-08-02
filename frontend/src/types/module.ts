@@ -4,4 +4,5 @@ export enum ModuleName {
   Communications = 'communications',
   Equipment = 'equipment',
   JRRS = 'JRRS',
+  Accomplishments = 'accomplishments',
 }

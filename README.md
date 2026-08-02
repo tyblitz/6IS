@@ -8,12 +8,20 @@ This project is being developed as a portfolio project to demonstrate full-stack
 
 ---
 
-## Current Modules
+## Current Modules under development
 
 - Dashboard
 - Communications
 - Inventory
+- Accomplishments
 - Administration
+
+## Modules to be added
+
+- Calendar
+- Performance
+- User Management
+- Authentication
 
 Additional modules will be added as development progresses.
 
@@ -23,24 +31,22 @@ Additional modules will be added as development progresses.
 
 ### Frontend
 
-- Vue 3
-- Ionic Vue
+- Vue 3 (Composition API)
 - TypeScript
+- Ionic Framework
+- HTML5
+- CSS3 (Vanilla CSS with Design Tokens)
 
 ### Backend
 
-- PHP
-
-### Database
-
+- PHP (REST API Endpoints)
 - MySQL
 
-### Development Environment
+### Development Tools
 
-- XAMPP
 - Visual Studio Code
 - Git
-- GitHub
+- XAMPP
 
 ---
 
@@ -48,9 +54,7 @@ Additional modules will be added as development progresses.
 
 🚧 Under Active Development
 
-Current Version:
-
-v0.1.0
+Current Version: v0.1.0
 
 ---
 
@@ -61,3 +65,4 @@ frontend/
 backend/
 database/
 docs/
+```

@@ -35,6 +35,10 @@ npm-debug.log*
 node_modules/
 dist/
 
+# Docs
+
+docs/ai/
+
 # Environment Files
 .env
 .env.local
