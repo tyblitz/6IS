@@ -13,7 +13,7 @@
         </div>
         <button class="add-btn" type="button" @click="openCreateModal">
           <ion-icon :icon="addOutline"></ion-icon>
-          <span>+ Add Accomplishment</span>
+          <span>Add Accomplishment</span>
         </button>
       </div>
 
@@ -158,7 +158,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { IonSpinner, IonIcon } from '@ionic/vue'
+import { IonSpinner, IonIcon, onIonViewWillEnter } from '@ionic/vue'
 import {
   addOutline,
   clipboardOutline,
@@ -216,7 +216,12 @@ onMounted(() => {
   loadData()
 })
 
-watch(() => route.query.view, () => {
+onIonViewWillEnter(() => {
+  loadOptions()
+  loadData()
+})
+
+watch(() => route.fullPath, () => {
   loadData()
 })
 
@@ -340,7 +345,6 @@ function handleSaved() {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-
 }
 
 .add-btn:hover { background: #1d4ed8; }

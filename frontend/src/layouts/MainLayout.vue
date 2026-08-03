@@ -1,5 +1,5 @@
 <template>
-  <ion-page class="main-layout">
+  <div class="main-layout">
     <AppHeader />
 
     <AppBreadcrumb />
@@ -13,7 +13,7 @@
     </div>
 
     <AppFooter />
-  </ion-page>
+  </div>
 </template>
 
 <script setup lang="ts">

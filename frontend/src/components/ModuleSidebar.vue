@@ -4,7 +4,7 @@ Reusable sidebar navigation for application modules.
 -->
 
 <template>
-        <div class="app-sidebar">
+        <div v-if="menuItems.length > 0" class="app-sidebar">
 
             <router-link
               v-for="item in menuItems"

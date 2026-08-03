@@ -5,12 +5,12 @@
       <!-- Header & Action Bar -->
       <div class="module-header-bar">
         <div>
-          <h2>Accomplishment Module</h2>
-          <p class="subtitle">Overview and daily operational achievement tracking.</p>
+          <h2>Overview</h2>
+          <p class="subtitle">Daily operational achievement tracking and report launchers.</p>
         </div>
         <button class="add-btn" type="button" @click="openCreateModal">
           <ion-icon :icon="addOutline"></ion-icon>
-          <span>+ Add Accomplishment</span>
+          <span>Add Accomplishment</span>
         </button>
       </div>
 
@@ -22,6 +22,7 @@
         :records="todayRecords"
         :loading="loadingToday"
         @select="handleRowSelect"
+        @add-first="openCreateModal"
       />
 
       <!-- Form Modal (Create & Edit) -->
@@ -46,8 +47,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { IonIcon } from '@ionic/vue'
+import { ref, reactive, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { IonIcon, onIonViewWillEnter } from '@ionic/vue'
 import { addOutline } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
@@ -67,6 +69,7 @@ import {
   fetchAccomplishmentById
 } from '../../services/accomplishmentService'
 
+const route = useRoute()
 const loadingToday = ref(true)
 const todayRecords = ref<AccomplishmentTodayItem[]>([])
 
@@ -83,6 +86,15 @@ const options = reactive<AccomplishmentOptions>({
 onMounted(() => {
   loadTodayData()
   loadOptions()
+})
+
+onIonViewWillEnter(() => {
+  loadTodayData()
+  loadOptions()
+})
+
+watch(() => route.fullPath, () => {
+  loadTodayData()
 })
 
 async function loadTodayData() {

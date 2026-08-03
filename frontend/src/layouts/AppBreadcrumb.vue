@@ -1,21 +1,77 @@
 <template>
-  <div class="app-breadcrumb">
-    <span>Dashboard</span>
+  <nav class="app-breadcrumb" aria-label="Breadcrumb">
+    <template v-for="(item, index) in breadcrumbs" :key="index">
+      <router-link
+        v-if="item.path && index < breadcrumbs.length - 1"
+        :to="item.path"
+        class="breadcrumb-link"
+      >
+        {{ item.label }}
+      </router-link>
+      
+      <span v-else class="breadcrumb-current">
+        {{ item.label }}
+      </span>
 
-    <span class="separator">/</span>
-
-    <span>{{ pageTitle }}</span>
-  </div>
+      <span v-if="index < breadcrumbs.length - 1" class="separator">/</span>
+    </template>
+  </nav>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
+interface BreadcrumbItem {
+  label: string;
+  path?: string;
+}
+
 const route = useRoute()
 
-const pageTitle = computed(() => {
-  return route.name?.toString() ?? 'Page'
+const breadcrumbs = computed<BreadcrumbItem[]>(() => {
+  const items: BreadcrumbItem[] = [
+    { label: 'Dashboard', path: '/home' }
+  ]
+
+  const path = route.path
+
+  if (path === '/home') {
+    items.push({ label: 'Home' })
+  } else if (path.startsWith('/accomplishments')) {
+    items.push({
+      label: 'Accomplishments',
+      path: path === '/accomplishments' ? undefined : '/accomplishments'
+    })
+
+    if (path === '/accomplishments/daily') {
+      const viewMode = route.query.view as string
+      if (viewMode === 'monthly') {
+        items.push({ label: 'Monthly Accomplishments' })
+      } else if (viewMode === 'annual') {
+        items.push({ label: 'Annual Accomplishments' })
+      } else {
+        items.push({ label: 'Daily Accomplishments' })
+      }
+    }
+  } else if (path.startsWith('/inventory')) {
+    items.push({
+      label: 'Inventory',
+      path: path === '/inventory' ? undefined : '/inventory'
+    })
+
+    if (path === '/inventory/equipment') {
+      items.push({ label: 'ICT Equipment' })
+    } else if (path === '/inventory/jrrs') {
+      items.push({ label: 'JRRS' })
+    }
+  } else if (path === '/communications') {
+    items.push({ label: 'Communications' })
+  } else {
+    items.push({ label: route.name?.toString() || 'Page' })
+  }
+
+  return items
 })
 </script>
 
@@ -24,21 +80,32 @@ const pageTitle = computed(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 48px;
-  padding: 0 24px;
-  background: var(--ion-color-light, #f8f9fa);
-  border-bottom: 1px solid #e5e7eb;
-  color:#8b98b8;
-  font-size:14px;
+  height: 44px;
+  padding: 0 28px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 13px;
+}
+
+.breadcrumb-link {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+.breadcrumb-link:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.breadcrumb-current {
+  font-weight: 600;
+  color: #475569;
 }
 
 .separator {
-  color: #9ca3af;
-}
-
-.app-breadcrumb span:last-child {
-  font-weight: 600;
-  color:#8b98b8;
-  font-size:14px;
+  color: #94a3b8;
+  font-size: 12px;
 }
 </style>

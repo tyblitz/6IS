@@ -13,6 +13,10 @@
     <div v-else-if="records.length === 0" class="empty-state">
       <ion-icon :icon="clipboardOutline" class="empty-icon"></ion-icon>
       <p>No accomplishments recorded for today yet.</p>
+      <button class="empty-action-btn" type="button" @click="$emit('addFirst')">
+        <ion-icon :icon="addOutline"></ion-icon>
+        <span>Log Today's First Accomplishment</span>
+      </button>
     </div>
 
     <div v-else class="table-wrapper">
@@ -43,7 +47,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { IonSpinner, IonIcon } from '@ionic/vue'
-import { clipboardOutline } from 'ionicons/icons'
+import { clipboardOutline, addOutline } from 'ionicons/icons'
 import type { AccomplishmentTodayItem } from '../../types/accomplishment'
 
 defineProps<{
@@ -53,6 +57,7 @@ defineProps<{
 
 defineEmits<{
   (e: 'select', item: AccomplishmentTodayItem): void;
+  (e: 'addFirst'): void;
 }>()
 
 const currentDateFormatted = computed(() => {
@@ -104,12 +109,32 @@ const currentDateFormatted = computed(() => {
   justify-content: center;
   padding: 32px 16px;
   color: #6b7280;
-  gap: 8px;
+  gap: 12px;
 }
 
 .empty-icon {
-  font-size: 32px;
+  font-size: 36px;
   color: #9ca3af;
+}
+
+.empty-action-btn {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.empty-action-btn:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
 }
 
 .table-wrapper {
