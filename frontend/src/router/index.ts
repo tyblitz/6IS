@@ -7,6 +7,10 @@ import EquipmentView from '../views/inventory/EquipmentView.vue'
 import JRRSView from '../views/inventory/JRRS.vue'
 import AccomplishmentView from '../views/accomplishments/AccomplishmentView.vue'
 import AccomplishmentDailyView from '../views/accomplishments/AccomplishmentDailyView.vue'
+import AccomplishmentMonthlyView from '../views/accomplishments/AccomplishmentMonthlyView.vue'
+import AccomplishmentQuarterlyView from '../views/accomplishments/AccomplishmentQuarterlyView.vue'
+import AccomplishmentAnnualView from '../views/accomplishments/AccomplishmentAnnualView.vue'
+import AccomplishmentCustomView from '../views/accomplishments/AccomplishmentCustomView.vue'
 import { ModuleName } from '../types/module'
 
 const routes: Array<RouteRecordRaw> = [
@@ -64,8 +68,40 @@ const routes: Array<RouteRecordRaw> = [
   },
   {
     path: '/accomplishments/daily',
-    name: 'Daily Accomplishments',
+    name: 'Daily Report',
     component: AccomplishmentDailyView,
+    meta: {
+      module: ModuleName.Accomplishments,
+    },
+  },
+  {
+    path: '/accomplishments/monthly',
+    name: 'Monthly Report',
+    component: AccomplishmentMonthlyView,
+    meta: {
+      module: ModuleName.Accomplishments,
+    },
+  },
+  {
+    path: '/accomplishments/quarterly',
+    name: 'Quarterly Report',
+    component: AccomplishmentQuarterlyView,
+    meta: {
+      module: ModuleName.Accomplishments,
+    },
+  },
+  {
+    path: '/accomplishments/annual',
+    name: 'Annual Report',
+    component: AccomplishmentAnnualView,
+    meta: {
+      module: ModuleName.Accomplishments,
+    },
+  },
+  {
+    path: '/accomplishments/custom',
+    name: 'Custom Period Report',
+    component: AccomplishmentCustomView,
     meta: {
       module: ModuleName.Accomplishments,
     },

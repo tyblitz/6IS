@@ -1,72 +1,44 @@
 <template>
   <div v-if="isOpen && data" class="modal-backdrop" @click.self="close">
-    <div class="modal-content">
+    <div class="modal-card">
       
+      <!-- Header -->
       <div class="modal-header">
-        <h2>Accomplishment Details</h2>
+        <h3>Accomplishment Details</h3>
         <button class="close-btn" type="button" @click="close">&times;</button>
       </div>
 
+      <!-- Details Body -->
       <div class="modal-body">
         
-        <div class="title-section">
-          <h3>{{ data.title }}</h3>
-          <div class="badges-row">
-            <span :class="['badge', 'status-badge', data.status.toLowerCase()]">
-              {{ data.status }}
-            </span>
-            <span :class="['badge', 'priority-badge', data.priority.toLowerCase()]">
-              {{ data.priority }} Priority
-            </span>
-          </div>
+        <div class="detail-row">
+          <span class="detail-label">Date</span>
+          <span class="detail-value font-semibold">{{ data.date }}</span>
         </div>
 
-        <div class="info-grid">
-          <div class="info-item">
-            <span class="label">Office</span>
-            <span class="value">{{ data.office_name }} ({{ data.office_code }})</span>
-          </div>
-
-          <div class="info-item">
-            <span class="label">Category</span>
-            <span class="value">{{ data.category_name }}</span>
-          </div>
-
-          <div class="info-item">
-            <span class="label">Assigned Employee</span>
-            <span class="value">{{ data.assigned_employee_name }}</span>
-          </div>
-
-          <div class="info-item">
-            <span class="label">Date Started</span>
-            <span class="value">{{ data.date_started }}</span>
-          </div>
-
-          <div class="info-item">
-            <span class="label">Date Completed</span>
-            <span class="value">{{ data.date_completed || 'N/A' }}</span>
-          </div>
+        <div class="detail-row">
+          <span class="detail-label">Office</span>
+          <span class="detail-value office-badge">
+            {{ data.office_name }} ({{ data.office_code }})
+          </span>
         </div>
 
-        <div v-if="data.description" class="text-block">
-          <span class="label">Description</span>
-          <p>{{ data.description }}</p>
+        <div class="detail-block">
+          <span class="detail-label">Accomplishment Description</span>
+          <p class="description-text">{{ data.description }}</p>
         </div>
 
-        <div v-if="data.remarks" class="text-block">
-          <span class="label">Remarks</span>
-          <p>{{ data.remarks }}</p>
+        <div v-if="data.remarks" class="detail-block">
+          <span class="detail-label">Remarks</span>
+          <p class="remarks-text">{{ data.remarks }}</p>
         </div>
 
       </div>
 
+      <!-- Footer -->
       <div class="modal-footer">
-        <button class="btn btn-secondary" type="button" @click="close">
-          Close
-        </button>
-        <button class="btn btn-primary" type="button" @click="$emit('edit', data)">
-          Edit Record
-        </button>
+        <button class="btn-edit" type="button" @click="emitEdit">Edit</button>
+        <button class="btn-close" type="button" @click="close">Close</button>
       </div>
 
     </div>
@@ -74,20 +46,26 @@
 </template>
 
 <script setup lang="ts">
-import type { Accomplishment } from '../../types/accomplishment'
+import type { AccomplishmentItem } from '../../types/accomplishment'
 
-defineProps<{
+const props = defineProps<{
   isOpen: boolean;
-  data: Accomplishment | null;
+  data: AccomplishmentItem | null;
 }>()
 
 const emit = defineEmits<{
   (e: 'close'): void;
-  (e: 'edit', record: Accomplishment): void;
+  (e: 'edit', data: AccomplishmentItem): void;
 }>()
 
 function close() {
   emit('close')
+}
+
+function emitEdit() {
+  if (props.data) {
+    emit('edit', props.data)
+  }
 }
 </script>
 
@@ -99,7 +77,6 @@ function close() {
   right: 0;
   bottom: 0;
   background: rgba(15, 23, 42, 0.5);
-  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -107,134 +84,130 @@ function close() {
   padding: 16px;
 }
 
-.modal-content {
+.modal-card {
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 16px;
   width: 100%;
-  max-width: 600px;
-  max-height: 85vh;
-  display: flex;
-  flex-direction: column;
+  max-width: 520px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
 
 .modal-header {
-  padding: 16px 24px;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 18px 24px;
+  border-bottom: 1px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.modal-header h2 {
+.modal-header h3 {
   font-size: 18px;
-  font-weight: 600;
-  color: #111827;
+  font-weight: 700;
+  color: #0f172a;
   margin: 0;
 }
 
 .close-btn {
-  background: transparent;
+  background: none;
   border: none;
   font-size: 24px;
-  color: #9ca3af;
+  color: #64748b;
   cursor: pointer;
 }
 
 .modal-body {
-  padding: 20px 24px;
-  overflow-y: auto;
-}
-
-.title-section h3 {
-  font-size: 18px;
-  font-weight: 600;
-  color: #1f2937;
-  margin: 0 0 8px 0;
-}
-
-.badges-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 20px;
-}
-
-.badge {
-  font-size: 12px;
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 12px;
-}
-
-.status-badge.completed { background: #dcfce7; color: #15803d; }
-.status-badge.ongoing { background: #dbeafe; color: #1d4ed8; }
-.status-badge.pending { background: #fef3c7; color: #b45309; }
-.status-badge.cancelled { background: #fee2e2; color: #b91c1c; }
-
-.priority-badge.low { background: #f3f4f6; color: #4b5563; }
-.priority-badge.medium { background: #e0e7ff; color: #4338ca; }
-.priority-badge.high { background: #ffedd5; color: #c2410c; }
-.priority-badge.critical { background: #ffe4e6; color: #be123c; }
-
-.info-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 20px;
-  padding: 16px;
-  background: #f9fafb;
-  border-radius: 8px;
-}
-
-.info-item {
+  padding: 24px;
   display: flex;
   flex-direction: column;
+  gap: 16px;
 }
 
-.label {
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.detail-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.detail-label {
   font-size: 12px;
   font-weight: 600;
-  color: #6b7280;
+  color: #64748b;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  margin-bottom: 2px;
+  letter-spacing: 0.05em;
 }
 
-.value {
+.detail-value {
   font-size: 14px;
-  color: #1f2937;
-  font-weight: 500;
+  color: #1e293b;
 }
 
-.text-block {
-  margin-bottom: 16px;
+.font-semibold { font-weight: 600; }
+
+.office-badge {
+  background: #eff6ff;
+  color: #2563eb;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
 }
 
-.text-block p {
-  margin: 4px 0 0 0;
+.description-text {
   font-size: 14px;
-  color: #374151;
-  line-height: 1.5;
+  color: #334155;
+  line-height: 1.6;
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 8px;
+  margin: 0;
+}
+
+.remarks-text {
+  font-size: 13px;
+  color: #475569;
+  background: #fffbeb;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin: 0;
 }
 
 .modal-footer {
   padding: 16px 24px;
-  border-top: 1px solid #e5e7eb;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
   display: flex;
   justify-content: flex-end;
   gap: 12px;
 }
 
-.btn {
-  padding: 8px 18px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
+.btn-edit {
+  background: #10b981;
+  color: #ffffff;
   border: none;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.btn-secondary { background: #f3f4f6; color: #374151; }
-.btn-primary { background: #2563eb; color: #ffffff; }
+.btn-close {
+  background: #ffffff;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
 </style>

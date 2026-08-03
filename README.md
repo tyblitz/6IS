@@ -10,11 +10,11 @@ This project is being developed as a portfolio project to demonstrate full-stack
 
 ## Current Modules under development
 
-- Dashboard
-- Communications
-- Inventory
-- Accomplishments
-- Administration
+- **Dashboard**: Central module launcher & hero greeting.
+- **Accomplishments**: Reporting module for recording completed office accomplishments and generating Daily, Monthly, Quarterly, Annual, and Custom Period productivity reports alongside Communication statistics.
+- **Communications**: Incoming and outgoing communications management and statistics provider.
+- **Inventory**: ICT equipment and asset inventory tracking.
+- **Administration**: System administration.
 
 ## Modules to be added
 
@@ -31,16 +31,16 @@ Additional modules will be added as development progresses.
 
 ### Frontend
 
-- Vue 3 (Composition API)
+- Vue 3 (Composition API `<script setup lang="ts">`)
 - TypeScript
-- Ionic Framework
+- Ionic Framework (`@ionic/vue`)
 - HTML5
 - CSS3 (Vanilla CSS with Design Tokens)
 
 ### Backend
 
 - PHP (REST API Endpoints)
-- MySQL
+- MySQL (`db_ict_system` with `tbl_` table prefix convention)
 
 ### Development Tools
 

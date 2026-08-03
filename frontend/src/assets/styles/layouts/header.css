@@ -1,5 +1,10 @@
 .app-header {
     height: 76px;
+    min-height: 76px;
+    max-height: 76px;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    width: 100%;
 
     display: flex;
     justify-content: space-between;

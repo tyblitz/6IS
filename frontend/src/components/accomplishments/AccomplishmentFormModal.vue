@@ -1,169 +1,79 @@
 <template>
   <div v-if="isOpen" class="modal-backdrop" @click.self="close">
-    <div class="modal-content">
+    <div class="modal-card">
       
+      <!-- Header -->
       <div class="modal-header">
-        <h2>{{ isEditing ? 'Edit Accomplishment' : 'Add New Accomplishment' }}</h2>
+        <h3>{{ isEdit ? 'Edit Daily Accomplishment' : 'Add Daily Accomplishment' }}</h3>
         <button class="close-btn" type="button" @click="close">&times;</button>
       </div>
 
-      <form @submit.prevent="handleSubmit" class="form-body">
+      <!-- Form -->
+      <form @submit.prevent="submitForm">
+        <div class="modal-body">
 
-        <div v-if="serverError" class="alert-banner danger">
-          {{ serverError }}
-        </div>
-
-        <!-- Title -->
-        <div class="form-group">
-          <label for="title">Title <span class="required">*</span></label>
-          <input
-            id="title"
-            v-model="form.title"
-            type="text"
-            placeholder="Enter accomplishment title"
-            :class="{ 'has-error': fieldErrors.title }"
-          />
-          <span v-if="fieldErrors.title" class="error-msg">{{ fieldErrors.title }}</span>
-        </div>
-
-        <!-- Office & Category Row -->
-        <div class="form-row">
-          <div class="form-group col">
+          <!-- Office Field -->
+          <div class="form-group">
             <label for="office_id">Office <span class="required">*</span></label>
             <select
               id="office_id"
               v-model.number="form.office_id"
-              :class="{ 'has-error': fieldErrors.office_id }"
+              :class="{ 'input-error': errors.office_id }"
             >
               <option :value="0" disabled>Select Office</option>
-              <option v-for="opt in options.offices" :key="opt.id" :value="opt.id">
-                {{ opt.office_name }} ({{ opt.office_code }})
+              <option v-for="off in options.offices" :key="off.id" :value="off.id">
+                {{ off.office_name }} ({{ off.office_code }})
               </option>
             </select>
-            <span v-if="fieldErrors.office_id" class="error-msg">{{ fieldErrors.office_id }}</span>
+            <span v-if="errors.office_id" class="error-msg">{{ errors.office_id }}</span>
           </div>
 
-          <div class="form-group col">
-            <label for="category_id">Category <span class="required">*</span></label>
-            <select
-              id="category_id"
-              v-model.number="form.category_id"
-              :class="{ 'has-error': fieldErrors.category_id }"
-            >
-              <option :value="0" disabled>Select Category</option>
-              <option v-for="opt in options.categories" :key="opt.id" :value="opt.id">
-                {{ opt.category_name }}
-              </option>
-            </select>
-            <span v-if="fieldErrors.category_id" class="error-msg">{{ fieldErrors.category_id }}</span>
-          </div>
-        </div>
-
-        <!-- Assigned Employee & Priority Row -->
-        <div class="form-row">
-          <div class="form-group col">
-            <label for="assigned_employee_id">Assigned Employee <span class="required">*</span></label>
-            <select
-              id="assigned_employee_id"
-              v-model.number="form.assigned_employee_id"
-              :class="{ 'has-error': fieldErrors.assigned_employee_id }"
-            >
-              <option :value="0" disabled>Select Employee</option>
-              <option v-for="opt in options.users" :key="opt.id" :value="opt.id">
-                {{ opt.full_name }}
-              </option>
-            </select>
-            <span v-if="fieldErrors.assigned_employee_id" class="error-msg">{{ fieldErrors.assigned_employee_id }}</span>
-          </div>
-
-          <div class="form-group col">
-            <label for="priority">Priority <span class="required">*</span></label>
-            <select
-              id="priority"
-              v-model="form.priority"
-              :class="{ 'has-error': fieldErrors.priority }"
-            >
-              <option value="Low">Low</option>
-              <option value="Medium">Medium</option>
-              <option value="High">High</option>
-              <option value="Critical">Critical</option>
-            </select>
-            <span v-if="fieldErrors.priority" class="error-msg">{{ fieldErrors.priority }}</span>
-          </div>
-        </div>
-
-        <!-- Dates & Status Row -->
-        <div class="form-row">
-          <div class="form-group col">
-            <label for="date_started">Date Started <span class="required">*</span></label>
+          <!-- Date Field -->
+          <div class="form-group">
+            <label for="date">Date <span class="required">*</span></label>
             <input
-              id="date_started"
-              v-model="form.date_started"
+              id="date"
+              v-model="form.date"
               type="date"
-              :class="{ 'has-error': fieldErrors.date_started }"
+              :class="{ 'input-error': errors.date }"
             />
-            <span v-if="fieldErrors.date_started" class="error-msg">{{ fieldErrors.date_started }}</span>
+            <span v-if="errors.date" class="error-msg">{{ errors.date }}</span>
           </div>
 
-          <div class="form-group col">
-            <label for="date_completed">Date Completed</label>
-            <input
-              id="date_completed"
-              v-model="form.date_completed"
-              type="date"
-              :class="{ 'has-error': fieldErrors.date_completed }"
-            />
-            <span v-if="fieldErrors.date_completed" class="error-msg">{{ fieldErrors.date_completed }}</span>
+          <!-- Accomplishment Description -->
+          <div class="form-group">
+            <label for="description">Accomplishment Description <span class="required">*</span></label>
+            <textarea
+              id="description"
+              v-model="form.description"
+              rows="4"
+              placeholder="Describe the completed accomplishment..."
+              :class="{ 'input-error': errors.description }"
+            ></textarea>
+            <span v-if="errors.description" class="error-msg">{{ errors.description }}</span>
           </div>
 
-          <div class="form-group col">
-            <label for="status">Status <span class="required">*</span></label>
-            <select
-              id="status"
-              v-model="form.status"
-              :class="{ 'has-error': fieldErrors.status }"
-            >
-              <option value="Pending">Pending</option>
-              <option value="Ongoing">Ongoing</option>
-              <option value="Completed">Completed</option>
-              <option value="Cancelled">Cancelled</option>
-            </select>
-            <span v-if="fieldErrors.status" class="error-msg">{{ fieldErrors.status }}</span>
+          <!-- Remarks Field -->
+          <div class="form-group">
+            <label for="remarks">Remarks</label>
+            <textarea
+              id="remarks"
+              v-model="form.remarks"
+              rows="3"
+              placeholder="Additional notes or remarks (optional)..."
+            ></textarea>
           </div>
+
         </div>
 
-        <!-- Description -->
-        <div class="form-group">
-          <label for="description">Description</label>
-          <textarea
-            id="description"
-            v-model="form.description"
-            rows="3"
-            placeholder="Enter accomplishment details or background context..."
-          ></textarea>
-        </div>
-
-        <!-- Remarks -->
-        <div class="form-group">
-          <label for="remarks">Remarks</label>
-          <textarea
-            id="remarks"
-            v-model="form.remarks"
-            rows="2"
-            placeholder="Additional notes or remarks..."
-          ></textarea>
-        </div>
-
+        <!-- Footer -->
         <div class="modal-footer">
-          <button class="btn btn-secondary" type="button" @click="close" :disabled="submitting">
-            Cancel
-          </button>
-          <button class="btn btn-primary" type="submit" :disabled="submitting">
-            <ion-spinner v-if="submitting" name="crescent" class="btn-spinner"></ion-spinner>
-            <span>{{ isEditing ? 'Update Record' : 'Save Accomplishment' }}</span>
+          <button class="btn-cancel" type="button" @click="close">Cancel</button>
+          <button class="btn-save" type="submit" :disabled="submitting">
+            <span v-if="submitting">Saving...</span>
+            <span v-else>{{ isEdit ? 'Update Accomplishment' : 'Save Accomplishment' }}</span>
           </button>
         </div>
-
       </form>
 
     </div>
@@ -172,11 +82,10 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch, computed } from 'vue'
-import { IonSpinner } from '@ionic/vue'
 import type {
-  Accomplishment,
-  AccomplishmentFormPayload,
-  AccomplishmentOptions
+  AccomplishmentItem,
+  AccomplishmentOptions,
+  AccomplishmentFormPayload
 } from '../../types/accomplishment'
 import {
   createAccomplishment,
@@ -186,7 +95,7 @@ import {
 const props = defineProps<{
   isOpen: boolean;
   options: AccomplishmentOptions;
-  editData?: Accomplishment | null;
+  editData?: AccomplishmentItem | null;
 }>()
 
 const emit = defineEmits<{
@@ -194,118 +103,84 @@ const emit = defineEmits<{
   (e: 'saved'): void;
 }>()
 
-const isEditing = computed(() => !!props.editData?.id)
 const submitting = ref(false)
-const serverError = ref('')
-const fieldErrors = reactive<Record<string, string>>({})
+const errors = reactive<Record<string, string>>({})
+
+const isEdit = computed(() => !!props.editData?.id)
 
 const form = reactive<AccomplishmentFormPayload>({
-  title: '',
-  description: '',
   office_id: 0,
-  category_id: 0,
-  assigned_employee_id: 0,
-  date_started: new Date().toISOString().split('T')[0],
-  date_completed: '',
-  status: 'Pending',
-  priority: 'Medium',
+  date: new Date().toISOString().split('T')[0],
+  description: '',
   remarks: ''
 })
 
-watch(() => props.isOpen, (open) => {
-  if (open) {
-    resetForm()
+watch(() => props.isOpen, (newVal) => {
+  if (newVal) {
+    clearErrors()
     if (props.editData) {
       form.id = props.editData.id
-      form.title = props.editData.title || ''
-      form.description = props.editData.description || ''
-      form.office_id = props.editData.office_id || 0
-      form.category_id = props.editData.category_id || 0
-      form.assigned_employee_id = props.editData.assigned_employee_id || 0
-      form.date_started = props.editData.date_started || new Date().toISOString().split('T')[0]
-      form.date_completed = props.editData.date_completed || ''
-      form.status = props.editData.status || 'Pending'
-      form.priority = props.editData.priority || 'Medium'
+      form.office_id = props.editData.office_id
+      form.date = props.editData.date
+      form.description = props.editData.description
       form.remarks = props.editData.remarks || ''
+    } else {
+      form.id = undefined
+      form.office_id = props.options.offices.length > 0 ? props.options.offices[0].id : 0
+      form.date = new Date().toISOString().split('T')[0]
+      form.description = ''
+      form.remarks = ''
     }
   }
 })
 
-function resetForm() {
-  serverError.value = ''
-  Object.keys(fieldErrors).forEach(key => delete fieldErrors[key])
-  form.id = undefined
-  form.title = ''
-  form.description = ''
-  form.office_id = props.options.offices[0]?.id || 0
-  form.category_id = props.options.categories[0]?.id || 0
-  form.assigned_employee_id = props.options.users[0]?.id || 0
-  form.date_started = new Date().toISOString().split('T')[0]
-  form.date_completed = ''
-  form.status = 'Pending'
-  form.priority = 'Medium'
-  form.remarks = ''
+function clearErrors() {
+  Object.keys(errors).forEach((key) => delete errors[key])
 }
 
-function validateClient(): boolean {
-  Object.keys(fieldErrors).forEach(key => delete fieldErrors[key])
+function validate() {
+  clearErrors()
   let valid = true
 
-  if (!form.title || !form.title.trim()) {
-    fieldErrors.title = 'Title is required.'
-    valid = false
-  }
-
   if (!form.office_id || form.office_id <= 0) {
-    fieldErrors.office_id = 'Office selection is required.'
+    errors.office_id = 'Please select an office.'
     valid = false
   }
 
-  if (!form.category_id || form.category_id <= 0) {
-    fieldErrors.category_id = 'Category selection is required.'
+  if (!form.date) {
+    errors.date = 'Date is required.'
     valid = false
   }
 
-  if (!form.assigned_employee_id || form.assigned_employee_id <= 0) {
-    fieldErrors.assigned_employee_id = 'Employee selection is required.'
+  if (!form.description || form.description.trim().length === 0) {
+    errors.description = 'Accomplishment description is required.'
     valid = false
-  }
-
-  if (!form.date_started) {
-    fieldErrors.date_started = 'Date started is required.'
-    valid = false
-  }
-
-  if (form.date_started && form.date_completed) {
-    if (new Date(form.date_completed) < new Date(form.date_started)) {
-      fieldErrors.date_completed = 'Completion date cannot precede start date.'
-      valid = false
-    }
   }
 
   return valid
 }
 
-async function handleSubmit() {
-  if (!validateClient()) return
+async function submitForm() {
+  if (!validate()) return
 
   submitting.value = true
-  serverError.value = ''
+  let res
 
-  const res = isEditing.value && form.id
-    ? await updateAccomplishment(form.id, form)
-    : await createAccomplishment(form)
+  if (isEdit.value && form.id) {
+    res = await updateAccomplishment(form.id, form)
+  } else {
+    res = await createAccomplishment(form)
+  }
 
   submitting.value = false
 
   if (res.success) {
     emit('saved')
-    close()
+    emit('close')
+  } else if (res.errors) {
+    Object.assign(errors, res.errors)
   } else {
-    serverError.value = res.message
-    if (res.errors) {
-      Object.assign(fieldErrors, res.errors)
-    }
+    alert(res.message || 'Operation failed.')
   }
 }
 
@@ -322,7 +197,6 @@ function close() {
   right: 0;
   bottom: 0;
   background: rgba(15, 23, 42, 0.5);
-  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -330,94 +204,72 @@ function close() {
   padding: 16px;
 }
 
-.modal-content {
+.modal-card {
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 16px;
   width: 100%;
-  max-width: 680px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
+  max-width: 560px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   overflow: hidden;
 }
 
 .modal-header {
-  padding: 16px 24px;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.modal-header h2 {
+.modal-header h3 {
   font-size: 18px;
-  font-weight: 600;
-  color: #111827;
+  font-weight: 700;
+  color: #0f172a;
   margin: 0;
 }
 
 .close-btn {
-  background: transparent;
+  background: none;
   border: none;
   font-size: 24px;
-  color: #9ca3af;
+  color: #64748b;
   cursor: pointer;
 }
 
-.form-body {
-  padding: 20px 24px;
+.modal-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 70vh;
   overflow-y: auto;
 }
 
-.alert-banner {
-  padding: 10px 14px;
-  border-radius: 6px;
-  font-size: 13px;
-  margin-bottom: 16px;
-}
-
-.alert-banner.danger {
-  background: #fef2f2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
-}
-
 .form-group {
-  margin-bottom: 16px;
   display: flex;
   flex-direction: column;
-}
-
-.form-row {
-  display: flex;
-  gap: 16px;
-}
-
-.form-row .col {
-  flex: 1;
+  gap: 6px;
 }
 
 label {
   font-size: 13px;
-  font-weight: 500;
-  color: #374151;
-  margin-bottom: 6px;
+  font-weight: 600;
+  color: #334155;
 }
 
 .required {
-  color: #dc2626;
+  color: #ef4444;
 }
 
 input, select, textarea {
   width: 100%;
-  padding: 8px 12px;
+  padding: 10px 12px;
   font-size: 14px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
   outline: none;
-  transition: border-color 0.15s ease;
   background: #ffffff;
+  transition: border-color 0.15s ease;
 }
 
 input:focus, select:focus, textarea:focus {
@@ -425,61 +277,46 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
-input.has-error, select.has-error {
-  border-color: #dc2626;
+.input-error {
+  border-color: #ef4444 !important;
 }
 
 .error-msg {
   font-size: 12px;
-  color: #dc2626;
-  margin-top: 4px;
+  color: #ef4444;
 }
 
 .modal-footer {
-  padding-top: 16px;
-  border-top: 1px solid #e5e7eb;
+  padding: 16px 24px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
   display: flex;
   justify-content: flex-end;
   gap: 12px;
 }
 
-.btn {
-  padding: 8px 18px;
-  border-radius: 6px;
+.btn-cancel {
+  background: #ffffff;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  padding: 9px 18px;
+  border-radius: 8px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  border: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
 }
 
-.btn-secondary {
-  background: #f3f4f6;
-  color: #374151;
-}
-
-.btn-secondary:hover {
-  background: #e5e7eb;
-}
-
-.btn-primary {
+.btn-save {
   background: #2563eb;
   color: #ffffff;
+  border: none;
+  padding: 9px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.btn-primary:hover {
-  background: #1d4ed8;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-spinner {
-  width: 16px;
-  height: 16px;
-}
+.btn-save:hover { background: #1d4ed8; }
+.btn-save:disabled { opacity: 0.7; cursor: not-allowed; }
 </style>

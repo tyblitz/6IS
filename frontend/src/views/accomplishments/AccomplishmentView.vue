@@ -1,31 +1,31 @@
 <template>
-  <MainLayout title="Accomplishments" username="Admin">
+  <MainLayout title="Overview" username="Admin">
     <div class="accomplishment-view-container">
 
       <!-- Header & Action Bar -->
       <div class="module-header-bar">
         <div>
           <h2>Overview</h2>
-          <p class="subtitle">Daily operational achievement tracking and report launchers.</p>
+          <p class="subtitle">Summary of completed accomplishments and productivity report launchers.</p>
         </div>
         <button class="add-btn" type="button" @click="openCreateModal">
           <ion-icon :icon="addOutline"></ion-icon>
-          <span>Add Accomplishment</span>
+          <span>Log Accomplishment</span>
         </button>
       </div>
 
-      <!-- Vue Overview Navigation Cards -->
-      <AccomplishmentNavCards />
+      <!-- Overview Summary Cards (6 Cards) -->
+      <AccomplishmentNavCards :counts="summary?.counts" />
 
-      <!-- Current Day Table Section -->
+      <!-- Current Day Table Preview -->
       <AccomplishmentTodayTable
-        :records="todayRecords"
-        :loading="loadingToday"
+        :records="summary?.today_records || []"
+        :loading="loading"
         @select="handleRowSelect"
         @add-first="openCreateModal"
       />
 
-      <!-- Form Modal (Create & Edit) -->
+      <!-- Form Modal -->
       <AccomplishmentFormModal
         :is-open="isFormOpen"
         :options="options"
@@ -59,50 +59,48 @@ import AccomplishmentFormModal from '../../components/accomplishments/Accomplish
 import AccomplishmentDetailModal from '../../components/accomplishments/AccomplishmentDetailModal.vue'
 
 import type {
-  Accomplishment,
-  AccomplishmentTodayItem,
-  AccomplishmentOptions
+  AccomplishmentItem,
+  AccomplishmentOptions,
+  OverviewSummary
 } from '../../types/accomplishment'
 import {
-  fetchTodayAccomplishments,
+  fetchOverviewSummary,
   fetchAccomplishmentOptions,
   fetchAccomplishmentById
 } from '../../services/accomplishmentService'
 
 const route = useRoute()
-const loadingToday = ref(true)
-const todayRecords = ref<AccomplishmentTodayItem[]>([])
+const loading = ref(true)
+const summary = ref<OverviewSummary | null>(null)
 
 const isFormOpen = ref(false)
 const isDetailOpen = ref(false)
-const selectedRecord = ref<Accomplishment | null>(null)
+const selectedRecord = ref<AccomplishmentItem | null>(null)
 
 const options = reactive<AccomplishmentOptions>({
-  offices: [],
-  categories: [],
-  users: []
+  offices: []
 })
 
 onMounted(() => {
-  loadTodayData()
+  loadData()
   loadOptions()
 })
 
 onIonViewWillEnter(() => {
-  loadTodayData()
+  loadData()
   loadOptions()
 })
 
 watch(() => route.fullPath, () => {
-  loadTodayData()
+  loadData()
 })
 
-async function loadTodayData() {
-  loadingToday.value = true
-  const res = await fetchTodayAccomplishments()
-  loadingToday.value = false
-  if (res.success && Array.isArray(res.data)) {
-    todayRecords.value = res.data
+async function loadData() {
+  loading.value = true
+  const res = await fetchOverviewSummary()
+  loading.value = false
+  if (res.success && res.data) {
+    summary.value = res.data
   }
 }
 
@@ -110,8 +108,6 @@ async function loadOptions() {
   const res = await fetchAccomplishmentOptions()
   if (res.success && res.data) {
     options.offices = res.data.offices || []
-    options.categories = res.data.categories || []
-    options.users = res.data.users || []
   }
 }
 
@@ -120,29 +116,32 @@ function openCreateModal() {
   isFormOpen.value = true
 }
 
-async function handleRowSelect(item: AccomplishmentTodayItem) {
+async function handleRowSelect(item: AccomplishmentItem) {
   const res = await fetchAccomplishmentById(item.id)
   if (res.success && res.data) {
     selectedRecord.value = res.data
     isDetailOpen.value = true
+  } else {
+    selectedRecord.value = item
+    isDetailOpen.value = true
   }
 }
 
-function handleEditFromDetail(record: Accomplishment) {
+function handleEditFromDetail(record: AccomplishmentItem) {
   isDetailOpen.value = false
   selectedRecord.value = record
   isFormOpen.value = true
 }
 
 function handleSaved() {
-  loadTodayData()
+  loadData()
 }
 </script>
 
 <style scoped>
 .accomplishment-view-container {
-  padding: 20px;
-  max-width: 1200px;
+  padding: 24px;
+  max-width: 1280px;
   margin: 0 auto;
 }
 
@@ -150,19 +149,19 @@ function handleSaved() {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .module-header-bar h2 {
-  font-size: 22px;
-  font-weight: 700;
-  color: #111827;
+  font-size: 24px;
+  font-weight: 800;
+  color: #0f172a;
   margin: 0 0 4px 0;
 }
 
 .subtitle {
   font-size: 14px;
-  color: #6b7280;
+  color: #64748b;
   margin: 0;
 }
 
@@ -170,7 +169,7 @@ function handleSaved() {
   background: #2563eb;
   color: #ffffff;
   border: none;
-  padding: 10px 18px;
+  padding: 10px 20px;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
@@ -178,15 +177,10 @@ function handleSaved() {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
   transition: background-color 0.15s ease;
 }
 
-.add-btn:hover {
-  background: #1d4ed8;
-}
-
-.add-btn ion-icon {
-  font-size: 18px;
-}
+.add-btn:hover { background: #1d4ed8; }
+.add-btn ion-icon { font-size: 18px; }
 </style>

@@ -45,14 +45,15 @@ const breadcrumbs = computed<BreadcrumbItem[]>(() => {
     })
 
     if (path === '/accomplishments/daily') {
-      const viewMode = route.query.view as string
-      if (viewMode === 'monthly') {
-        items.push({ label: 'Monthly Accomplishments' })
-      } else if (viewMode === 'annual') {
-        items.push({ label: 'Annual Accomplishments' })
-      } else {
-        items.push({ label: 'Daily Accomplishments' })
-      }
+      items.push({ label: 'Daily Report' })
+    } else if (path === '/accomplishments/monthly') {
+      items.push({ label: 'Monthly Report' })
+    } else if (path === '/accomplishments/quarterly') {
+      items.push({ label: 'Quarterly Report' })
+    } else if (path === '/accomplishments/annual') {
+      items.push({ label: 'Annual Report' })
+    } else if (path === '/accomplishments/custom') {
+      items.push({ label: 'Custom Period Report' })
     }
   } else if (path.startsWith('/inventory')) {
     items.push({
@@ -77,14 +78,21 @@ const breadcrumbs = computed<BreadcrumbItem[]>(() => {
 
 <style scoped>
 .app-breadcrumb {
+  height: 44px;
+  min-height: 44px;
+  max-height: 44px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 44px;
   padding: 0 28px;
   background: #f8fafc;
   border-bottom: 1px solid #e2e8f0;
   font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .breadcrumb-link {

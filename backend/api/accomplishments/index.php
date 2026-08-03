@@ -71,17 +71,12 @@ function handleGet(PDO $pdo) {
     $view = isset($_GET['view']) ? trim($_GET['view']) : '';
     $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-    // View: Return Reference Options for Form Select Dropdowns
+    // View: Return Reference Options (Offices)
     if ($view === 'options') {
         try {
             $offices = $pdo->query("SELECT id, office_name, office_code FROM tbl_offices WHERE deleted_at IS NULL ORDER BY office_name ASC")->fetchAll();
-            $categories = $pdo->query("SELECT id, category_name FROM tbl_categories WHERE deleted_at IS NULL ORDER BY category_name ASC")->fetchAll();
-            $users = $pdo->query("SELECT id, full_name, username, role FROM tbl_users WHERE deleted_at IS NULL ORDER BY full_name ASC")->fetchAll();
-
             sendResponse(true, 'Options fetched successfully.', [
-                'offices' => $offices,
-                'categories' => $categories,
-                'users' => $users
+                'offices' => $offices
             ]);
         } catch (Exception $e) {
             sendResponse(false, 'Failed to fetch dropdown options.', null, ['error' => $e->getMessage()], 500);
@@ -94,13 +89,9 @@ function handleGet(PDO $pdo) {
             SELECT 
                 a.*,
                 o.office_name,
-                o.office_code,
-                c.category_name,
-                u.full_name AS assigned_employee_name
+                o.office_code
             FROM tbl_accomplishments a
             LEFT JOIN tbl_offices o ON a.office_id = o.id
-            LEFT JOIN tbl_categories c ON a.category_id = c.id
-            LEFT JOIN tbl_users u ON a.assigned_employee_id = u.id
             WHERE a.id = :id AND a.deleted_at IS NULL
         ");
         $stmt->execute([':id' => $id]);
@@ -113,52 +104,76 @@ function handleGet(PDO $pdo) {
         sendResponse(true, 'Accomplishment details fetched successfully.', $record);
     }
 
-    // View: Overview Today (Compact 4-column current-day table)
-    if ($view === 'overview_today') {
-        $sql = "
-            SELECT 
-                a.id,
-                a.title,
-                u.full_name AS assigned_employee_name,
-                o.office_name,
-                o.office_code,
-                c.category_name
-            FROM tbl_accomplishments a
-            LEFT JOIN tbl_offices o ON a.office_id = o.id
-            LEFT JOIN tbl_categories c ON a.category_id = c.id
-            LEFT JOIN tbl_users u ON a.assigned_employee_id = u.id
-            WHERE a.date_started = CURDATE() AND a.deleted_at IS NULL
-            ORDER BY a.created_at DESC
-        ";
-        $records = $pdo->query($sql)->fetchAll();
-        sendResponse(true, 'Today accomplishments fetched successfully.', $records);
+    // View: Overview Dashboard (Card Counts & Today Preview Table)
+    if ($view === 'overview') {
+        try {
+            $todayCount = (int)$pdo->query("SELECT COUNT(*) FROM tbl_accomplishments WHERE `date` = CURDATE() AND deleted_at IS NULL")->fetchColumn();
+            $monthlyCount = (int)$pdo->query("SELECT COUNT(*) FROM tbl_accomplishments WHERE MONTH(`date`) = MONTH(CURDATE()) AND YEAR(`date`) = YEAR(CURDATE()) AND deleted_at IS NULL")->fetchColumn();
+            $quarterlyCount = (int)$pdo->query("SELECT COUNT(*) FROM tbl_accomplishments WHERE QUARTER(`date`) = QUARTER(CURDATE()) AND YEAR(`date`) = YEAR(CURDATE()) AND deleted_at IS NULL")->fetchColumn();
+            $annualCount = (int)$pdo->query("SELECT COUNT(*) FROM tbl_accomplishments WHERE YEAR(`date`) = YEAR(CURDATE()) AND deleted_at IS NULL")->fetchColumn();
+
+            $todayRecordsStmt = $pdo->query("
+                SELECT 
+                    a.id,
+                    a.office_id,
+                    a.date,
+                    a.description,
+                    a.remarks,
+                    o.office_name,
+                    o.office_code
+                FROM tbl_accomplishments a
+                LEFT JOIN tbl_offices o ON a.office_id = o.id
+                WHERE a.date = CURDATE() AND a.deleted_at IS NULL
+                ORDER BY a.created_at DESC
+            ");
+            $todayRecords = $todayRecordsStmt->fetchAll();
+
+            sendResponse(true, 'Overview summary fetched successfully.', [
+                'counts' => [
+                    'today' => $todayCount,
+                    'monthly' => $monthlyCount,
+                    'quarterly' => $quarterlyCount,
+                    'annual' => $annualCount,
+                    'incoming_comms' => 0, // Placeholder for Communications Module integration
+                    'outgoing_comms' => 0  // Placeholder for Communications Module integration
+                ],
+                'today_records' => $todayRecords
+            ]);
+        } catch (Exception $e) {
+            sendResponse(false, 'Failed to fetch overview summary.', null, ['error' => $e->getMessage()], 500);
+        }
     }
 
-    // View: General List / Detailed Reports View
+    // Dynamic Report Queries
     $where = ["a.deleted_at IS NULL"];
     $params = [];
 
     if ($view === 'daily') {
-        $where[] = "a.date_started = CURDATE()";
+        $targetDate = !empty($_GET['date']) ? trim($_GET['date']) : date('Y-m-d');
+        $where[] = "a.date = :target_date";
+        $params[':target_date'] = $targetDate;
     } elseif ($view === 'monthly') {
-        $where[] = "MONTH(a.date_started) = MONTH(CURDATE()) AND YEAR(a.date_started) = YEAR(CURDATE())";
+        $year = !empty($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
+        $month = !empty($_GET['month']) ? (int)$_GET['month'] : (int)date('m');
+        $where[] = "YEAR(a.date) = :year AND MONTH(a.date) = :month";
+        $params[':year'] = $year;
+        $params[':month'] = $month;
+    } elseif ($view === 'quarterly') {
+        $year = !empty($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
+        $quarter = !empty($_GET['quarter']) ? (int)$_GET['quarter'] : (int)ceil((int)date('m') / 3);
+        $where[] = "YEAR(a.date) = :year AND QUARTER(a.date) = :quarter";
+        $params[':year'] = $year;
+        $params[':quarter'] = $quarter;
     } elseif ($view === 'annual') {
-        $where[] = "YEAR(a.date_started) = YEAR(CURDATE())";
-    }
-
-    if (!empty($_GET['search'])) {
-        $where[] = "(a.title LIKE :search OR a.description LIKE :search OR u.full_name LIKE :search)";
-        $params[':search'] = '%' . trim($_GET['search']) . '%';
-    }
-
-    if (!empty($_GET['status'])) {
-        $where[] = "a.status = :status";
-        $params[':status'] = trim($_GET['status']);
-    }
-
-    if (!empty($_GET['priority'])) {
-        $where[] = "a.priority = :priority";
-        $params[':priority'] = trim($_GET['priority']);
+        $year = !empty($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
+        $where[] = "YEAR(a.date) = :year";
+        $params[':year'] = $year;
+    } elseif ($view === 'custom') {
+        $startDate = !empty($_GET['start_date']) ? trim($_GET['start_date']) : date('Y-m-01');
+        $endDate = !empty($_GET['end_date']) ? trim($_GET['end_date']) : date('Y-m-d');
+        $where[] = "a.date >= :start_date AND a.date <= :end_date";
+        $params[':start_date'] = $startDate;
+        $params[':end_date'] = $endDate;
     }
 
     if (!empty($_GET['office_id'])) {
@@ -166,33 +181,45 @@ function handleGet(PDO $pdo) {
         $params[':office_id'] = (int)$_GET['office_id'];
     }
 
-    if (!empty($_GET['category_id'])) {
-        $where[] = "a.category_id = :category_id";
-        $params[':category_id'] = (int)$_GET['category_id'];
+    if (!empty($_GET['search'])) {
+        $where[] = "(a.description LIKE :search OR a.remarks LIKE :search OR o.office_name LIKE :search)";
+        $params[':search'] = '%' . trim($_GET['search']) . '%';
     }
 
     $whereSql = implode(' AND ', $where);
 
     $sql = "
         SELECT 
-            a.*,
+            a.id,
+            a.office_id,
+            a.date,
+            a.description,
+            a.remarks,
+            a.created_at,
+            a.updated_at,
             o.office_name,
-            o.office_code,
-            c.category_name,
-            u.full_name AS assigned_employee_name
+            o.office_code
         FROM tbl_accomplishments a
         LEFT JOIN tbl_offices o ON a.office_id = o.id
-        LEFT JOIN tbl_categories c ON a.category_id = c.id
-        LEFT JOIN tbl_users u ON a.assigned_employee_id = u.id
         WHERE {$whereSql}
-        ORDER BY a.date_started DESC, a.created_at DESC
+        ORDER BY a.date DESC, a.created_at DESC
     ";
 
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    $records = $stmt->fetchAll();
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $records = $stmt->fetchAll();
 
-    sendResponse(true, 'Accomplishments list fetched successfully.', $records);
+        sendResponse(true, 'Accomplishments list fetched successfully.', [
+            'records' => $records,
+            'communications_stats' => [
+                'incoming' => 0, // Placeholder for Communications Module
+                'outgoing' => 0  // Placeholder for Communications Module
+            ]
+        ]);
+    } catch (Exception $e) {
+        sendResponse(false, 'Failed to fetch accomplishment records.', null, ['error' => $e->getMessage()], 500);
+    }
 }
 
 /**
@@ -211,46 +238,29 @@ function handlePost(PDO $pdo) {
         sendResponse(false, 'Validation failed.', null, $errors, 400);
     }
 
-    $title = trim($data['title']);
-    $description = isset($data['description']) ? trim($data['description']) : null;
     $officeId = (int)$data['office_id'];
-    $categoryId = (int)$data['category_id'];
-    $assignedEmployeeId = (int)$data['assigned_employee_id'];
-    $dateStarted = trim($data['date_started']);
-    $dateCompleted = !empty($data['date_completed']) ? trim($data['date_completed']) : null;
-    $status = trim($data['status']);
-    $priority = trim($data['priority']);
+    $date = trim($data['date']);
+    $description = trim($data['description']);
     $remarks = isset($data['remarks']) ? trim($data['remarks']) : null;
-
-    // Auto completion date setting if status completed
-    if ($status === 'Completed' && empty($dateCompleted)) {
-        $dateCompleted = date('Y-m-d');
-    }
 
     try {
         $stmt = $pdo->prepare("
             INSERT INTO tbl_accomplishments 
-            (title, description, office_id, category_id, assigned_employee_id, date_started, date_completed, status, priority, remarks, created_at, updated_at, created_by, modified_by)
+            (office_id, date, description, remarks, created_at, updated_at, created_by, modified_by)
             VALUES 
-            (:title, :description, :office_id, :category_id, :assigned_employee_id, :date_started, :date_completed, :status, :priority, :remarks, NOW(), NOW(), 1, 1)
+            (:office_id, :date, :description, :remarks, NOW(), NOW(), 1, 1)
         ");
         $stmt->execute([
-            ':title' => $title,
-            ':description' => $description,
             ':office_id' => $officeId,
-            ':category_id' => $categoryId,
-            ':assigned_employee_id' => $assignedEmployeeId,
-            ':date_started' => $dateStarted,
-            ':date_completed' => $dateCompleted,
-            ':status' => $status,
-            ':priority' => $priority,
+            ':date' => $date,
+            ':description' => $description,
             ':remarks' => $remarks
         ]);
 
         $newId = $pdo->lastInsertId();
-        sendResponse(true, 'Accomplishment created successfully.', ['id' => $newId], null, 201);
+        sendResponse(true, 'Accomplishment recorded successfully.', ['id' => $newId], null, 201);
     } catch (Exception $e) {
-        sendResponse(false, 'Failed to create accomplishment record.', null, ['db' => $e->getMessage()], 500);
+        sendResponse(false, 'Failed to record accomplishment.', null, ['db' => $e->getMessage()], 500);
     }
 }
 
@@ -282,33 +292,17 @@ function handlePut(PDO $pdo) {
         sendResponse(false, 'Validation failed.', null, $errors, 400);
     }
 
-    $title = trim($data['title']);
-    $description = isset($data['description']) ? trim($data['description']) : null;
     $officeId = (int)$data['office_id'];
-    $categoryId = (int)$data['category_id'];
-    $assignedEmployeeId = (int)$data['assigned_employee_id'];
-    $dateStarted = trim($data['date_started']);
-    $dateCompleted = !empty($data['date_completed']) ? trim($data['date_completed']) : null;
-    $status = trim($data['status']);
-    $priority = trim($data['priority']);
+    $date = trim($data['date']);
+    $description = trim($data['description']);
     $remarks = isset($data['remarks']) ? trim($data['remarks']) : null;
-
-    if ($status === 'Completed' && empty($dateCompleted)) {
-        $dateCompleted = date('Y-m-d');
-    }
 
     try {
         $stmt = $pdo->prepare("
             UPDATE tbl_accomplishments SET
-                title = :title,
-                description = :description,
                 office_id = :office_id,
-                category_id = :category_id,
-                assigned_employee_id = :assigned_employee_id,
-                date_started = :date_started,
-                date_completed = :date_completed,
-                status = :status,
-                priority = :priority,
+                date = :date,
+                description = :description,
                 remarks = :remarks,
                 updated_at = NOW(),
                 modified_by = 1
@@ -316,15 +310,9 @@ function handlePut(PDO $pdo) {
         ");
         $stmt->execute([
             ':id' => $id,
-            ':title' => $title,
-            ':description' => $description,
             ':office_id' => $officeId,
-            ':category_id' => $categoryId,
-            ':assigned_employee_id' => $assignedEmployeeId,
-            ':date_started' => $dateStarted,
-            ':date_completed' => $dateCompleted,
-            ':status' => $status,
-            ':priority' => $priority,
+            ':date' => $date,
+            ':description' => $description,
             ':remarks' => $remarks
         ]);
 
@@ -367,12 +355,6 @@ function handleDelete(PDO $pdo) {
 function validatePayload(PDO $pdo, $data, $isUpdate = false) {
     $errors = [];
 
-    if (empty($data['title']) || strlen(trim($data['title'])) === 0) {
-        $errors['title'] = 'Title is required.';
-    } elseif (strlen(trim($data['title'])) > 255) {
-        $errors['title'] = 'Title cannot exceed 255 characters.';
-    }
-
     if (empty($data['office_id']) || (int)$data['office_id'] <= 0) {
         $errors['office_id'] = 'Office is required.';
     } else {
@@ -383,44 +365,12 @@ function validatePayload(PDO $pdo, $data, $isUpdate = false) {
         }
     }
 
-    if (empty($data['category_id']) || (int)$data['category_id'] <= 0) {
-        $errors['category_id'] = 'Category is required.';
-    } else {
-        $check = $pdo->prepare("SELECT id FROM tbl_categories WHERE id = :id AND deleted_at IS NULL");
-        $check->execute([':id' => (int)$data['category_id']]);
-        if (!$check->fetch()) {
-            $errors['category_id'] = 'Selected category does not exist.';
-        }
+    if (empty($data['date']) || strlen(trim($data['date'])) === 0) {
+        $errors['date'] = 'Date is required.';
     }
 
-    if (empty($data['assigned_employee_id']) || (int)$data['assigned_employee_id'] <= 0) {
-        $errors['assigned_employee_id'] = 'Assigned employee is required.';
-    } else {
-        $check = $pdo->prepare("SELECT id FROM tbl_users WHERE id = :id AND deleted_at IS NULL");
-        $check->execute([':id' => (int)$data['assigned_employee_id']]);
-        if (!$check->fetch()) {
-            $errors['assigned_employee_id'] = 'Selected employee does not exist.';
-        }
-    }
-
-    if (empty($data['date_started'])) {
-        $errors['date_started'] = 'Date started is required.';
-    }
-
-    if (!empty($data['date_started']) && !empty($data['date_completed'])) {
-        if (strtotime($data['date_completed']) < strtotime($data['date_started'])) {
-            $errors['date_completed'] = 'Date completed cannot be earlier than date started.';
-        }
-    }
-
-    $validStatuses = ['Pending', 'Ongoing', 'Completed', 'Cancelled'];
-    if (empty($data['status']) || !in_array($data['status'], $validStatuses)) {
-        $errors['status'] = 'Valid status is required.';
-    }
-
-    $validPriorities = ['Low', 'Medium', 'High', 'Critical'];
-    if (empty($data['priority']) || !in_array($data['priority'], $validPriorities)) {
-        $errors['priority'] = 'Valid priority level is required.';
+    if (empty($data['description']) || strlen(trim($data['description'])) === 0) {
+        $errors['description'] = 'Accomplishment description is required.';
     }
 
     return $errors;
