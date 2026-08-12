@@ -148,13 +148,11 @@ function debouncedFetch() {
 }
 
 onMounted(() => {
-  loadOptions()
-  loadRecords()
+  Promise.all([loadOptions(), loadRecords()])
 })
 
 onIonViewWillEnter(() => {
-  loadOptions()
-  loadRecords()
+  Promise.all([loadOptions(), loadRecords()])
 })
 
 watch(() => route.fullPath, () => {
@@ -326,5 +324,27 @@ async function handleDelete(item: Communication) {
   min-width: 130px;
   font-weight: 500;
   cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .view-container {
+    padding: 16px;
+  }
+  .module-header-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .add-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .filter-controls {
+    width: 100%;
+  }
+  .filter-controls select {
+    flex: 1;
+    min-width: 140px;
+  }
 }
 </style>

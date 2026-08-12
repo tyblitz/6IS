@@ -538,4 +538,20 @@ function close() {
   font-weight: 600;
   cursor: pointer;
 }
+
+@media (max-width: 640px) {
+  .meta-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .modal-card {
+    max-height: 90vh;
+  }
+  .modal-body {
+    padding: 16px;
+  }
+  .modal-footer {
+    padding: 12px 16px;
+  }
+}
 </style>

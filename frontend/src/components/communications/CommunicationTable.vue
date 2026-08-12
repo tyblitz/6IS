@@ -27,19 +27,19 @@
       <table class="comms-table">
         <thead>
           <tr>
-            <th v-if="showTypeColumn">Type</th>
-            <th>Office</th>
-            <th>Subject & Category</th>
-            <th>Date</th>
-            <th>Status</th>
-            <th>Age (Days)</th>
-            <th class="text-right">Actions</th>
+            <th v-if="showTypeColumn" class="col-type">Type</th>
+            <th class="col-office">Office</th>
+            <th class="col-subject">Subject & Category</th>
+            <th class="col-date">Date</th>
+            <th class="col-status">Status</th>
+            <th class="col-age text-center">Age (Days)</th>
+            <th class="col-actions text-right">Actions</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="item in records" :key="item.id" @click="$emit('select', item)">
             <!-- Type / Direction Badge -->
-            <td v-if="showTypeColumn">
+            <td v-if="showTypeColumn" class="col-type">
               <span
                 class="type-badge"
                 :class="item.communication_type === 'Incoming' ? 'badge-incoming' : 'badge-outgoing'"
@@ -49,12 +49,12 @@
             </td>
 
             <!-- Office Abbreviation Only -->
-            <td>
+            <td class="col-office">
               <span class="office-abbv-text">{{ item.office_abbv || item.office_code || item.office_name }}</span>
             </td>
 
             <!-- Subject & Metadata -->
-            <td>
+            <td class="col-subject">
               <div class="subject-cell">
                 <span class="subject-text">{{ item.subject }}</span>
                 <div class="tags-row">
@@ -69,24 +69,24 @@
             </td>
 
             <!-- Date formatted as DD MMM YYYY -->
-            <td>
+            <td class="col-date">
               <span class="date-text">{{ formatDate(item.communication_date) }}</span>
             </td>
 
             <!-- Status Badge -->
-            <td>
+            <td class="col-status">
               <span class="status-badge" :class="getStatusClass(item.status)">
                 {{ item.status }}
               </span>
             </td>
 
-            <!-- Dynamic Age in Days (Numeric Count Only) -->
-            <td>
+            <!-- Dynamic Age in Days (Centered count aligned under header) -->
+            <td class="col-age text-center">
               <span class="age-count">{{ item.age_days ?? 0 }}</span>
             </td>
 
             <!-- Actions -->
-            <td class="text-right" @click.stop>
+            <td class="col-actions text-right" @click.stop>
               <div class="action-buttons">
                 <button
                   class="action-btn view-btn"
@@ -256,8 +256,9 @@ function getStatusClass(status?: string): string {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  padding: 12px 16px;
+  padding: 14px 16px;
   border-bottom: 1px solid #e2e8f0;
+  vertical-align: middle;
 }
 
 .comms-table td {
@@ -273,6 +274,51 @@ function getStatusClass(status?: string): string {
 
 .comms-table tbody tr:hover {
   background-color: #f8fafc;
+}
+
+/* Explicit Column Width & Alignments */
+.col-type {
+  width: 110px;
+  text-align: left;
+}
+
+.col-office {
+  width: 110px;
+  text-align: left;
+}
+
+.col-subject {
+  min-width: 280px;
+  text-align: left;
+}
+
+.col-date {
+  width: 140px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.col-status {
+  width: 130px;
+  text-align: left;
+}
+
+.col-age {
+  width: 110px;
+  text-align: center !important;
+}
+
+.col-actions {
+  width: 130px;
+  text-align: right !important;
+}
+
+.text-center {
+  text-align: center !important;
+}
+
+.text-right {
+  text-align: right !important;
 }
 
 .type-badge {
@@ -303,7 +349,7 @@ function getStatusClass(status?: string): string {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-width: 360px;
+  max-width: 480px;
 }
 
 .subject-text {
@@ -368,15 +414,13 @@ function getStatusClass(status?: string): string {
   font-weight: 700;
   color: #0f172a;
   font-size: 15px;
-}
-
-.text-right {
-  text-align: right;
+  display: inline-block;
 }
 
 .action-buttons {
   display: inline-flex;
   gap: 6px;
+  justify-content: flex-end;
 }
 
 .action-btn {

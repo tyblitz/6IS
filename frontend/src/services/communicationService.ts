@@ -175,9 +175,25 @@ let fallbackCommunicationsStore: Communication[] = [
   }
 ]
 
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 400): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    })
+    clearTimeout(timer)
+    return response
+  } catch (err) {
+    clearTimeout(timer)
+    throw err
+  }
+}
+
 export async function fetchCommunicationCategories(): Promise<ApiResponse<CommunicationCategory[]>> {
   try {
-    const res = await fetch(`${API_BASE_URL}?view=categories`)
+    const res = await fetchWithTimeout(`${API_BASE_URL}?view=categories`)
     const data = await res.json()
     if (data.success && data.data && data.data.length > 0) return data
     return { success: true, message: 'Categories loaded', data: FALLBACK_CATEGORIES, errors: null }
@@ -188,7 +204,7 @@ export async function fetchCommunicationCategories(): Promise<ApiResponse<Commun
 
 export async function fetchCommunicationPurposes(): Promise<ApiResponse<CommunicationPurpose[]>> {
   try {
-    const res = await fetch(`${API_BASE_URL}?view=purposes`)
+    const res = await fetchWithTimeout(`${API_BASE_URL}?view=purposes`)
     const data = await res.json()
     if (data.success && data.data && data.data.length > 0) return data
     return { success: true, message: 'Purposes loaded', data: FALLBACK_PURPOSES, errors: null }
@@ -199,7 +215,7 @@ export async function fetchCommunicationPurposes(): Promise<ApiResponse<Communic
 
 export async function fetchCommunicationOffices(): Promise<ApiResponse<CommunicationOffice[]>> {
   try {
-    const res = await fetch(`${API_BASE_URL}?view=offices`)
+    const res = await fetchWithTimeout(`${API_BASE_URL}?view=offices`)
     const data = await res.json()
     if (data.success && data.data && data.data.length > 0) return data
     return { success: true, message: 'Offices loaded', data: FALLBACK_OFFICES, errors: null }
@@ -210,7 +226,7 @@ export async function fetchCommunicationOffices(): Promise<ApiResponse<Communica
 
 export async function fetchCommunicationOptions(): Promise<ApiResponse<CommunicationOptions>> {
   try {
-    const res = await fetch(`${API_BASE_URL}?view=options`)
+    const res = await fetchWithTimeout(`${API_BASE_URL}?view=options`)
     const data = await res.json()
     if (data.success && data.data && data.data.categories?.length > 0) return data
     return {
@@ -250,7 +266,7 @@ export async function fetchCommunications(
     if (filters?.search) params.append('search', filters.search)
 
     const url = params.toString() ? `${API_BASE_URL}?${params.toString()}` : API_BASE_URL
-    const res = await fetch(url)
+    const res = await fetchWithTimeout(url)
     const data = await res.json()
 
     if (data.success && data.data && data.data.length > 0) {
@@ -311,7 +327,7 @@ export async function fetchCommunications(
 
 export async function fetchCommunicationById(id: number): Promise<ApiResponse<Communication>> {
   try {
-    const res = await fetch(`${API_BASE_URL}?id=${id}`)
+    const res = await fetchWithTimeout(`${API_BASE_URL}?id=${id}`)
     const data = await res.json()
     if (data.success && data.data) return data
 
@@ -327,7 +343,7 @@ export async function fetchCommunicationById(id: number): Promise<ApiResponse<Co
 
 export async function createCommunication(payload: CommunicationFormPayload): Promise<ApiResponse> {
   try {
-    const res = await fetch(API_BASE_URL, {
+    const res = await fetchWithTimeout(API_BASE_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -376,7 +392,7 @@ export async function createCommunication(payload: CommunicationFormPayload): Pr
 
 export async function updateCommunication(id: number, payload: CommunicationFormPayload): Promise<ApiResponse> {
   try {
-    const res = await fetch(`${API_BASE_URL}?id=${id}`, {
+    const res = await fetchWithTimeout(`${API_BASE_URL}?id=${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -437,7 +453,7 @@ export async function updateCommunication(id: number, payload: CommunicationForm
 
 export async function deleteCommunication(id: number): Promise<ApiResponse> {
   try {
-    const res = await fetch(`${API_BASE_URL}?id=${id}`, {
+    const res = await fetchWithTimeout(`${API_BASE_URL}?id=${id}`, {
       method: 'DELETE'
     })
     const data = await res.json()
@@ -452,7 +468,7 @@ export async function deleteCommunication(id: number): Promise<ApiResponse> {
 
 export async function addCommunicationActivity(payload: CommunicationActivityPayload): Promise<ApiResponse> {
   try {
-    const res = await fetch(`${API_BASE_URL}?action=add_activity`, {
+    const res = await fetchWithTimeout(`${API_BASE_URL}?action=add_activity`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -483,7 +499,7 @@ export async function addCommunicationActivity(payload: CommunicationActivityPay
 
 export async function fetchCommunicationReports(): Promise<ApiResponse<CommunicationReportsData>> {
   try {
-    const res = await fetch(`${API_BASE_URL}?view=reports`)
+    const res = await fetchWithTimeout(`${API_BASE_URL}?view=reports`)
     const data = await res.json()
     if (data.success && data.data && data.data.by_type?.length > 0) return data
   } catch (err: any) {

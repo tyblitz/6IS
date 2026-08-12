@@ -267,4 +267,14 @@ function getStatusClass(status?: string): string {
 .status-pending { background: #fff7ed; color: #c2410c; }
 .status-ongoing { background: #eff6ff; color: #1d4ed8; }
 .status-completed { background: #f0fdf4; color: #15803d; }
+
+@media (max-width: 768px) {
+  .reports-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .view-container {
+    padding: 16px;
+  }
+}
 </style>

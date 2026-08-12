@@ -398,4 +398,17 @@ input:focus, select:focus, textarea:focus {
 
 .btn-save:hover { background: #1d4ed8; }
 .btn-save:disabled { opacity: 0.7; cursor: not-allowed; }
+
+@media (max-width: 640px) {
+  .form-row {
+    flex-direction: column;
+    gap: 16px;
+  }
+  .modal-card {
+    max-height: 90vh;
+  }
+  .modal-body {
+    padding: 16px;
+  }
+}
 </style>
