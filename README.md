@@ -2,67 +2,46 @@
 
 ## Overview
 
-6IS is a modular web-based information system designed to help organizations manage daily operations through a centralized platform. The system is built with scalability in mind, allowing new modules to be added without affecting existing functionality.
-
-This project is being developed as a portfolio project to demonstrate full-stack web application development using modern frontend technologies with a PHP backend.
+6IS is a modular web-based information system designed to help organizations manage daily operations through a centralized platform.
 
 ---
 
-## Current Modules under development
+## ⚡ 1-Click Master Setup Guide (For New Computers)
 
-- **Dashboard**: Central module launcher & hero greeting.
-- **Accomplishments**: Reporting module for recording completed office accomplishments and generating Daily, Monthly, Quarterly, Annual, and Custom Period productivity reports alongside Communication statistics.
-- **Communications**: Incoming and outgoing communications management and statistics provider.
-- **Inventory**: ICT equipment and asset inventory tracking.
-- **Administration**: System administration.
+Follow these simple steps to set up 6IS on any new Windows desktop with **zero coding or terminal knowledge**:
 
-## Modules to be added
-
-- Calendar
-- Performance
-- User Management
-- Authentication
-
-Additional modules will be added as development progresses.
+### Step 1: Prepare the USB Drive (Developer / Admin Setup)
+1. Download the official XAMPP installer for Windows from [apachefriends.org](https://www.apachefriends.org).
+2. Rename the downloaded file to **`xampp-installer.exe`**.
+3. Place `xampp-installer.exe` inside the **`6IS/installer/`** folder on your USB drive.
 
 ---
 
-## Technology Stack
+### Step 2: 1-Click Installation on Target Desktop
+1. Plug the USB drive into the new computer.
+2. Open the `6IS` folder and double-click:
+   ⚡ **`Setup_Everything_1Click.bat`**
 
-### Frontend
-
-- Vue 3 (Composition API `<script setup lang="ts">`)
-- TypeScript
-- Ionic Framework (`@ionic/vue`)
-- HTML5
-- CSS3 (Vanilla CSS with Design Tokens)
-
-### Backend
-
-- PHP (REST API Endpoints)
-- MySQL (`db_ict_system` with `tbl_` table prefix convention)
-
-### Development Tools
-
-- Visual Studio Code
-- Git
-- XAMPP
+🤖 **What happens automatically**:
+- Installs XAMPP silently in the background (no manual choices required).
+- Copies application files to `C:\xampp\htdocs\6IS`.
+- Starts Apache & MySQL services.
+- Initializes MySQL database `db_ict_system` and inserts initial seed data.
+- Creates a **"6IS App" Shortcut** right on the user's Desktop screen.
+- Launches `http://localhost/6IS` in the web browser automatically.
 
 ---
 
-## Project Status
+## 🚀 Manual Launch / Usage
 
-🚧 Under Active Development
-
-Current Version: v0.1.0
+To start 6IS at any time on the computer:
+- Double-click the **6IS App** shortcut on the Desktop (or run **`Start_6IS.bat`** in `C:\xampp\htdocs\6IS`).
+- Open your browser to: **`http://localhost/6IS`**
 
 ---
 
-## Repository Structure
+## 🛠️ Tech Stack
 
-```text
-frontend/
-backend/
-database/
-docs/
-```
+- **Frontend**: Vue 3 (Composition API), TypeScript, Ionic Framework, Vanilla CSS.
+- **Backend**: PHP REST API.
+- **Database**: MySQL (`db_ict_system`).
