@@ -7,8 +7,15 @@ export interface OfficeOption {
   office_abbv?: string;
 }
 
+export interface CategoryOption {
+  id: number;
+  category_name: string;
+  category_code: string;
+}
+
 export interface AccomplishmentOptions {
   offices: OfficeOption[];
+  categories?: CategoryOption[];
 }
 
 export interface AccomplishmentItem {
@@ -18,6 +25,8 @@ export interface AccomplishmentItem {
   office_name?: string;
   office_code?: string;
   office_abbv?: string;
+  category_name?: string;
+  category_code?: string;
   date: string;
   description: string;
   remarks: string | null;

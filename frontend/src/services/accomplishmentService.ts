@@ -40,12 +40,14 @@ export async function fetchAccomplishmentById(id: number): Promise<ApiResponse<A
 export async function fetchDailyAccomplishments(
   date?: string,
   officeId?: number,
-  search?: string
+  search?: string,
+  categoryId?: number
 ): Promise<ApiResponse<ReportData>> {
   try {
     const params = new URLSearchParams({ view: 'daily' })
     if (date) params.append('date', date)
     if (officeId && officeId > 0) params.append('office_id', officeId.toString())
+    if (categoryId && categoryId > 0) params.append('category_id', categoryId.toString())
     if (search) params.append('search', search)
 
     const res = await fetch(`${API_BASE_URL}?${params.toString()}`)

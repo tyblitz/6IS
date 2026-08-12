@@ -6,11 +6,11 @@
       <div class="module-header-bar">
         <div>
           <h2>Overview</h2>
-          <p class="subtitle">Summary of completed accomplishments and productivity report launchers.</p>
+          <p class="subtitle">Summary of accomplishments and activities</p>
         </div>
         <button class="add-btn" type="button" @click="openCreateModal">
           <ion-icon :icon="addOutline"></ion-icon>
-          <span>Log Accomplishment</span>
+          <span>Add Activity</span>
         </button>
       </div>
 

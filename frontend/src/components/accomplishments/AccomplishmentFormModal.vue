@@ -40,9 +40,9 @@
             <span v-if="errors.date" class="error-msg">{{ errors.date }}</span>
           </div>
 
-          <!-- Accomplishment Description -->
+          <!-- Description -->
           <div class="form-group">
-            <label for="description">Accomplishment Description <span class="required">*</span></label>
+            <label for="description">Description <span class="required">*</span></label>
             <textarea
               id="description"
               v-model="form.description"

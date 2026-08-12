@@ -13,7 +13,7 @@
         
         <div class="detail-row">
           <span class="detail-label">Date</span>
-          <span class="detail-value font-semibold">{{ data.date }}</span>
+          <span class="detail-value font-semibold">{{ formatDate(data.date) }}</span>
         </div>
 
         <div class="detail-row">
@@ -24,7 +24,7 @@
         </div>
 
         <div class="detail-block">
-          <span class="detail-label">Accomplishment Description</span>
+          <span class="detail-label">Description</span>
           <p class="description-text">{{ data.description }}</p>
         </div>
 
@@ -60,6 +60,24 @@ const emit = defineEmits<{
 
 function close() {
   emit('close')
+}
+
+function formatDate(dateStr?: string | null): string {
+  if (!dateStr) return '-'
+  const cleanStr = dateStr.split('T')[0]
+  const parts = cleanStr.split('-')
+  if (parts.length === 3) {
+    const year = parts[0]
+    const month = parts[1]
+    const day = parts[2]
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const mIdx = parseInt(month, 10) - 1
+    if (mIdx >= 0 && mIdx < 12) {
+      return `${day} ${months[mIdx]} ${year}`
+    }
+    return `${day}/${month}/${year}`
+  }
+  return dateStr
 }
 
 function emitEdit() {

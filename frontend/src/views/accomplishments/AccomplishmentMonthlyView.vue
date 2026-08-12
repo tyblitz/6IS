@@ -6,7 +6,7 @@
       <div class="module-header-bar print-hide">
         <div>
           <h2>Monthly Accomplishment Summary</h2>
-          <p class="subtitle">Categorized breakdown of accomplishments and outgoing communications for the month.</p>
+          <p class="subtitle">Breakdown of accomplishments and outgoing communications for the month.</p>
         </div>
       </div>
 

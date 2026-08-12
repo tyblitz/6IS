@@ -6,7 +6,7 @@
       <div class="module-header-bar print-hide">
         <div>
           <h2>Custom Period Accomplishment Summary</h2>
-          <p class="subtitle">Categorized breakdown of accomplishments and outgoing communications for the selected date range.</p>
+          <p class="subtitle">Breakdown of accomplishments and outgoing communications for the selected date range.</p>
         </div>
       </div>
 

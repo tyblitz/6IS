@@ -3,7 +3,7 @@
     <div class="table-header">
       <div>
         <h3>Today's Accomplishments</h3>
-        <p class="subtitle">Preview of accomplishments recorded for today ({{ currentDateFormatted }}).</p>
+        <p class="subtitle">Summary of activities for {{ currentDateFormatted }}</p>
       </div>
     </div>
 
@@ -17,7 +17,7 @@
       <ion-icon :icon="clipboardOutline" class="empty-icon"></ion-icon>
       <p>No accomplishments recorded for today yet.</p>
       <button class="btn-first-add" type="button" @click="$emit('add-first')">
-        + Log Today's First Accomplishment
+        + Add First Activity
       </button>
     </div>
 
@@ -25,16 +25,14 @@
       <table class="overview-table">
         <thead>
           <tr>
-            <th>Date</th>
             <th>Office</th>
-            <th>Accomplishment Description</th>
+            <th>Description</th>
             <th>Remarks</th>
             <th class="text-right">Actions</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="item in records" :key="item.id">
-            <td class="whitespace-nowrap date-cell">{{ item.date }}</td>
             <td class="whitespace-nowrap">
               <span class="office-tag">{{ item.office_code || item.office_name }}</span>
             </td>
@@ -68,13 +66,31 @@ defineEmits<{
   (e: 'add-first'): void;
 }>()
 
+function formatDate(dateStr?: string | null): string {
+  if (!dateStr) return '-'
+  const cleanStr = dateStr.split('T')[0]
+  const parts = cleanStr.split('-')
+  if (parts.length === 3) {
+    const year = parts[0]
+    const month = parts[1]
+    const day = parts[2]
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const mIdx = parseInt(month, 10) - 1
+    if (mIdx >= 0 && mIdx < 12) {
+      return `${day} ${months[mIdx]} ${year}`
+    }
+    return `${day}/${month}/${year}`
+  }
+  return dateStr
+}
+
 const currentDateFormatted = computed(() => {
-  return new Date().toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  })
+  const now = new Date()
+  const day = String(now.getDate()).padStart(2, '0')
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const month = months[now.getMonth()]
+  const year = now.getFullYear()
+  return `${day} ${month} ${year}`
 })
 </script>
 

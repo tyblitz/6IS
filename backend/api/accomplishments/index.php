@@ -75,8 +75,10 @@ function handleGet(PDO $pdo) {
     if ($view === 'options') {
         try {
             $offices = $pdo->query("SELECT id, office_name, office_code FROM tbl_offices WHERE deleted_at IS NULL ORDER BY office_name ASC")->fetchAll();
+            $categories = $pdo->query("SELECT id, category_name, category_code FROM tbl_accomplishment_categories WHERE deleted_at IS NULL ORDER BY id ASC")->fetchAll();
             sendResponse(true, 'Options fetched successfully.', [
-                'offices' => $offices
+                'offices' => $offices,
+                'categories' => $categories
             ]);
         } catch (Exception $e) {
             sendResponse(false, 'Failed to fetch dropdown options.', null, ['error' => $e->getMessage()], 500);
@@ -181,8 +183,13 @@ function handleGet(PDO $pdo) {
         $params[':office_id'] = (int)$_GET['office_id'];
     }
 
+    if (!empty($_GET['category_id'])) {
+        $where[] = "a.category_id = :category_id";
+        $params[':category_id'] = (int)$_GET['category_id'];
+    }
+
     if (!empty($_GET['search'])) {
-        $where[] = "(a.description LIKE :search OR a.remarks LIKE :search OR o.office_name LIKE :search)";
+        $where[] = "(a.description LIKE :search OR a.remarks LIKE :search OR o.office_name LIKE :search OR ac.category_name LIKE :search OR ac.category_code LIKE :search)";
         $params[':search'] = '%' . trim($_GET['search']) . '%';
     }
 
@@ -192,15 +199,19 @@ function handleGet(PDO $pdo) {
         SELECT 
             a.id,
             a.office_id,
+            a.category_id,
             a.date,
             a.description,
             a.remarks,
             a.created_at,
             a.updated_at,
             o.office_name,
-            o.office_code
+            o.office_code,
+            ac.category_name,
+            ac.category_code
         FROM tbl_accomplishments a
         LEFT JOIN tbl_offices o ON a.office_id = o.id
+        LEFT JOIN tbl_accomplishment_categories ac ON a.category_id = ac.id
         WHERE {$whereSql}
         ORDER BY a.date DESC, a.created_at DESC
     ";
@@ -213,6 +224,7 @@ function handleGet(PDO $pdo) {
         // Calculate Monthly Summary Stats if view is monthly
         $accomplishmentsByCategory = [];
         $outgoingCommsByCategory = [];
+        $clearancesByPurpose = [];
 
         if ($view === 'monthly') {
             $mYear = !empty($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');

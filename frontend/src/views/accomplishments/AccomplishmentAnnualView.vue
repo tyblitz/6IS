@@ -6,7 +6,7 @@
       <div class="module-header-bar print-hide">
         <div>
           <h2>Annual Accomplishment Summary</h2>
-          <p class="subtitle">Categorized breakdown of accomplishments and outgoing communications for the year.</p>
+          <p class="subtitle">Breakdown of accomplishments and outgoing communications for the year.</p>
         </div>
       </div>
 
