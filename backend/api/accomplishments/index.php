@@ -83,6 +83,32 @@ function handleGet(PDO $pdo) {
         }
     }
 
+    // View: Generate and Download Monthly Accomplishment Report (.docx)
+    if ($view === 'monthly_report' || $view === 'export_docx') {
+        $month = isset($_GET['month']) ? (int)$_GET['month'] : (int)date('n');
+        $year = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
+
+        try {
+            require_once __DIR__ . '/../../services/MonthlyReportGenerator.php';
+            $generator = new MonthlyReportGenerator($pdo);
+            $docxBinary = $generator->generate($month, $year);
+
+            $monthName = date('F', mktime(0, 0, 0, $month, 1, $year));
+            $filename = sprintf("Monthly_Accomplishment_Report_%s_%d.docx", $monthName, $year);
+
+            header('Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Content-Length: ' . strlen($docxBinary));
+            header('Cache-Control: max-age=0, no-cache, must-revalidate');
+            header('Pragma: public');
+            
+            echo $docxBinary;
+            exit();
+        } catch (Exception $e) {
+            sendResponse(false, 'Failed to generate monthly DOCX report: ' . $e->getMessage(), null, ['error' => $e->getMessage()], 500);
+        }
+    }
+
     // View: Single Record by ID
     if ($id > 0) {
         $stmt = $pdo->prepare("
