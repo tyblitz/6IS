@@ -2,6 +2,9 @@ import { createRouter, createWebHistory } from '@ionic/vue-router';
 import { RouteRecordRaw } from 'vue-router';
 import DashboardView  from '../views/DashboardView.vue'
 import CommunicationsView from '../views/communications/CommunicationsView.vue'
+import IncomingCommunicationsView from '../views/communications/IncomingCommunicationsView.vue'
+import OutgoingCommunicationsView from '../views/communications/OutgoingCommunicationsView.vue'
+import CommunicationReportsView from '../views/communications/CommunicationReportsView.vue'
 import InventoryView from '../views/inventory/InventoryView.vue'
 import EquipmentView from '../views/inventory/EquipmentView.vue'
 import JRRSView from '../views/inventory/JRRS.vue'
@@ -30,6 +33,30 @@ const routes: Array<RouteRecordRaw> = [
     path: '/communications',
     name: 'Communications',
     component: CommunicationsView,
+    meta: {
+      module: ModuleName.Communications,
+    },
+  },
+  {
+    path: '/communications/incoming',
+    name: 'Incoming Communications',
+    component: IncomingCommunicationsView,
+    meta: {
+      module: ModuleName.Communications,
+    },
+  },
+  {
+    path: '/communications/outgoing',
+    name: 'Outgoing Communications',
+    component: OutgoingCommunicationsView,
+    meta: {
+      module: ModuleName.Communications,
+    },
+  },
+  {
+    path: '/communications/reports',
+    name: 'Communication Reports',
+    component: CommunicationReportsView,
     meta: {
       module: ModuleName.Communications,
     },

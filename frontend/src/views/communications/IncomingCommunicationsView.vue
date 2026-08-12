@@ -1,15 +1,15 @@
 <template>
-  <MainLayout title="Communications" username="Admin">
+  <MainLayout title="Incoming Communications" username="Admin">
     <div class="view-container">
       <!-- Header -->
       <div class="module-header-bar">
         <div>
-          <h2>Communications Overview</h2>
-          <p class="subtitle">Central management for incoming, outgoing, and organizational communications.</p>
+          <h2>Incoming Communications</h2>
+          <p class="subtitle">Register, track, and route incoming organizational communications.</p>
         </div>
-        <button class="add-btn" type="button" @click="openCreateModal()">
+        <button class="add-btn" type="button" @click="openCreateModal">
           <ion-icon :icon="addOutline" />
-          <span>Log Communication</span>
+          <span>Log Incoming Communication</span>
         </button>
       </div>
 
@@ -20,18 +20,12 @@
           <input
             v-model="filters.search"
             type="text"
-            placeholder="Search subject, office, or category..."
+            placeholder="Search incoming subject, office, category..."
             @input="debouncedFetch"
           />
         </div>
 
         <div class="filter-controls">
-          <select v-model="filters.type" @change="loadRecords">
-            <option value="">All Types</option>
-            <option value="Incoming">Incoming</option>
-            <option value="Outgoing">Outgoing</option>
-          </select>
-
           <select v-model.number="filters.office_id" @change="loadRecords">
             <option :value="0">All Offices</option>
             <option v-for="off in options.offices" :key="off.id" :value="off.id">
@@ -52,6 +46,14 @@
               {{ pur.name }}
             </option>
           </select>
+
+          <select v-model="filters.status" @change="loadRecords">
+            <option value="">All Statuses</option>
+            <option value="Pending">Pending</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Completed">Completed</option>
+            <option value="Archived">Archived</option>
+          </select>
         </div>
       </div>
 
@@ -62,7 +64,7 @@
         @select="handleSelect"
         @edit="openEditModal"
         @delete="handleDelete"
-        @add-first="openCreateModal()"
+        @add-first="openCreateModal"
       />
 
       <!-- Form Modal -->
@@ -70,6 +72,7 @@
         :is-open="isFormOpen"
         :options="options"
         :edit-data="selectedRecord"
+        default-type="Incoming"
         @close="isFormOpen = false"
         @saved="loadRecords"
       />
@@ -126,10 +129,11 @@ const options = reactive<CommunicationOptions>({
 })
 
 const filters = reactive<CommunicationFilterParams>({
-  type: undefined,
+  type: 'Incoming',
   office_id: 0,
   category_id: 0,
   purpose_id: 0,
+  status: '',
   search: ''
 })
 
@@ -166,6 +170,7 @@ async function loadOptions() {
 
 async function loadRecords() {
   loading.value = true
+  filters.type = 'Incoming'
   const res = await fetchCommunications(filters)
   loading.value = false
   if (res.success && res.data) {
@@ -209,7 +214,7 @@ async function handleDetailRefresh() {
 }
 
 async function handleDelete(item: Communication) {
-  if (confirm(`Are you sure you want to soft delete communication "${item.subject}"?`)) {
+  if (confirm(`Are you sure you want to soft delete incoming communication "${item.subject}"?`)) {
     const res = await deleteCommunication(item.id)
     if (res.success) {
       loadRecords()
@@ -260,7 +265,6 @@ async function handleDelete(item: Communication) {
   align-items: center;
   gap: 8px;
   box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
-  transition: background-color 0.15s ease;
 }
 
 .add-btn:hover { background: #1d4ed8; }

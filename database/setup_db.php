@@ -22,14 +22,49 @@ try {
     echo "3. Connecting to database '{$dbName}'...\n";
     $pdo->exec("USE `{$dbName}`;");
 
-    $migrationFile = __DIR__ . '/migrations/create_accomplishments_tables.sql';
-    if (!file_exists($migrationFile)) {
-        die("ERROR: Migration file missing: {$migrationFile}\n");
+    $migrations = [
+        __DIR__ . '/migrations/create_accomplishments_tables.sql',
+        __DIR__ . '/migrations/create_communications_tables.sql'
+    ];
+
+    echo "4. Executing SQL migration scripts...\n";
+    foreach ($migrations as $migrationFile) {
+        if (!file_exists($migrationFile)) {
+            die("ERROR: Migration file missing: {$migrationFile}\n");
+        }
+        $filename = basename($migrationFile);
+        echo " - Executing {$filename}...\n";
+        $sql = file_get_contents($migrationFile);
+        $pdo->exec($sql);
     }
 
-    echo "4. Executing SQL migration script...\n";
-    $sql = file_get_contents($migrationFile);
-    $pdo->exec($sql);
+    // Ensure tbl_offices has columns office_abbv, office_category, is_active if created previously
+    try {
+        $cols = $pdo->query("SHOW COLUMNS FROM `tbl_offices`")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('office_abbv', $cols)) {
+            $pdo->exec("ALTER TABLE `tbl_offices` ADD COLUMN `office_abbv` VARCHAR(20) NULL AFTER `office_code`;");
+            $pdo->exec("UPDATE `tbl_offices` SET `office_abbv` = `office_code` WHERE `office_abbv` IS NULL;");
+        }
+        if (!in_array('office_category', $cols)) {
+            $pdo->exec("ALTER TABLE `tbl_offices` ADD COLUMN `office_category` ENUM('Staff', 'Special Staff', 'Group', 'Others') NOT NULL DEFAULT 'Others' AFTER `office_abbv`;");
+        }
+        if (!in_array('is_active', $cols)) {
+            $pdo->exec("ALTER TABLE `tbl_offices` ADD COLUMN `is_active` TINYINT(1) NOT NULL DEFAULT 1 AFTER `office_category`;");
+        }
+    } catch (Exception $e) {
+        // Table created with new schema directly
+    }
+
+    // Ensure tbl_communications has communication_type column if created previously
+    try {
+        $commCols = $pdo->query("SHOW COLUMNS FROM `tbl_communications`")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('communication_type', $commCols)) {
+            $pdo->exec("ALTER TABLE `tbl_communications` ADD COLUMN `communication_type` ENUM('Incoming', 'Outgoing') NOT NULL DEFAULT 'Incoming' AFTER `id`;");
+        }
+    } catch (Exception $e) {
+        // Table created with new schema directly
+    }
+
     echo "SUCCESS: Tables and sample seed data created successfully in '{$dbName}'.\n";
 
     echo "\nSummary of tables created in '{$dbName}':\n";
