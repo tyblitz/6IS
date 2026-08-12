@@ -194,6 +194,73 @@ function handleGet(PDO $pdo) {
         }
     }
 
+    // View: Overview Summary (Today's Communications + Current Month Summary Counts)
+    if ($view === 'overview') {
+        try {
+            $incomingMonthly = $pdo->query("
+                SELECT COUNT(*) FROM tbl_communications 
+                WHERE communication_type = 'Incoming' 
+                  AND deleted_at IS NULL 
+                  AND YEAR(communication_date) = YEAR(CURDATE()) 
+                  AND MONTH(communication_date) = MONTH(CURDATE())
+            ")->fetchColumn();
+
+            $outgoingMonthly = $pdo->query("
+                SELECT COUNT(*) FROM tbl_communications 
+                WHERE communication_type = 'Outgoing' 
+                  AND deleted_at IS NULL 
+                  AND YEAR(communication_date) = YEAR(CURDATE()) 
+                  AND MONTH(communication_date) = MONTH(CURDATE())
+            ")->fetchColumn();
+
+            $todaysIncomingStmt = $pdo->query("
+                SELECT 
+                    c.id, c.communication_type, c.subject, c.communication_date, c.status,
+                    c.office_id, c.category_id, c.purpose_id,
+                    o.office_name, o.office_code, o.office_abbv,
+                    cat.name as category_name, pur.name as purpose_name
+                FROM tbl_communications c
+                LEFT JOIN tbl_offices o ON c.office_id = o.id
+                LEFT JOIN tbl_communication_categories cat ON c.category_id = cat.id
+                LEFT JOIN tbl_communication_purposes pur ON c.purpose_id = pur.id
+                WHERE c.deleted_at IS NULL 
+                  AND c.communication_type = 'Incoming'
+                  AND c.communication_date = CURDATE()
+                ORDER BY c.id DESC
+            ");
+            $todaysIncoming = $todaysIncomingStmt->fetchAll();
+
+            $todaysOutgoingStmt = $pdo->query("
+                SELECT 
+                    c.id, c.communication_type, c.subject, c.communication_date, c.status,
+                    c.office_id, c.category_id, c.purpose_id,
+                    o.office_name, o.office_code, o.office_abbv,
+                    cat.name as category_name, pur.name as purpose_name
+                FROM tbl_communications c
+                LEFT JOIN tbl_offices o ON c.office_id = o.id
+                LEFT JOIN tbl_communication_categories cat ON c.category_id = cat.id
+                LEFT JOIN tbl_communication_purposes pur ON c.purpose_id = pur.id
+                WHERE c.deleted_at IS NULL 
+                  AND c.communication_type = 'Outgoing'
+                  AND c.communication_date = CURDATE()
+                ORDER BY c.id DESC
+            ");
+            $todaysOutgoing = $todaysOutgoingStmt->fetchAll();
+
+            sendResponse(true, 'Overview summary fetched successfully.', [
+                'monthly_summary' => [
+                    'incoming' => (int)$incomingMonthly,
+                    'outgoing' => (int)$outgoingMonthly,
+                    'total' => (int)$incomingMonthly + (int)$outgoingMonthly
+                ],
+                'todays_incoming' => $todaysIncoming,
+                'todays_outgoing' => $todaysOutgoing
+            ]);
+        } catch (Exception $e) {
+            sendResponse(false, 'Failed to fetch overview summary.', null, ['error' => $e->getMessage()], 500);
+        }
+    }
+
     // View: Single Communication Record + Activity Logs + Dynamic Age
     if ($id > 0) {
         try {

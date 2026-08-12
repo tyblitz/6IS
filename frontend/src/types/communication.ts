@@ -106,3 +106,13 @@ export interface CommunicationReportsData {
   by_purpose: Array<{ purpose_name: string; total: number }>;
   by_status: Array<{ status: string; total: number }>;
 }
+
+export interface CommunicationOverviewSummary {
+  monthly_summary: {
+    incoming: number;
+    outgoing: number;
+    total: number;
+  };
+  todays_incoming: Communication[];
+  todays_outgoing: Communication[];
+}

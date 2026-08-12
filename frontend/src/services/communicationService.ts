@@ -9,7 +9,8 @@ import type {
   CommunicationFormPayload,
   CommunicationActivityPayload,
   CommunicationFilterParams,
-  CommunicationReportsData
+  CommunicationReportsData,
+  CommunicationOverviewSummary
 } from '../types/communication'
 
 const API_BASE_URL = 'http://localhost/6IS/backend/api/communications/index.php'
@@ -37,6 +38,7 @@ const FALLBACK_OFFICES: CommunicationOffice[] = [
 ]
 
 let fallbackCommunicationsStore: Communication[] = [
+  // INCOMING (10 Records)
   {
     id: 1,
     communication_type: 'Incoming',
@@ -50,25 +52,13 @@ let fallbackCommunicationsStore: Communication[] = [
     purpose_id: 2,
     purpose_name: 'PAS Request',
     subject: 'Request for IT Infrastructure Audit & Security Patching',
-    communication_date: '2026-08-01',
+    communication_date: '2026-08-12',
     status: 'In Progress',
-    latest_activity_date: '2026-08-02 10:30:00',
-    age_days: 10,
+    latest_activity_date: '2026-08-12 10:30:00',
+    age_days: 0,
     activities: [
-      {
-        id: 1,
-        communication_id: 1,
-        activity_type: 'Logged',
-        activity_date: '2026-08-01 09:00:00',
-        remarks: 'Communication received and logged into system.'
-      },
-      {
-        id: 2,
-        communication_id: 1,
-        activity_type: 'Status changed to In Progress',
-        activity_date: '2026-08-02 10:30:00',
-        remarks: 'Assigned to Systems Administrator for audit review.'
-      }
+      { id: 1, communication_id: 1, activity_type: 'Logged', activity_date: '2026-08-12 09:00:00', remarks: 'Communication received and logged into system.' },
+      { id: 2, communication_id: 1, activity_type: 'Status changed to In Progress', activity_date: '2026-08-12 10:30:00', remarks: 'Assigned to Systems Administrator for audit review.' }
     ]
   },
   {
@@ -89,31 +79,183 @@ let fallbackCommunicationsStore: Communication[] = [
     latest_activity_date: '2026-08-07 11:15:00',
     age_days: 5,
     activities: [
-      {
-        id: 3,
-        communication_id: 2,
-        activity_type: 'Logged',
-        activity_date: '2026-08-05 08:30:00',
-        remarks: 'Access pass application received.'
-      },
-      {
-        id: 4,
-        communication_id: 2,
-        activity_type: 'Approved',
-        activity_date: '2026-08-06 14:00:00',
-        remarks: 'Pass approved by ICT Director.'
-      },
-      {
-        id: 5,
-        communication_id: 2,
-        activity_type: 'Status changed to Completed',
-        activity_date: '2026-08-07 11:15:00',
-        remarks: 'Physical access badge issued to personnel.'
-      }
+      { id: 3, communication_id: 2, activity_type: 'Logged', activity_date: '2026-08-05 08:30:00', remarks: 'Access pass application received.' },
+      { id: 4, communication_id: 2, activity_type: 'Approved', activity_date: '2026-08-06 14:00:00', remarks: 'Pass approved by ICT Director.' },
+      { id: 5, communication_id: 2, activity_type: 'Status changed to Completed', activity_date: '2026-08-07 11:15:00', remarks: 'Physical access badge issued to personnel.' }
     ]
   },
   {
     id: 3,
+    communication_type: 'Incoming',
+    office_id: 3,
+    office_name: 'Administrative & Finance',
+    office_code: 'ADMIN',
+    office_abbv: 'ADMIN',
+    category_id: 2,
+    category_name: 'Summary Disposition Form',
+    category_code: 'SDF',
+    purpose_id: 3,
+    purpose_name: 'R&M ICT Fund Request',
+    subject: 'Endorsement for Additional Network Switches Procurement',
+    communication_date: '2026-08-12',
+    status: 'Pending',
+    latest_activity_date: '2026-08-12 08:45:00',
+    age_days: 0,
+    activities: [
+      { id: 6, communication_id: 3, activity_type: 'Logged', activity_date: '2026-08-12 08:45:00', remarks: 'Endorsement letter received and logged.' }
+    ]
+  },
+  {
+    id: 4,
+    communication_type: 'Incoming',
+    office_id: 1,
+    office_name: 'Information & Communications Technology',
+    office_code: 'ICT',
+    office_abbv: 'ICT',
+    category_id: 4,
+    category_name: 'Memorandum',
+    category_code: 'Memo',
+    purpose_id: 4,
+    purpose_name: 'Others',
+    subject: 'Inquiry on Fiber Optic Backbone Link Cable Upgrade',
+    communication_date: '2026-08-02',
+    status: 'In Progress',
+    latest_activity_date: '2026-08-03 11:00:00',
+    age_days: 9,
+    activities: [
+      { id: 7, communication_id: 4, activity_type: 'Logged', activity_date: '2026-08-02 11:00:00', remarks: 'Inquiry logged into tracking database.' }
+    ]
+  },
+  {
+    id: 5,
+    communication_type: 'Incoming',
+    office_id: 2,
+    office_name: 'Management Information Systems',
+    office_code: 'MIS',
+    office_abbv: 'MIS',
+    category_id: 1,
+    category_name: 'Disposition Form',
+    category_code: 'DF',
+    purpose_id: 2,
+    purpose_name: 'PAS Request',
+    subject: 'Request for Database Access Credentials Provisioning',
+    communication_date: '2026-08-11',
+    status: 'In Progress',
+    latest_activity_date: '2026-08-11 09:15:00',
+    age_days: 1,
+    activities: [
+      { id: 8, communication_id: 5, activity_type: 'Logged', activity_date: '2026-08-11 09:15:00', remarks: 'Database credential request received.' }
+    ]
+  },
+  {
+    id: 6,
+    communication_type: 'Incoming',
+    office_id: 3,
+    office_name: 'Administrative & Finance',
+    office_code: 'ADMIN',
+    office_abbv: 'ADMIN',
+    category_id: 5,
+    category_name: 'Standard Operating Procedure',
+    category_code: 'SOP',
+    purpose_id: 4,
+    purpose_name: 'Others',
+    subject: 'Request for Cyber Hygiene Workshop Schedule Confirmation',
+    communication_date: '2026-08-09',
+    status: 'Completed',
+    latest_activity_date: '2026-08-10 13:20:00',
+    age_days: 2,
+    activities: [
+      { id: 9, communication_id: 6, activity_type: 'Logged', activity_date: '2026-08-09 13:20:00', remarks: 'Workshop schedule proposal logged.' }
+    ]
+  },
+  {
+    id: 7,
+    communication_type: 'Incoming',
+    office_id: 1,
+    office_name: 'Information & Communications Technology',
+    office_code: 'ICT',
+    office_abbv: 'ICT',
+    category_id: 3,
+    category_name: 'Subject to Letter',
+    category_code: 'STL',
+    purpose_id: 1,
+    purpose_name: 'Access Pass',
+    subject: 'Temporary Datacenter Entry Request for External Technicians',
+    communication_date: '2026-08-12',
+    status: 'Pending',
+    latest_activity_date: '2026-08-12 11:10:00',
+    age_days: 0,
+    activities: [
+      { id: 10, communication_id: 7, activity_type: 'Logged', activity_date: '2026-08-12 11:10:00', remarks: 'Temporary datacenter access request received.' }
+    ]
+  },
+  {
+    id: 8,
+    communication_type: 'Incoming',
+    office_id: 2,
+    office_name: 'Management Information Systems',
+    office_code: 'MIS',
+    office_abbv: 'MIS',
+    category_id: 2,
+    category_name: 'Summary Disposition Form',
+    category_code: 'SDF',
+    purpose_id: 3,
+    purpose_name: 'R&M ICT Fund Request',
+    subject: 'Funding Allocation Clarification for Annual Cloud Server License',
+    communication_date: '2026-08-07',
+    status: 'In Progress',
+    latest_activity_date: '2026-08-08 14:00:00',
+    age_days: 4,
+    activities: [
+      { id: 11, communication_id: 8, activity_type: 'Logged', activity_date: '2026-08-07 14:00:00', remarks: 'Funding clarification letter logged.' }
+    ]
+  },
+  {
+    id: 9,
+    communication_type: 'Incoming',
+    office_id: 3,
+    office_name: 'Administrative & Finance',
+    office_code: 'ADMIN',
+    office_abbv: 'ADMIN',
+    category_id: 4,
+    category_name: 'Memorandum',
+    category_code: 'Memo',
+    purpose_id: 4,
+    purpose_name: 'Others',
+    subject: 'Transmittal of Annual Hardware Equipment Inventory Report',
+    communication_date: '2026-08-04',
+    status: 'Completed',
+    latest_activity_date: '2026-08-05 10:00:00',
+    age_days: 7,
+    activities: [
+      { id: 12, communication_id: 9, activity_type: 'Logged', activity_date: '2026-08-04 10:00:00', remarks: 'Hardware inventory transmittal received.' }
+    ]
+  },
+  {
+    id: 10,
+    communication_type: 'Incoming',
+    office_id: 1,
+    office_name: 'Information & Communications Technology',
+    office_code: 'ICT',
+    office_abbv: 'ICT',
+    category_id: 6,
+    category_name: 'Others',
+    category_code: null,
+    purpose_id: 2,
+    purpose_name: 'PAS Request',
+    subject: 'User Acceptance Testing Feedback for 6IS Portal Release',
+    communication_date: '2026-08-03',
+    status: 'Completed',
+    latest_activity_date: '2026-08-04 16:30:00',
+    age_days: 8,
+    activities: [
+      { id: 13, communication_id: 10, activity_type: 'Logged', activity_date: '2026-08-03 16:30:00', remarks: 'UAT testing feedback document received.' }
+    ]
+  },
+
+  // OUTGOING (10 Records)
+  {
+    id: 11,
     communication_type: 'Outgoing',
     office_id: 1,
     office_name: 'Information & Communications Technology',
@@ -125,22 +267,16 @@ let fallbackCommunicationsStore: Communication[] = [
     purpose_id: 3,
     purpose_name: 'R&M ICT Fund Request',
     subject: 'Memo on Quarterly Hardware Procurement & Maintenance Budget',
-    communication_date: '2026-08-08',
+    communication_date: '2026-08-12',
     status: 'Pending',
-    latest_activity_date: '2026-08-08 13:45:00',
-    age_days: 4,
+    latest_activity_date: '2026-08-12 13:45:00',
+    age_days: 0,
     activities: [
-      {
-        id: 6,
-        communication_id: 3,
-        activity_type: 'Logged',
-        activity_date: '2026-08-08 13:45:00',
-        remarks: 'Outgoing memorandum drafted and dispatched to Finance.'
-      }
+      { id: 14, communication_id: 11, activity_type: 'Logged', activity_date: '2026-08-12 13:45:00', remarks: 'Outgoing memorandum drafted and dispatched to Finance.' }
     ]
   },
   {
-    id: 4,
+    id: 12,
     communication_type: 'Outgoing',
     office_id: 3,
     office_name: 'Administrative & Finance',
@@ -157,20 +293,176 @@ let fallbackCommunicationsStore: Communication[] = [
     latest_activity_date: '2026-08-11 16:20:00',
     age_days: 1,
     activities: [
-      {
-        id: 7,
-        communication_id: 4,
-        activity_type: 'Logged',
-        activity_date: '2026-08-10 10:00:00',
-        remarks: 'Drafted SOP guidelines document.'
-      },
-      {
-        id: 8,
-        communication_id: 4,
-        activity_type: 'Status changed to Released',
-        activity_date: '2026-08-11 16:20:00',
-        remarks: 'Circular distributed to all unit heads.'
-      }
+      { id: 15, communication_id: 12, activity_type: 'Logged', activity_date: '2026-08-10 10:00:00', remarks: 'Drafted SOP guidelines document.' },
+      { id: 16, communication_id: 12, activity_type: 'Status changed to Released', activity_date: '2026-08-11 16:20:00', remarks: 'Circular distributed to all unit heads.' }
+    ]
+  },
+  {
+    id: 13,
+    communication_type: 'Outgoing',
+    office_id: 2,
+    office_name: 'Management Information Systems',
+    office_code: 'MIS',
+    office_abbv: 'MIS',
+    category_id: 1,
+    category_name: 'Disposition Form',
+    category_code: 'DF',
+    purpose_id: 2,
+    purpose_name: 'PAS Request',
+    subject: 'Dispatch of Final Migration Plan for Enterprise ERP System',
+    communication_date: '2026-08-12',
+    status: 'In Progress',
+    latest_activity_date: '2026-08-12 14:00:00',
+    age_days: 0,
+    activities: [
+      { id: 17, communication_id: 13, activity_type: 'Logged', activity_date: '2026-08-12 14:00:00', remarks: 'ERP migration plan dispatched to stakeholders.' }
+    ]
+  },
+  {
+    id: 14,
+    communication_type: 'Outgoing',
+    office_id: 1,
+    office_name: 'Information & Communications Technology',
+    office_code: 'ICT',
+    office_abbv: 'ICT',
+    category_id: 3,
+    category_name: 'Subject to Letter',
+    category_code: 'STL',
+    purpose_id: 1,
+    purpose_name: 'Access Pass',
+    subject: 'Issuance of Revoked Access Badges Advisory to All Units',
+    communication_date: '2026-08-06',
+    status: 'Released',
+    latest_activity_date: '2026-08-07 15:30:00',
+    age_days: 5,
+    activities: [
+      { id: 18, communication_id: 14, activity_type: 'Logged', activity_date: '2026-08-06 15:30:00', remarks: 'Revocation advisory dispatched.' }
+    ]
+  },
+  {
+    id: 15,
+    communication_type: 'Outgoing',
+    office_id: 3,
+    office_name: 'Administrative & Finance',
+    office_code: 'ADMIN',
+    office_abbv: 'ADMIN',
+    category_id: 2,
+    category_name: 'Summary Disposition Form',
+    category_code: 'SDF',
+    purpose_id: 3,
+    purpose_name: 'R&M ICT Fund Request',
+    subject: 'Transmittal of ICT Equipment Depreciation Assessment',
+    communication_date: '2026-08-08',
+    status: 'Pending',
+    latest_activity_date: '2026-08-08 09:00:00',
+    age_days: 4,
+    activities: [
+      { id: 19, communication_id: 15, activity_type: 'Logged', activity_date: '2026-08-08 09:00:00', remarks: 'Depreciation report submitted for audit.' }
+    ]
+  },
+  {
+    id: 16,
+    communication_type: 'Outgoing',
+    office_id: 2,
+    office_name: 'Management Information Systems',
+    office_code: 'MIS',
+    office_abbv: 'MIS',
+    category_id: 4,
+    category_name: 'Memorandum',
+    category_code: 'Memo',
+    purpose_id: 4,
+    purpose_name: 'Others',
+    subject: 'Advisory on Scheduled Server Room Electrical Maintenance Power Down',
+    communication_date: '2026-08-11',
+    status: 'Released',
+    latest_activity_date: '2026-08-11 10:45:00',
+    age_days: 1,
+    activities: [
+      { id: 20, communication_id: 16, activity_type: 'Logged', activity_date: '2026-08-11 10:45:00', remarks: 'Power down notice issued to all divisions.' }
+    ]
+  },
+  {
+    id: 17,
+    communication_type: 'Outgoing',
+    office_id: 1,
+    office_name: 'Information & Communications Technology',
+    office_code: 'ICT',
+    office_abbv: 'ICT',
+    category_id: 5,
+    category_name: 'Standard Operating Procedure',
+    category_code: 'SOP',
+    purpose_id: 4,
+    purpose_name: 'Others',
+    subject: 'Standard Protocol for Data Backup and Disaster Recovery Tests',
+    communication_date: '2026-08-01',
+    status: 'Completed',
+    latest_activity_date: '2026-08-02 16:00:00',
+    age_days: 10,
+    activities: [
+      { id: 21, communication_id: 17, activity_type: 'Logged', activity_date: '2026-08-01 16:00:00', remarks: 'Disaster recovery procedure published.' }
+    ]
+  },
+  {
+    id: 18,
+    communication_type: 'Outgoing',
+    office_id: 3,
+    office_name: 'Administrative & Finance',
+    office_code: 'ADMIN',
+    office_abbv: 'ADMIN',
+    category_id: 1,
+    category_name: 'Disposition Form',
+    category_code: 'DF',
+    purpose_id: 2,
+    purpose_name: 'PAS Request',
+    subject: 'Transmittal of Personnel Security Clearance Documents',
+    communication_date: '2026-08-12',
+    status: 'In Progress',
+    latest_activity_date: '2026-08-12 15:30:00',
+    age_days: 0,
+    activities: [
+      { id: 22, communication_id: 18, activity_type: 'Logged', activity_date: '2026-08-12 15:30:00', remarks: 'Personnel clearance documents forwarded to Admin.' }
+    ]
+  },
+  {
+    id: 19,
+    communication_type: 'Outgoing',
+    office_id: 2,
+    office_name: 'Management Information Systems',
+    office_code: 'MIS',
+    office_abbv: 'MIS',
+    category_id: 3,
+    category_name: 'Subject to Letter',
+    category_code: 'STL',
+    purpose_id: 1,
+    purpose_name: 'Access Pass',
+    subject: 'Notice of Deactivated VPN Accounts for Inactive Offsite Staff',
+    communication_date: '2026-08-05',
+    status: 'Released',
+    latest_activity_date: '2026-08-06 11:20:00',
+    age_days: 6,
+    activities: [
+      { id: 23, communication_id: 19, activity_type: 'Logged', activity_date: '2026-08-05 11:20:00', remarks: 'VPN account revocation notice dispatched.' }
+    ]
+  },
+  {
+    id: 20,
+    communication_type: 'Outgoing',
+    office_id: 1,
+    office_name: 'Information & Communications Technology',
+    office_code: 'ICT',
+    office_abbv: 'ICT',
+    category_id: 4,
+    category_name: 'Memorandum',
+    category_code: 'Memo',
+    purpose_id: 3,
+    purpose_name: 'R&M ICT Fund Request',
+    subject: 'Submission of Repair Cost Estimates for Core Switch Units',
+    communication_date: '2026-08-03',
+    status: 'Completed',
+    latest_activity_date: '2026-08-04 14:15:00',
+    age_days: 8,
+    activities: [
+      { id: 24, communication_id: 20, activity_type: 'Logged', activity_date: '2026-08-03 14:15:00', remarks: 'Repair estimates forwarded to Procurement.' }
     ]
   }
 ]
@@ -530,6 +822,42 @@ export async function fetchCommunicationReports(): Promise<ApiResponse<Communica
       by_category: Object.entries(byCatMap).map(([category_name, total]) => ({ category_name, total })),
       by_purpose: Object.entries(byPurMap).map(([purpose_name, total]) => ({ purpose_name, total })),
       by_status: Object.entries(byStatMap).map(([status, total]) => ({ status, total }))
+    },
+    errors: null
+  }
+}
+
+export async function fetchCommunicationOverview(): Promise<ApiResponse<CommunicationOverviewSummary>> {
+  try {
+    const res = await fetchWithTimeout(`${API_BASE_URL}?view=overview`)
+    const data = await res.json()
+    if (data.success && data.data && data.data.todays_incoming) return data
+  } catch (err: any) {
+    // Fallback overview
+  }
+
+  const todayStr = new Date().toISOString().substring(0, 10)
+  const currentMonthStr = todayStr.substring(0, 7)
+
+  const todaysComms = fallbackCommunicationsStore.filter(c => c.communication_date === todayStr)
+  const todaysIncoming = todaysComms.filter(c => c.communication_type === 'Incoming')
+  const todaysOutgoing = todaysComms.filter(c => c.communication_type === 'Outgoing')
+
+  const thisMonthComms = fallbackCommunicationsStore.filter(c => c.communication_date?.startsWith(currentMonthStr))
+  const incomingCount = thisMonthComms.filter(c => c.communication_type === 'Incoming').length
+  const outgoingCount = thisMonthComms.filter(c => c.communication_type === 'Outgoing').length
+
+  return {
+    success: true,
+    message: 'Overview summary loaded',
+    data: {
+      monthly_summary: {
+        incoming: incomingCount,
+        outgoing: outgoingCount,
+        total: incomingCount + outgoingCount
+      },
+      todays_incoming: todaysIncoming,
+      todays_outgoing: todaysOutgoing
     },
     errors: null
   }
