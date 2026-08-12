@@ -60,6 +60,7 @@
 
       <!-- Communication Table -->
       <CommunicationTable
+        :show-type-column="false"
         :records="records"
         :loading="loading"
         @select="handleSelect"

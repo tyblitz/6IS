@@ -27,7 +27,7 @@
       <table class="comms-table">
         <thead>
           <tr>
-            <th>Type</th>
+            <th v-if="showTypeColumn">Type</th>
             <th>Office</th>
             <th>Subject & Category</th>
             <th>Date</th>
@@ -39,7 +39,7 @@
         <tbody>
           <tr v-for="item in records" :key="item.id" @click="$emit('select', item)">
             <!-- Type / Direction Badge -->
-            <td>
+            <td v-if="showTypeColumn">
               <span
                 class="type-badge"
                 :class="item.communication_type === 'Incoming' ? 'badge-incoming' : 'badge-outgoing'"
@@ -48,14 +48,9 @@
               </span>
             </td>
 
-            <!-- Office -->
+            <!-- Office Abbreviation Only -->
             <td>
-              <div class="office-cell">
-                <span class="office-name">{{ item.office_name }}</span>
-                <span class="office-code" v-if="item.office_abbv || item.office_code">
-                  ({{ item.office_abbv || item.office_code }})
-                </span>
-              </div>
+              <span class="office-abbv-text">{{ item.office_abbv || item.office_code || item.office_name }}</span>
             </td>
 
             <!-- Subject & Metadata -->
@@ -73,7 +68,7 @@
               </div>
             </td>
 
-            <!-- Date -->
+            <!-- Date formatted as DD MMM YYYY -->
             <td>
               <span class="date-text">{{ formatDate(item.communication_date) }}</span>
             </td>
@@ -85,12 +80,9 @@
               </span>
             </td>
 
-            <!-- Dynamic Age in Days -->
+            <!-- Dynamic Age in Days (Numeric Count Only) -->
             <td>
-              <div class="age-cell">
-                <span class="age-count">{{ item.age_days ?? 0 }}</span>
-                <span class="age-label">days</span>
-              </div>
+              <span class="age-count">{{ item.age_days ?? 0 }}</span>
             </td>
 
             <!-- Actions -->
@@ -139,10 +131,15 @@ import {
 } from 'ionicons/icons'
 import type { Communication } from '../../types/communication'
 
-defineProps<{
+interface Props {
   records: Communication[];
   loading: boolean;
-}>()
+  showTypeColumn?: boolean;
+}
+
+withDefaults(defineProps<Props>(), {
+  showTypeColumn: true
+})
 
 defineEmits<{
   (e: 'select', item: Communication): void;
@@ -154,7 +151,12 @@ defineEmits<{
 function formatDate(dateStr?: string | null): string {
   if (!dateStr) return 'N/A'
   const date = new Date(dateStr)
-  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+  if (isNaN(date.getTime())) return dateStr
+  const day = date.getDate().toString().padStart(2, '0')
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const month = months[date.getMonth()]
+  const year = date.getFullYear()
+  return `${day} ${month} ${year}`
 }
 
 function getStatusClass(status?: string): string {
@@ -291,19 +293,10 @@ function getStatusClass(status?: string): string {
   color: #16a34a;
 }
 
-.office-cell {
-  display: flex;
-  flex-direction: column;
-}
-
-.office-name {
-  font-weight: 600;
+.office-abbv-text {
+  font-weight: 700;
   color: #0f172a;
-}
-
-.office-code {
-  font-size: 12px;
-  color: #64748b;
+  font-size: 14px;
 }
 
 .subject-cell {
@@ -345,6 +338,7 @@ function getStatusClass(status?: string): string {
 .date-text {
   color: #475569;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .status-badge {
@@ -370,21 +364,10 @@ function getStatusClass(status?: string): string {
   color: #15803d;
 }
 
-.age-cell {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
-}
-
 .age-count {
   font-weight: 700;
   color: #0f172a;
   font-size: 15px;
-}
-
-.age-label {
-  font-size: 12px;
-  color: #64748b;
 }
 
 .text-right {

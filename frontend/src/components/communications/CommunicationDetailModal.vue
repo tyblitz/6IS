@@ -192,7 +192,13 @@ async function submitNewActivity() {
 
 function formatDate(dateStr?: string | null): string {
   if (!dateStr) return 'N/A'
-  return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return dateStr
+  const day = date.getDate().toString().padStart(2, '0')
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const month = months[date.getMonth()]
+  const year = date.getFullYear()
+  return `${day} ${month} ${year}`
 }
 
 function formatDateTime(dateStr?: string | null): string {
