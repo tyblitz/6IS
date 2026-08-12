@@ -84,6 +84,11 @@ export async function fetchMonthlyAccomplishments(
           { category_id: 5, category_name: 'Standard Operating Procedure (SOP)', category_code: 'SOP', count: 1 }
         ]
       }
+      if (!data.data.clearances_by_purpose || data.data.clearances_by_purpose.length === 0) {
+        data.data.clearances_by_purpose = [
+          { purpose_id: 1, purpose_name: 'Access Pass', count: 3 }
+        ]
+      }
       return data
     }
   } catch (err: any) {
@@ -107,6 +112,9 @@ export async function fetchMonthlyAccomplishments(
         { category_id: 3, category_name: 'Subject to Letter (STL)', category_code: 'STL', count: 2 },
         { category_id: 4, category_name: 'Memorandum (Memo)', category_code: 'Memo', count: 1 },
         { category_id: 5, category_name: 'Standard Operating Procedure (SOP)', category_code: 'SOP', count: 1 }
+      ],
+      clearances_by_purpose: [
+        { purpose_id: 1, purpose_name: 'Access Pass', count: 3 }
       ],
       communications_stats: { incoming: 0, outgoing: 10 }
     },

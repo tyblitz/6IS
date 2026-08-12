@@ -49,15 +49,15 @@
 
       <div v-else class="summary-groups-wrapper">
 
-        <!-- GROUP 1: Accomplishments for the Month by Category -->
+        <!-- GROUP 1: Activities for the Month -->
         <div class="summary-card-group">
           <div class="group-header">
             <div class="header-icon-box accomplishment-bg">
               <ion-icon :icon="checkmarkDoneCircleOutline"></ion-icon>
             </div>
             <div>
-              <h3>Accomplishments by Category</h3>
-              <p class="group-subtitle">Total accomplishments recorded in {{ selectedMonthName }} {{ selectedYear }}</p>
+              <h3>Activities</h3>
+              <p class="group-subtitle">Total activities recorded in {{ selectedMonthName }} {{ selectedYear }}</p>
             </div>
             <div class="total-badge count-accomplishment">
               <span>Total:</span>
@@ -65,19 +65,21 @@
             </div>
           </div>
 
-          <div class="category-grid">
+          <div v-if="activeAccomplishmentsByCategory.length === 0" class="empty-category-msg">
+            No activities recorded for {{ selectedMonthName }} {{ selectedYear }}.
+          </div>
+
+          <div v-else class="category-grid">
             <div 
-              v-for="item in accomplishmentsByCategory" 
+              v-for="item in activeAccomplishmentsByCategory" 
               :key="item.category_id" 
               class="category-stat-card accomplishment-card"
             >
               <div class="cat-card-top">
-                <span class="category-code-tag" v-if="item.category_code">{{ item.category_code }}</span>
-                <span class="category-code-tag" v-else>CAT</span>
+                <h4 class="category-title-code">{{ item.category_code || item.category_name }}</h4>
                 <span class="cat-count-badge">{{ item.count }}</span>
               </div>
               <div class="cat-card-body">
-                <h4 class="category-title">{{ item.category_name }}</h4>
                 <div class="cat-progress-bar">
                   <div 
                     class="progress-fill fill-acc" 
@@ -85,22 +87,22 @@
                   ></div>
                 </div>
                 <div class="cat-footer">
-                  <span class="percentage-text">{{ calculatePercentage(item.count, totalAccomplishments) }}% of monthly accomplishments</span>
+                  <span class="percentage-text">{{ calculatePercentage(item.count, totalAccomplishments) }}% of monthly activities</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- GROUP 2: Outgoing Communications for the Month by Category -->
+        <!-- GROUP 2: Outgoing Communications for the Month -->
         <div class="summary-card-group">
           <div class="group-header">
             <div class="header-icon-box outgoing-bg">
               <ion-icon :icon="paperPlaneOutline"></ion-icon>
             </div>
             <div>
-              <h3>Outgoing Communications by Category</h3>
-              <p class="group-subtitle">Outgoing transmittals released in {{ selectedMonthName }} {{ selectedYear }}</p>
+              <h3>Outgoing Communications</h3>
+              <p class="group-subtitle">Total outgoing communications in {{ selectedMonthName }} {{ selectedYear }}</p>
             </div>
             <div class="total-badge count-outgoing">
               <span>Total Outgoing:</span>
@@ -108,19 +110,21 @@
             </div>
           </div>
 
-          <div class="category-grid">
+          <div v-if="activeOutgoingCommsByCategory.length === 0" class="empty-category-msg">
+            No outgoing communications recorded for {{ selectedMonthName }} {{ selectedYear }}.
+          </div>
+
+          <div v-else class="category-grid">
             <div 
-              v-for="item in outgoingCommsByCategory" 
+              v-for="item in activeOutgoingCommsByCategory" 
               :key="item.category_id" 
               class="category-stat-card outgoing-card"
             >
               <div class="cat-card-top">
-                <span class="category-code-tag tag-outgoing" v-if="item.category_code">{{ item.category_code }}</span>
-                <span class="category-code-tag tag-outgoing" v-else>OUT</span>
+                <h4 class="category-title-code tag-outgoing-text">{{ item.category_code || item.category_name }}</h4>
                 <span class="cat-count-badge count-bg-outgoing">{{ item.count }}</span>
               </div>
               <div class="cat-card-body">
-                <h4 class="category-title">{{ item.category_name }}</h4>
                 <div class="cat-progress-bar">
                   <div 
                     class="progress-fill fill-outgoing" 
@@ -129,6 +133,51 @@
                 </div>
                 <div class="cat-footer">
                   <span class="percentage-text">{{ calculatePercentage(item.count, totalOutgoingComms) }}% of monthly outgoing comms</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- GROUP 3: Clearances (Special Group - Access Pass Outgoing Comms) -->
+        <div class="summary-card-group">
+          <div class="group-header">
+            <div class="header-icon-box clearance-bg">
+              <ion-icon :icon="shieldCheckmarkOutline"></ion-icon>
+            </div>
+            <div>
+              <h3>Clearances</h3>
+              <p class="group-subtitle">Released Access Pass Clearance in {{ selectedMonthName }} {{ selectedYear }}</p>
+            </div>
+            <div class="total-badge count-clearance">
+              <span>Total Clearances:</span>
+              <strong>{{ totalClearances }}</strong>
+            </div>
+          </div>
+
+          <div v-if="activeClearancesByPurpose.length === 0" class="empty-category-msg">
+            No Access Pass clearances recorded for {{ selectedMonthName }} {{ selectedYear }}.
+          </div>
+
+          <div v-else class="category-grid">
+            <div 
+              v-for="item in activeClearancesByPurpose" 
+              :key="item.purpose_id" 
+              class="category-stat-card clearance-card"
+            >
+              <div class="cat-card-top">
+                <h4 class="category-title-code tag-clearance-text">{{ item.purpose_name }}</h4>
+                <span class="cat-count-badge count-bg-clearance">{{ item.count }}</span>
+              </div>
+              <div class="cat-card-body">
+                <div class="cat-progress-bar">
+                  <div 
+                    class="progress-fill fill-clearance" 
+                    :style="{ width: '100%' }"
+                  ></div>
+                </div>
+                <div class="cat-footer">
+                  <span class="percentage-text">Released Access Pass Count</span>
                 </div>
               </div>
             </div>
@@ -149,11 +198,16 @@ import {
   printOutline, 
   documentTextOutline, 
   checkmarkDoneCircleOutline, 
-  paperPlaneOutline 
+  paperPlaneOutline,
+  shieldCheckmarkOutline 
 } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
-import type { AccomplishmentCategorySummary, OutgoingCommCategorySummary } from '../../types/accomplishment'
+import type { 
+  AccomplishmentCategorySummary, 
+  OutgoingCommCategorySummary,
+  ClearancePurposeSummary 
+} from '../../types/accomplishment'
 import { fetchMonthlyAccomplishments } from '../../services/accomplishmentService'
 
 const route = useRoute()
@@ -161,6 +215,7 @@ const route = useRoute()
 const loading = ref(true)
 const accomplishmentsByCategory = ref<AccomplishmentCategorySummary[]>([])
 const outgoingCommsByCategory = ref<OutgoingCommCategorySummary[]>([])
+const clearancesByPurpose = ref<ClearancePurposeSummary[]>([])
 
 const selectedYear = ref(new Date().getFullYear())
 const selectedMonth = ref(new Date().getMonth() + 1)
@@ -198,6 +253,22 @@ const totalOutgoingComms = computed(() => {
   return outgoingCommsByCategory.value.reduce((sum, item) => sum + (Number(item.count) || 0), 0)
 })
 
+const totalClearances = computed(() => {
+  return clearancesByPurpose.value.reduce((sum, item) => sum + (Number(item.count) || 0), 0)
+})
+
+const activeAccomplishmentsByCategory = computed(() => {
+  return accomplishmentsByCategory.value.filter(item => (Number(item.count) || 0) > 0)
+})
+
+const activeOutgoingCommsByCategory = computed(() => {
+  return outgoingCommsByCategory.value.filter(item => (Number(item.count) || 0) > 0)
+})
+
+const activeClearancesByPurpose = computed(() => {
+  return clearancesByPurpose.value.filter(item => (Number(item.count) || 0) > 0)
+})
+
 onMounted(() => {
   loadData()
 })
@@ -221,6 +292,7 @@ async function loadData() {
   if (res.success && res.data) {
     accomplishmentsByCategory.value = res.data.accomplishments_by_category || []
     outgoingCommsByCategory.value = res.data.outgoing_comms_by_category || []
+    clearancesByPurpose.value = res.data.clearances_by_purpose || []
   }
 }
 
@@ -404,10 +476,15 @@ select {
   border: 1px solid #bfdbfe;
 }
 
-.count-outgoing {
-  background: #f0fdf4;
-  color: #166534;
-  border: 1px solid #bbf7d0;
+.empty-category-msg {
+  padding: 24px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  text-align: center;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .category-grid {
@@ -444,18 +521,15 @@ select {
   margin-bottom: 10px;
 }
 
-.category-code-tag {
-  background: #f1f5f9;
-  color: #475569;
-  font-size: 11px;
+.category-title-code {
+  font-size: 16px;
   font-weight: 800;
-  padding: 3px 8px;
-  border-radius: 6px;
-  letter-spacing: 0.05em;
+  color: #1e293b;
+  margin: 0;
+  letter-spacing: 0.02em;
 }
 
-.tag-outgoing {
-  background: #f0fdf4;
+.tag-outgoing-text {
   color: #166534;
 }
 
@@ -503,6 +577,33 @@ select {
 
 .fill-outgoing {
   background: #16a34a;
+}
+
+.clearance-bg {
+  background: #faf5ff;
+  color: #9333ea;
+}
+
+.count-clearance {
+  background: #faf5ff;
+  color: #6b21a8;
+  border: 1px solid #e9d5ff;
+}
+
+.clearance-card {
+  border-left: 4px solid #9333ea;
+}
+
+.tag-clearance-text {
+  color: #6b21a8;
+}
+
+.count-bg-clearance {
+  background: #9333ea;
+}
+
+.fill-clearance {
+  background: #9333ea;
 }
 
 .cat-footer {

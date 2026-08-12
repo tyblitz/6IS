@@ -54,10 +54,17 @@ export interface OutgoingCommCategorySummary {
   count: number;
 }
 
+export interface ClearancePurposeSummary {
+  purpose_id: number;
+  purpose_name: string;
+  count: number;
+}
+
 export interface ReportData {
   records: AccomplishmentItem[];
   accomplishments_by_category?: AccomplishmentCategorySummary[];
   outgoing_comms_by_category?: OutgoingCommCategorySummary[];
+  clearances_by_purpose?: ClearancePurposeSummary[];
   communications_stats: {
     incoming: number;
     outgoing: number;

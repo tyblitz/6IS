@@ -254,12 +254,31 @@ function handleGet(PDO $pdo) {
             ");
             $outgoingByCatStmt->execute([':month' => $mMonth, ':year' => $mYear]);
             $outgoingCommsByCategory = $outgoingByCatStmt->fetchAll();
+
+            $clearancesByPurposeStmt = $pdo->prepare("
+                SELECT 
+                    cp.id AS purpose_id,
+                    cp.name AS purpose_name,
+                    COUNT(com.id) AS count
+                FROM tbl_communication_purposes cp
+                LEFT JOIN tbl_communications com ON com.purpose_id = cp.id 
+                    AND com.communication_type = 'Outgoing'
+                    AND MONTH(com.communication_date) = :month 
+                    AND YEAR(com.communication_date) = :year 
+                    AND com.deleted_at IS NULL
+                WHERE cp.deleted_at IS NULL AND cp.name = 'Access Pass'
+                GROUP BY cp.id, cp.name
+                ORDER BY cp.id ASC
+            ");
+            $clearancesByPurposeStmt->execute([':month' => $mMonth, ':year' => $mYear]);
+            $clearancesByPurpose = $clearancesByPurposeStmt->fetchAll();
         }
 
         sendResponse(true, 'Accomplishments list fetched successfully.', [
             'records' => $records,
             'accomplishments_by_category' => $accomplishmentsByCategory,
             'outgoing_comms_by_category' => $outgoingCommsByCategory,
+            'clearances_by_purpose' => $clearancesByPurpose,
             'communications_stats' => [
                 'incoming' => 0,
                 'outgoing' => 0
