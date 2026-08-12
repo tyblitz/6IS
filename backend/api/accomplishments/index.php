@@ -210,11 +210,59 @@ function handleGet(PDO $pdo) {
         $stmt->execute($params);
         $records = $stmt->fetchAll();
 
+        // Calculate Monthly Summary Stats if view is monthly
+        $accomplishmentsByCategory = [];
+        $outgoingCommsByCategory = [];
+
+        if ($view === 'monthly') {
+            $mYear = !empty($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
+            $mMonth = !empty($_GET['month']) ? (int)$_GET['month'] : (int)date('m');
+
+            $accByCatStmt = $pdo->prepare("
+                SELECT 
+                    ac.id AS category_id,
+                    ac.category_name,
+                    ac.category_code,
+                    COUNT(a.id) AS count
+                FROM tbl_accomplishment_categories ac
+                LEFT JOIN tbl_accomplishments a ON (a.category_id = ac.id OR (a.category_id IS NULL AND ac.id = 1))
+                    AND MONTH(a.date) = :month 
+                    AND YEAR(a.date) = :year 
+                    AND a.deleted_at IS NULL
+                WHERE ac.deleted_at IS NULL
+                GROUP BY ac.id, ac.category_name, ac.category_code
+                ORDER BY ac.id ASC
+            ");
+            $accByCatStmt->execute([':month' => $mMonth, ':year' => $mYear]);
+            $accomplishmentsByCategory = $accByCatStmt->fetchAll();
+
+            $outgoingByCatStmt = $pdo->prepare("
+                SELECT 
+                    cc.id AS category_id,
+                    cc.name AS category_name,
+                    cc.code AS category_code,
+                    COUNT(com.id) AS count
+                FROM tbl_communication_categories cc
+                LEFT JOIN tbl_communications com ON com.category_id = cc.id 
+                    AND com.communication_type = 'Outgoing'
+                    AND MONTH(com.communication_date) = :month 
+                    AND YEAR(com.communication_date) = :year 
+                    AND com.deleted_at IS NULL
+                WHERE cc.deleted_at IS NULL
+                GROUP BY cc.id, cc.name, cc.code
+                ORDER BY cc.id ASC
+            ");
+            $outgoingByCatStmt->execute([':month' => $mMonth, ':year' => $mYear]);
+            $outgoingCommsByCategory = $outgoingByCatStmt->fetchAll();
+        }
+
         sendResponse(true, 'Accomplishments list fetched successfully.', [
             'records' => $records,
+            'accomplishments_by_category' => $accomplishmentsByCategory,
+            'outgoing_comms_by_category' => $outgoingCommsByCategory,
             'communications_stats' => [
-                'incoming' => 0, // Placeholder for Communications Module
-                'outgoing' => 0  // Placeholder for Communications Module
+                'incoming' => 0,
+                'outgoing' => 0
             ]
         ]);
     } catch (Exception $e) {

@@ -1,6 +1,6 @@
 <?php
 // database/setup_db.php
-// Script to create database db_ict_system and execute migration tables & seed data
+// Script to create database db_ict_system and execute migration tables & seed data for Accomplishments & Communications
 
 $host = 'localhost';
 $username = 'root';
@@ -22,15 +22,21 @@ try {
     echo "3. Connecting to database '{$dbName}'...\n";
     $pdo->exec("USE `{$dbName}`;");
 
-    $migrationFile = __DIR__ . '/migrations/create_accomplishments_tables.sql';
-    if (!file_exists($migrationFile)) {
-        die("ERROR: Migration file missing: {$migrationFile}\n");
-    }
+    $migrationFiles = [
+        __DIR__ . '/migrations/create_accomplishments_tables.sql',
+        __DIR__ . '/migrations/create_communications_tables.sql'
+    ];
 
-    echo "4. Executing SQL migration script...\n";
-    $sql = file_get_contents($migrationFile);
-    $pdo->exec($sql);
-    echo "SUCCESS: Tables and sample seed data created successfully in '{$dbName}'.\n";
+    echo "4. Executing SQL migration scripts...\n";
+    foreach ($migrationFiles as $file) {
+        if (!file_exists($file)) {
+            echo "WARNING: Migration file missing: {$file}\n";
+            continue;
+        }
+        $sql = file_get_contents($file);
+        $pdo->exec($sql);
+        echo "SUCCESS: Executed migration script: " . basename($file) . "\n";
+    }
 
     echo "\nSummary of tables created in '{$dbName}':\n";
     $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);

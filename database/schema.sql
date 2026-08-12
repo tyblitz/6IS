@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS tbl_offices (
     deleted_at DATETIME NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS tbl_categories (
+CREATE TABLE IF NOT EXISTS tbl_accomplishment_categories (
     id INT AUTO_INCREMENT PRIMARY KEY,
     category_name VARCHAR(100) NOT NULL,
     created_at DATETIME NOT NULL,
@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS tbl_accomplishments (
     modified_by INT NOT NULL DEFAULT 1,
     deleted_at DATETIME NULL,
     FOREIGN KEY (office_id) REFERENCES tbl_offices(id),
-    FOREIGN KEY (category_id) REFERENCES tbl_categories(id),
+    FOREIGN KEY (category_id) REFERENCES tbl_accomplishment_categories(id),
     FOREIGN KEY (assigned_employee_id) REFERENCES tbl_users(id),
     INDEX idx_office_id (office_id),
     INDEX idx_category_id (category_id),

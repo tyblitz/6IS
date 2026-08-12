@@ -38,6 +38,7 @@ dist/
 # Docs
 
 docs/ai/
+templates/
 
 # Environment Files
 .env
@@ -46,6 +47,7 @@ docs/ai/
 
 # Database Config
 backend/config/database.php
+database/sample_data.sql
 
 # IDE
 .vscode/
