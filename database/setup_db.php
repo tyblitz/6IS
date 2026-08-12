@@ -1,6 +1,6 @@
 <?php
 // database/setup_db.php
-// Script to create database db_ict_system and execute migration tables & seed data for Accomplishments & Communications
+// Script to create database db_ict_system and execute migration tables & seed data
 
 $host = 'localhost';
 $username = 'root';
@@ -24,7 +24,8 @@ try {
 
     $migrationFiles = [
         __DIR__ . '/migrations/create_accomplishments_tables.sql',
-        __DIR__ . '/migrations/create_communications_tables.sql'
+        __DIR__ . '/migrations/create_communications_tables.sql',
+        __DIR__ . '/migrations/create_auth_tables.sql'
     ];
 
     echo "4. Executing SQL migration scripts...\n";
@@ -36,6 +37,64 @@ try {
         $sql = file_get_contents($file);
         $pdo->exec($sql);
         echo "SUCCESS: Executed migration script: " . basename($file) . "\n";
+    }
+
+    // Ensure tbl_users has necessary columns (is_active, role ENUM) if created previously
+    try {
+        $cols = $pdo->query("SHOW COLUMNS FROM `tbl_users`")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('is_active', $cols)) {
+            $pdo->exec("ALTER TABLE `tbl_users` ADD COLUMN `is_active` TINYINT(1) NOT NULL DEFAULT 1 AFTER `role`;");
+            echo "SUCCESS: Added 'is_active' column to 'tbl_users'.\n";
+        }
+        // Ensure username is UNIQUE
+        try {
+            $pdo->exec("ALTER TABLE `tbl_users` ADD UNIQUE INDEX `idx_username` (`username`);");
+        } catch (Exception $ex) {
+            // Index already exists
+        }
+    } catch (Exception $e) {
+        // Table created freshly with new schema
+    }
+
+    // Seed Development Authentication Accounts securely with BCRYPT hashes
+    echo "5. Seeding development authentication accounts (Admin01, User01)...\n";
+
+    $devAccounts = [
+        [
+            'username' => 'Admin01',
+            'full_name' => 'System Administrator',
+            'password' => 'adminpassword01',
+            'role' => 'Administrator'
+        ],
+        [
+            'username' => 'User01',
+            'full_name' => 'Standard User',
+            'password' => 'userpassword01',
+            'role' => 'User'
+        ]
+    ];
+
+    $stmt = $pdo->prepare("
+        INSERT INTO tbl_users (username, full_name, password, role, is_active, created_at, updated_at)
+        VALUES (:username, :full_name, :password, :role, 1, NOW(), NOW())
+        ON DUPLICATE KEY UPDATE
+            full_name = VALUES(full_name),
+            password = VALUES(password),
+            role = VALUES(role),
+            is_active = 1,
+            deleted_at = NULL,
+            updated_at = NOW()
+    ");
+
+    foreach ($devAccounts as $acc) {
+        $hash = password_hash($acc['password'], PASSWORD_BCRYPT);
+        $stmt->execute([
+            ':username' => $acc['username'],
+            ':full_name' => $acc['full_name'],
+            ':password' => $hash,
+            ':role' => $acc['role']
+        ]);
+        echo " - Seeded user '{$acc['username']}' with role '{$acc['role']}'\n";
     }
 
     echo "\nSummary of tables created in '{$dbName}':\n";

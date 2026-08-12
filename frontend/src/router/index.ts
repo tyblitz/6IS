@@ -1,6 +1,7 @@
-import { createRouter, createWebHistory } from '@ionic/vue-router';
-import { RouteRecordRaw } from 'vue-router';
-import DashboardView  from '../views/DashboardView.vue'
+import { createRouter, createWebHistory } from '@ionic/vue-router'
+import { RouteRecordRaw } from 'vue-router'
+import DashboardView from '../views/DashboardView.vue'
+import LoginView from '../views/auth/LoginView.vue'
 import CommunicationsView from '../views/communications/CommunicationsView.vue'
 import InventoryView from '../views/inventory/InventoryView.vue'
 import EquipmentView from '../views/inventory/EquipmentView.vue'
@@ -12,6 +13,7 @@ import AccomplishmentQuarterlyView from '../views/accomplishments/Accomplishment
 import AccomplishmentAnnualView from '../views/accomplishments/AccomplishmentAnnualView.vue'
 import AccomplishmentCustomView from '../views/accomplishments/AccomplishmentCustomView.vue'
 import { ModuleName } from '../types/module'
+import { fetchCurrentUser } from '../services/authService'
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -19,12 +21,21 @@ const routes: Array<RouteRecordRaw> = [
     redirect: '/home'
   },
   {
+    path: '/login',
+    name: 'Login',
+    component: LoginView,
+    meta: {
+      requiresAuth: false
+    }
+  },
+  {
     path: '/home',
     name: 'Home',
     component: DashboardView,
     meta: {
       module: ModuleName.Dashboard,
-    },
+      requiresAuth: true
+    }
   },
   {
     path: '/communications',
@@ -32,7 +43,8 @@ const routes: Array<RouteRecordRaw> = [
     component: CommunicationsView,
     meta: {
       module: ModuleName.Communications,
-    },
+      requiresAuth: true
+    }
   },
   {
     path: '/inventory',
@@ -40,7 +52,8 @@ const routes: Array<RouteRecordRaw> = [
     component: InventoryView,
     meta: {
       module: ModuleName.Inventory,
-    },
+      requiresAuth: true
+    }
   },
   {
     path: '/inventory/equipment',
@@ -48,7 +61,8 @@ const routes: Array<RouteRecordRaw> = [
     component: EquipmentView,
     meta: {
       module: ModuleName.Equipment,
-    },
+      requiresAuth: true
+    }
   },
   {
     path: '/inventory/jrrs',
@@ -56,7 +70,8 @@ const routes: Array<RouteRecordRaw> = [
     component: JRRSView,
     meta: {
       module: ModuleName.JRRS,
-    },
+      requiresAuth: true
+    }
   },
   {
     path: '/accomplishments',
@@ -64,7 +79,8 @@ const routes: Array<RouteRecordRaw> = [
     component: AccomplishmentView,
     meta: {
       module: ModuleName.Accomplishments,
-    },
+      requiresAuth: true
+    }
   },
   {
     path: '/accomplishments/daily',
@@ -72,7 +88,8 @@ const routes: Array<RouteRecordRaw> = [
     component: AccomplishmentDailyView,
     meta: {
       module: ModuleName.Accomplishments,
-    },
+      requiresAuth: true
+    }
   },
   {
     path: '/accomplishments/monthly',
@@ -80,7 +97,8 @@ const routes: Array<RouteRecordRaw> = [
     component: AccomplishmentMonthlyView,
     meta: {
       module: ModuleName.Accomplishments,
-    },
+      requiresAuth: true
+    }
   },
   {
     path: '/accomplishments/quarterly',
@@ -88,7 +106,8 @@ const routes: Array<RouteRecordRaw> = [
     component: AccomplishmentQuarterlyView,
     meta: {
       module: ModuleName.Accomplishments,
-    },
+      requiresAuth: true
+    }
   },
   {
     path: '/accomplishments/annual',
@@ -96,7 +115,8 @@ const routes: Array<RouteRecordRaw> = [
     component: AccomplishmentAnnualView,
     meta: {
       module: ModuleName.Accomplishments,
-    },
+      requiresAuth: true
+    }
   },
   {
     path: '/accomplishments/custom',
@@ -104,13 +124,30 @@ const routes: Array<RouteRecordRaw> = [
     component: AccomplishmentCustomView,
     meta: {
       module: ModuleName.Accomplishments,
-    },
+      requiresAuth: true
+    }
   }
 ]
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes
+})
+
+// Centralized Authentication Navigation Guard
+router.beforeEach(async (to, _from, next) => {
+  const isPublicRoute = to.meta.requiresAuth === false
+  const user = await fetchCurrentUser()
+
+  if (!isPublicRoute && !user) {
+    // Unauthenticated user attempting to access protected route
+    next({ path: '/login', query: { redirect: to.fullPath } })
+  } else if (to.path === '/login' && user) {
+    // Authenticated user attempting to access login page
+    next('/home')
+  } else {
+    next()
+  }
 })
 
 export default router

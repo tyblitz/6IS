@@ -2,7 +2,9 @@
 // backend/api/accomplishments/index.php
 // REST API Endpoint for 6IS Accomplishment Module
 
-header('Access-Control-Allow-Origin: *');
+$allowedOrigin = $_SERVER['HTTP_ORIGIN'] ?? 'http://localhost:5173';
+header("Access-Control-Allow-Origin: {$allowedOrigin}");
+header('Access-Control-Allow-Credentials: true');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With');
 header('Content-Type: application/json; charset=utf-8');
