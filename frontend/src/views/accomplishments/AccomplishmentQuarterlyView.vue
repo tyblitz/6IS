@@ -1,27 +1,16 @@
 <template>
-  <MainLayout title="Quarterly Report" username="Admin">
+  <MainLayout title="Quarterly Summary" username="Admin">
     <div class="report-page-container">
 
-      <!-- Header & Print Action -->
+      <!-- Header -->
       <div class="module-header-bar print-hide">
         <div>
-          <h2>Quarterly Report</h2>
-          <p class="subtitle">Read-only consolidated quarterly accomplishment report.</p>
+          <h2>Quarterly Accomplishment Summary</h2>
+          <p class="subtitle">Breakdown of accomplishments and outgoing communications for the quarter.</p>
         </div>
-        <button class="btn-print" type="button" @click="handlePrint">
-          <ion-icon :icon="printOutline"></ion-icon>
-          <span>Print Report</span>
-        </button>
       </div>
 
-      <!-- Printable Header -->
-      <div class="printable-header print-only">
-        <div class="print-org-title">6IS INTEGRATED INFORMATION SYSTEM</div>
-        <div class="print-report-title">QUARTERLY ACCOMPLISHMENT REPORT</div>
-        <div class="print-meta">Period: Q{{ selectedQuarter }} {{ selectedYear }} ({{ selectedQuarterLabel }}) | Generated: {{ new Date().toLocaleString() }}</div>
-      </div>
-
-      <!-- Toolbar / Selectors -->
+      <!-- Toolbar / Selectors (Year & Quarter ONLY) -->
       <div class="toolbar-card print-hide">
         <div class="toolbar-grid">
           
@@ -39,83 +28,143 @@
             </select>
           </div>
 
-          <div class="filter-item">
-            <label>Office Filter</label>
-            <select v-model.number="filterOfficeId" @change="loadData">
-              <option :value="0">All Offices</option>
-              <option v-for="off in options.offices" :key="off.id" :value="off.id">
-                {{ off.office_name }} ({{ off.office_code }})
-              </option>
-            </select>
-          </div>
-
-          <div class="filter-item search-box">
-            <label>Search</label>
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="Search description..."
-              @keyup.enter="loadData"
-            />
-          </div>
-
-          <div class="filter-actions">
-            <button class="btn-filter" type="button" @click="loadData">Apply Filter</button>
-          </div>
-
         </div>
       </div>
 
-      <!-- Stats Strip -->
-      <div class="stats-strip print-hide">
-        <div class="stat-pill">
-          <span>Total Quarterly Accomplishments:</span>
-          <strong>{{ records.length }}</strong>
-        </div>
-        <div class="stat-pill">
-          <span>Incoming Communications:</span>
-          <strong>{{ commsStats.incoming }}</strong>
-        </div>
-        <div class="stat-pill">
-          <span>Outgoing Communications:</span>
-          <strong>{{ commsStats.outgoing }}</strong>
-        </div>
+      <!-- Loading State -->
+      <div v-if="loading" class="loading-container">
+        <ion-spinner name="crescent"></ion-spinner>
+        <span>Loading quarterly summary statistics...</span>
       </div>
 
-      <!-- Report Table -->
-      <div class="table-card">
-        <div v-if="loading" class="state-container print-hide">
-          <ion-spinner name="crescent"></ion-spinner>
-          <span>Consolidating quarterly report records...</span>
+      <!-- 2-COLUMN DASHBOARD LAYOUT -->
+      <div v-else class="dashboard-grid-layout">
+
+        <!-- LEFT MAIN COLUMN: Activities & Outgoing Comms -->
+        <div class="main-column">
+
+          <!-- GROUP 1: Activities for the Quarter -->
+          <div class="summary-card-group">
+            <div class="group-header">
+              <div class="header-icon-box accomplishment-bg">
+                <ion-icon :icon="checkmarkDoneCircleOutline"></ion-icon>
+              </div>
+              <div>
+                <h3>Activities</h3>
+                <p class="group-subtitle">Total activities recorded in Q{{ selectedQuarter }} {{ selectedYear }}</p>
+              </div>
+              <div class="total-badge count-accomplishment">
+                <span>Total:</span>
+                <strong>{{ totalAccomplishments }}</strong>
+              </div>
+            </div>
+
+            <div v-if="activeAccomplishmentsByCategory.length === 0" class="empty-category-msg">
+              No activities recorded for Q{{ selectedQuarter }} {{ selectedYear }}.
+            </div>
+
+            <div v-else class="compact-category-grid">
+              <div 
+                v-for="item in activeAccomplishmentsByCategory" 
+                :key="item.category_id" 
+                class="category-stat-card accomplishment-card"
+              >
+                <div class="cat-card-top">
+                  <h4 class="category-title-code">{{ item.category_code || item.category_name }}</h4>
+                  <span class="cat-count-badge">{{ item.count }}</span>
+                </div>
+                <div class="cat-card-body">
+                  <div class="cat-progress-bar">
+                    <div 
+                      class="progress-fill fill-acc" 
+                      :style="{ width: calculatePercentage(item.count, totalAccomplishments) + '%' }"
+                    ></div>
+                  </div>
+                  <div class="cat-footer">
+                    <span class="percentage-text">{{ calculatePercentage(item.count, totalAccomplishments) }}% of quarterly activities</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- GROUP 2: Outgoing Communications for the Quarter -->
+          <div class="summary-card-group">
+            <div class="group-header">
+              <div class="header-icon-box outgoing-bg">
+                <ion-icon :icon="paperPlaneOutline"></ion-icon>
+              </div>
+              <div>
+                <h3>Outgoing Communications</h3>
+                <p class="group-subtitle">Total outgoing communications in Q{{ selectedQuarter }} {{ selectedYear }}</p>
+              </div>
+              <div class="total-badge count-outgoing">
+                <span>Total Outgoing:</span>
+                <strong>{{ totalOutgoingComms }}</strong>
+              </div>
+            </div>
+
+            <div v-if="activeOutgoingCommsByCategory.length === 0" class="empty-category-msg">
+              No outgoing communications recorded for Q{{ selectedQuarter }} {{ selectedYear }}.
+            </div>
+
+            <div v-else class="compact-category-grid">
+              <div 
+                v-for="item in activeOutgoingCommsByCategory" 
+                :key="item.category_id" 
+                class="category-stat-card outgoing-card"
+              >
+                <div class="cat-card-top">
+                  <h4 class="category-title-code tag-outgoing-text">{{ item.category_code || item.category_name }}</h4>
+                  <span class="cat-count-badge count-bg-outgoing">{{ item.count }}</span>
+                </div>
+                <div class="cat-card-body">
+                  <div class="cat-progress-bar">
+                    <div 
+                      class="progress-fill fill-outgoing" 
+                      :style="{ width: calculatePercentage(item.count, totalOutgoingComms) + '%' }"
+                    ></div>
+                  </div>
+                  <div class="cat-footer">
+                    <span class="percentage-text">{{ calculatePercentage(item.count, totalOutgoingComms) }}% of quarterly outgoing comms</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
 
-        <div v-else-if="records.length === 0" class="state-container empty-box print-hide">
-          <ion-icon :icon="clipboardOutline" class="empty-icon"></ion-icon>
-          <p>No accomplishments recorded for Q{{ selectedQuarter }} {{ selectedYear }}.</p>
+        <!-- RIGHT SIDEBAR COLUMN: Clearances & Executive Quick Stats -->
+        <div class="sidebar-column">
+
+          <!-- GROUP 3: Clearances (Access Pass Outgoing Comms) -->
+          <div class="summary-card-group sidebar-group">
+            <div class="group-header">
+              <div class="header-icon-box clearance-bg">
+                <ion-icon :icon="shieldCheckmarkOutline"></ion-icon>
+              </div>
+              <div>
+                <h3>Clearances</h3>
+                <p class="group-subtitle">Access Pass count in Q{{ selectedQuarter }} {{ selectedYear }}</p>
+              </div>
+            </div>
+
+            <div v-if="activeClearancesByPurpose.length === 0" class="empty-category-msg">
+              No Access Pass clearances recorded for Q{{ selectedQuarter }} {{ selectedYear }}.
+            </div>
+
+            <div v-else class="clearance-single-card">
+              <div class="clearance-hero-box">
+                <div class="clearance-number">{{ totalClearances }}</div>
+                <div class="clearance-label">Released Access Pass Clearances</div>
+                <div class="clearance-subtext">Q{{ selectedQuarter }} {{ selectedYear }}</div>
+              </div>
+            </div>
+          </div>
+
         </div>
 
-        <div v-else class="table-responsive">
-          <table class="report-table">
-            <thead>
-              <tr>
-                <th style="width: 120px;">Date</th>
-                <th style="width: 180px;">Office</th>
-                <th>Accomplishment Description</th>
-                <th>Remarks</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in records" :key="item.id">
-                <td class="whitespace-nowrap date-cell">{{ item.date }}</td>
-                <td class="whitespace-nowrap">
-                  <span class="office-tag">{{ item.office_code || item.office_name }}</span>
-                </td>
-                <td class="desc-cell">{{ item.description }}</td>
-                <td class="remarks-cell">{{ item.remarks || '-' }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
       </div>
 
     </div>
@@ -123,27 +172,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { IonSpinner, IonIcon, onIonViewWillEnter } from '@ionic/vue'
-import { printOutline, clipboardOutline } from 'ionicons/icons'
+import { 
+  checkmarkDoneCircleOutline, 
+  paperPlaneOutline,
+  shieldCheckmarkOutline 
+} from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
-import type { AccomplishmentItem, AccomplishmentOptions } from '../../types/accomplishment'
-import { fetchQuarterlyAccomplishments, fetchAccomplishmentOptions } from '../../services/accomplishmentService'
+import type { 
+  AccomplishmentCategorySummary, 
+  OutgoingCommCategorySummary,
+  ClearancePurposeSummary 
+} from '../../types/accomplishment'
+import { fetchQuarterlyAccomplishments } from '../../services/accomplishmentService'
 
 const route = useRoute()
 
 const loading = ref(true)
-const records = ref<AccomplishmentItem[]>([])
-const commsStats = reactive({ incoming: 0, outgoing: 0 })
+const accomplishmentsByCategory = ref<AccomplishmentCategorySummary[]>([])
+const outgoingCommsByCategory = ref<OutgoingCommCategorySummary[]>([])
+const clearancesByPurpose = ref<ClearancePurposeSummary[]>([])
 
 const selectedYear = ref(new Date().getFullYear())
 const selectedQuarter = ref(Math.ceil((new Date().getMonth() + 1) / 3))
-const filterOfficeId = ref(0)
-const searchQuery = ref('')
-
-const options = reactive<AccomplishmentOptions>({ offices: [] })
 
 const yearOptions = computed(() => {
   const current = new Date().getFullYear()
@@ -157,18 +211,35 @@ const quarterOptions = [
   { value: 4, label: 'Q4 (October – December)' }
 ]
 
-const selectedQuarterLabel = computed(() => {
-  const item = quarterOptions.find(q => q.value === selectedQuarter.value)
-  return item ? item.label : ''
+const totalAccomplishments = computed(() => {
+  return accomplishmentsByCategory.value.reduce((sum, item) => sum + (Number(item.count) || 0), 0)
+})
+
+const totalOutgoingComms = computed(() => {
+  return outgoingCommsByCategory.value.reduce((sum, item) => sum + (Number(item.count) || 0), 0)
+})
+
+const totalClearances = computed(() => {
+  return clearancesByPurpose.value.reduce((sum, item) => sum + (Number(item.count) || 0), 0)
+})
+
+const activeAccomplishmentsByCategory = computed(() => {
+  return accomplishmentsByCategory.value.filter(item => (Number(item.count) || 0) > 0)
+})
+
+const activeOutgoingCommsByCategory = computed(() => {
+  return outgoingCommsByCategory.value.filter(item => (Number(item.count) || 0) > 0)
+})
+
+const activeClearancesByPurpose = computed(() => {
+  return clearancesByPurpose.value.filter(item => (Number(item.count) || 0) > 0)
 })
 
 onMounted(() => {
-  loadOptions()
   loadData()
 })
 
 onIonViewWillEnter(() => {
-  loadOptions()
   loadData()
 })
 
@@ -180,83 +251,428 @@ async function loadData() {
   loading.value = true
   const res = await fetchQuarterlyAccomplishments(
     selectedYear.value,
-    selectedQuarter.value,
-    filterOfficeId.value > 0 ? filterOfficeId.value : undefined,
-    searchQuery.value
+    selectedQuarter.value
   )
   loading.value = false
 
   if (res.success && res.data) {
-    records.value = res.data.records || []
-    commsStats.incoming = res.data.communications_stats?.incoming || 0
-    commsStats.outgoing = res.data.communications_stats?.outgoing || 0
+    accomplishmentsByCategory.value = res.data.accomplishments_by_category || []
+    outgoingCommsByCategory.value = res.data.outgoing_comms_by_category || []
+    clearancesByPurpose.value = res.data.clearances_by_purpose || []
   }
 }
 
-async function loadOptions() {
-  const res = await fetchAccomplishmentOptions()
-  if (res.success && res.data) {
-    options.offices = res.data.offices || []
-  }
-}
-
-function handlePrint() {
-  window.print()
+function calculatePercentage(count: number, total: number): number {
+  if (!total || total === 0) return 0
+  return Math.round(((Number(count) || 0) / total) * 100)
 }
 </script>
 
 <style scoped>
-.report-page-container { padding: 24px; max-width: 1280px; margin: 0 auto; }
-.module-header-bar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
-.module-header-bar h2 { font-size: 24px; font-weight: 800; color: #0f172a; margin: 0 0 4px 0; }
-.subtitle { font-size: 14px; color: #64748b; margin: 0; }
-
-.btn-print {
-  background: #ffffff; color: #334155; border: 1px solid #cbd5e1;
-  padding: 10px 18px; border-radius: 8px; font-size: 14px; font-weight: 600;
-  cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+.report-page-container {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
 }
-.btn-print:hover { background: #f8fafc; }
 
-.toolbar-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03); }
-.toolbar-grid { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; }
-.filter-item { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 160px; }
-.filter-item.search-box { flex: 2; min-width: 200px; }
+.module-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
 
-label { font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; }
-input, select { width: 100%; padding: 9px 12px; font-size: 14px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; background: #ffffff; }
+.module-header-bar h2 {
+  font-size: 24px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+}
 
-.filter-actions { display: flex; gap: 8px; }
-.btn-filter { background: #2563eb; color: #ffffff; border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.subtitle {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0;
+}
 
-.stats-strip { display: flex; gap: 16px; margin-bottom: 20px; }
-.stat-pill { background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px 16px; border-radius: 10px; font-size: 13px; color: #475569; display: flex; gap: 8px; }
-.stat-pill strong { color: #0f172a; }
+.action-btn-group {
+  display: flex;
+  gap: 10px;
+}
 
-.table-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 24px; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03); }
-.state-container { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; color: #64748b; gap: 12px; }
-.empty-icon { font-size: 40px; color: #cbd5e1; }
+.btn-disabled {
+  background: #f1f5f9;
+  color: #94a3b8;
+  border: 1px solid #cbd5e1;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: not-allowed;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.7;
+}
 
-.table-responsive { width: 100%; overflow-x: auto; }
-.report-table { width: 100%; border-collapse: collapse; }
-.report-table th { text-align: left; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; padding: 12px; border-bottom: 1px solid #e2e8f0; }
-.report-table td { padding: 14px 12px; font-size: 14px; color: #334155; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+.toolbar-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+}
 
-.date-cell { font-weight: 600; color: #0f172a; }
-.office-tag { background: #eff6ff; color: #2563eb; font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 6px; }
-.whitespace-nowrap { white-space: nowrap; }
-.desc-cell { line-height: 1.5; }
-.remarks-cell { color: #64748b; font-size: 13px; }
+.toolbar-grid {
+  display: flex;
+  gap: 20px;
+  align-items: flex-end;
+}
 
-.print-only { display: none; }
-@media print {
-  .print-hide { display: none !important; }
-  .print-only { display: block !important; }
-  .table-card { border: none; padding: 0; box-shadow: none; }
-  .report-table th, .report-table td { border-bottom: 1px solid #000; }
-  .printable-header { text-align: center; margin-bottom: 20px; }
-  .print-org-title { font-size: 16px; font-weight: bold; }
-  .print-report-title { font-size: 18px; font-weight: bold; margin-top: 4px; }
-  .print-meta { font-size: 12px; color: #555; margin-top: 4px; }
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 200px;
+}
+
+label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+select {
+  width: 100%;
+  padding: 9px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  outline: none;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+  color: #64748b;
+  gap: 12px;
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+}
+
+/* 2-COLUMN DASHBOARD GRID */
+.dashboard-grid-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .dashboard-grid-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.main-column, .sidebar-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.summary-card-group {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 20px 24px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 14px;
+}
+
+.header-icon-box {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+.accomplishment-bg {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.outgoing-bg {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.clearance-bg {
+  background: #faf5ff;
+  color: #9333ea;
+}
+
+.group-header h3 {
+  font-size: 17px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 2px 0;
+}
+
+.group-subtitle {
+  font-size: 12px;
+  color: #64748b;
+  margin: 0;
+}
+
+.total-badge {
+  margin-left: auto;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.count-accomplishment {
+  background: #eff6ff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.count-outgoing {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.empty-category-msg {
+  padding: 20px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  text-align: center;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.compact-category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.category-stat-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px 14px;
+  transition: all 0.2s ease;
+  background: #ffffff;
+}
+
+.category-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+}
+
+.accomplishment-card {
+  border-left: 4px solid #2563eb;
+}
+
+.outgoing-card {
+  border-left: 4px solid #16a34a;
+}
+
+.cat-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.category-title-code {
+  font-size: 15px;
+  font-weight: 800;
+  color: #1e293b;
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.tag-outgoing-text {
+  color: #166534;
+}
+
+.cat-count-badge {
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  padding: 1px 9px;
+  border-radius: 14px;
+}
+
+.count-bg-outgoing {
+  background: #16a34a;
+}
+
+.cat-progress-bar {
+  width: 100%;
+  height: 5px;
+  background: #f1f5f9;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.fill-acc {
+  background: #2563eb;
+}
+
+.fill-outgoing {
+  background: #16a34a;
+}
+
+.cat-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.percentage-text {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* SIDEBAR HERO BOX & QUICK STATS */
+.clearance-hero-box {
+  background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+  border: 1px solid #e9d5ff;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+}
+
+.clearance-number {
+  font-size: 42px;
+  font-weight: 900;
+  color: #7e22ce;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.clearance-label {
+  font-size: 14px;
+  font-weight: 800;
+  color: #581c87;
+  margin-bottom: 4px;
+}
+
+.clearance-subtext {
+  font-size: 12px;
+  color: #7e22ce;
+  font-weight: 600;
+}
+
+.stats-widget-group {
+  background: #ffffff;
+}
+
+.widget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 12px;
+}
+
+.widget-header h4 {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.widget-period-tag {
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.widget-metrics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.widget-metric-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-radius: 10px;
+  border: 1px solid #f1f5f9;
+}
+
+.metric-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.metric-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.metric-sub {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.metric-val {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.text-blue { color: #2563eb; }
+.text-indigo { color: #4f46e5; }
+.text-emerald { color: #059669; }
+
+.print-hide {
+  display: block;
 }
 </style>

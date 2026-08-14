@@ -13,6 +13,12 @@ Thumbs.db
 UserInterfaceState.xcuserstate
 $RECYCLE.BIN/
 
+Install_6IS.bat
+Setup_Everything_1Click.bat
+Start_6IS.bat
+installer/
+frontend/public/.htaccess
+
 *.log
 log.txt
 npm-debug.log*
@@ -38,6 +44,7 @@ dist/
 # Docs
 
 docs/ai/
+templates/
 
 # Environment Files
 .env
@@ -46,6 +53,7 @@ docs/ai/
 
 # Database Config
 backend/config/database.php
+database/sample_data.sql
 
 # IDE
 .vscode/

@@ -4,17 +4,29 @@ export interface OfficeOption {
   id: number;
   office_name: string;
   office_code: string;
+  office_abbv?: string;
+}
+
+export interface CategoryOption {
+  id: number;
+  category_name: string;
+  category_code: string;
 }
 
 export interface AccomplishmentOptions {
   offices: OfficeOption[];
+  categories?: CategoryOption[];
 }
 
 export interface AccomplishmentItem {
   id: number;
   office_id: number;
+  category_id?: number;
   office_name?: string;
   office_code?: string;
+  office_abbv?: string;
+  category_name?: string;
+  category_code?: string;
   date: string;
   description: string;
   remarks: string | null;
@@ -37,8 +49,31 @@ export interface OverviewSummary {
   today_records: AccomplishmentItem[];
 }
 
+export interface AccomplishmentCategorySummary {
+  category_id: number;
+  category_name: string;
+  category_code?: string | null;
+  count: number;
+}
+
+export interface OutgoingCommCategorySummary {
+  category_id: number;
+  category_name: string;
+  category_code?: string | null;
+  count: number;
+}
+
+export interface ClearancePurposeSummary {
+  purpose_id: number;
+  purpose_name: string;
+  count: number;
+}
+
 export interface ReportData {
   records: AccomplishmentItem[];
+  accomplishments_by_category?: AccomplishmentCategorySummary[];
+  outgoing_comms_by_category?: OutgoingCommCategorySummary[];
+  clearances_by_purpose?: ClearancePurposeSummary[];
   communications_stats: {
     incoming: number;
     outgoing: number;
@@ -48,6 +83,7 @@ export interface ReportData {
 export interface AccomplishmentFormPayload {
   id?: number;
   office_id: number;
+  category_id?: number;
   date: string;
   description: string;
   remarks?: string | null;

@@ -24,7 +24,7 @@
         <span class="count-badge">{{ counts?.monthly ?? 0 }}</span>
       </div>
       <div class="card-bottom">
-        <h4>Monthly Accomplishments</h4>
+        <h4>{{ currentMonthTitle }} Accomplishments</h4>
         <span class="nav-hint">View Monthly Report &rarr;</span>
       </div>
     </div>
@@ -38,7 +38,7 @@
         <span class="count-badge">{{ counts?.quarterly ?? 0 }}</span>
       </div>
       <div class="card-bottom">
-        <h4>Quarterly Accomplishments</h4>
+        <h4>{{ currentQuarterTitle }} Accomplishments</h4>
         <span class="nav-hint">View Quarterly Report &rarr;</span>
       </div>
     </div>
@@ -52,7 +52,7 @@
         <span class="count-badge">{{ counts?.annual ?? 0 }}</span>
       </div>
       <div class="card-bottom">
-        <h4>Annual Accomplishments</h4>
+        <h4>{{ currentYearTitle }} Accomplishments</h4>
         <span class="nav-hint">View Annual Report &rarr;</span>
       </div>
     </div>
@@ -61,6 +61,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { IonIcon } from '@ionic/vue'
 import {
@@ -76,6 +77,20 @@ defineProps<{
 }>()
 
 const router = useRouter()
+
+const currentMonthTitle = computed(() => {
+  return new Date().toLocaleDateString('en-US', { month: 'long' })
+})
+
+const currentQuarterTitle = computed(() => {
+  const month = new Date().getMonth() + 1
+  const q = Math.ceil(month / 3)
+  return `Q${q}`
+})
+
+const currentYearTitle = computed(() => {
+  return new Date().getFullYear().toString()
+})
 
 function navigateTo(route: string) {
   router.push(route)

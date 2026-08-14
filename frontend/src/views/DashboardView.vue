@@ -1,11 +1,11 @@
 <template>
-  <MainLayout title="Home" username="Administrator">
+  <MainLayout title="Home">
     <div class="dashboard-page">
       
       <!-- Hero Greeting & Date Section -->
       <div class="dashboard-hero">
         <div class="greeting-box">
-          <h1 class="greeting-title">Good morning, Administrator! 👋</h1>
+          <h1 class="greeting-title">Welcome back, {{ activeUser?.username || 'User' }}! 👋</h1>
           <p class="greeting-subtitle">Welcome back to 6IS. Please select a module to get started.</p>
         </div>
 
@@ -56,6 +56,21 @@
           </ion-card-header>
         </ion-card>
 
+        <!-- Administrator Module Card (Displayed only for Administrator role) -->
+        <ion-card
+          v-if="activeUser?.role === 'Administrator'"
+          class="module-card admin-card"
+          @click="goToAdministrator"
+        >
+          <ion-card-header>
+            <div class="module-icon-box admin-icon">
+              <ion-icon :icon="shieldCheckmarkOutline"></ion-icon>
+            </div>
+            <ion-card-title class="module-title">Administrator</ion-card-title>
+            <p class="module-desc">System administration and configuration tools.</p>
+          </ion-card-header>
+        </ion-card>
+
       </div>
 
     </div>
@@ -75,10 +90,12 @@ import {
   calendarOutline,
   cubeOutline,
   chatbubbleEllipsesOutline,
-  clipboardOutline
+  clipboardOutline,
+  shieldCheckmarkOutline
 } from 'ionicons/icons'
 
 import MainLayout from '../layouts/MainLayout.vue'
+import { activeUser } from '../services/authService'
 import '../assets/styles/pages/dashboard.css'
 
 const router = useRouter()
@@ -107,5 +124,9 @@ function goToCommunications() {
 
 function goToAccomplishments() {
   router.push('/accomplishments')
+}
+
+function goToAdministrator() {
+  router.push('/administrator')
 }
 </script>

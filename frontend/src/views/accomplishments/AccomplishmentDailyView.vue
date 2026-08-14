@@ -8,33 +8,53 @@
           <h2>Daily Report</h2>
           <p class="subtitle">Daily accomplishment records log and management.</p>
         </div>
-        <div class="header-action-group">
-          <button class="btn-print" type="button" @click="handlePrint">
-            <ion-icon :icon="printOutline"></ion-icon>
-            <span>Print Report</span>
-          </button>
-          <button class="add-btn" type="button" @click="openCreateModal">
-            <ion-icon :icon="addOutline"></ion-icon>
-            <span>Log Accomplishment</span>
-          </button>
-        </div>
+        <button class="add-btn" type="button" @click="openCreateModal">
+          <ion-icon :icon="addOutline"></ion-icon>
+          <span>Add Activity</span>
+        </button>
       </div>
 
       <!-- Printable Document Header (Visible in print) -->
       <div class="printable-header print-only">
         <div class="print-org-title">6IS INTEGRATED INFORMATION SYSTEM</div>
         <div class="print-report-title">DAILY ACCOMPLISHMENT REPORT</div>
-        <div class="print-meta">Date: {{ filterDate }} | Generated: {{ new Date().toLocaleString() }}</div>
+        <div class="print-meta">Date: {{ formatDate(filterDate) }} | Generated: {{ new Date().toLocaleString() }}</div>
       </div>
 
       <!-- Filter Toolbar -->
       <div class="toolbar-card print-hide">
         <div class="toolbar-grid">
           
-          <!-- Date Filter -->
-          <div class="filter-item">
+          <!-- Date Filter with Calendar Icon -->
+          <div class="filter-item date-filter-item">
             <label>Date</label>
-            <input v-model="filterDate" type="date" @change="loadData" />
+            <div class="date-input-container">
+              <input 
+                ref="dateInputRef" 
+                v-model="filterDate" 
+                type="date" 
+                @change="loadData" 
+              />
+              <button 
+                type="button" 
+                class="calendar-icon-btn" 
+                title="Open Calendar" 
+                @click="openDatePicker"
+              >
+                <ion-icon :icon="calendarOutline"></ion-icon>
+              </button>
+            </div>
+          </div>
+
+          <!-- Category Filter -->
+          <div class="filter-item">
+            <label>Category</label>
+            <select v-model.number="filterCategoryId" @change="loadData">
+              <option :value="0">All Categories</option>
+              <option v-for="cat in options.categories" :key="cat.id" :value="cat.id">
+                {{ cat.category_code || cat.category_name }}
+              </option>
+            </select>
           </div>
 
           <!-- Office Filter -->
@@ -68,18 +88,6 @@
         </div>
       </div>
 
-      <!-- Communication Stats Strip -->
-      <div class="stats-strip print-hide">
-        <div class="stat-pill">
-          <span>Incoming Communications:</span>
-          <strong>{{ commsStats.incoming }}</strong>
-        </div>
-        <div class="stat-pill">
-          <span>Outgoing Communications:</span>
-          <strong>{{ commsStats.outgoing }}</strong>
-        </div>
-      </div>
-
       <!-- Records Table -->
       <div class="table-card">
         <div v-if="loading" class="state-container print-hide">
@@ -89,25 +97,27 @@
 
         <div v-else-if="records.length === 0" class="state-container empty-box print-hide">
           <ion-icon :icon="clipboardOutline" class="empty-icon"></ion-icon>
-          <p>No accomplishment records found for {{ filterDate }}.</p>
+          <p>No accomplishment records found for {{ formatDate(filterDate) }}.</p>
         </div>
 
         <div v-else class="table-responsive">
           <table class="report-table">
             <thead>
               <tr>
-                <th style="width: 120px;">Date</th>
-                <th style="width: 180px;">Office</th>
-                <th>Accomplishment Description</th>
+                <th style="width: 160px;">Office</th>
+                <th style="width: 180px;">Category</th>
+                <th>Description</th>
                 <th>Remarks</th>
                 <th class="text-right print-hide" style="width: 140px;">Actions</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="item in records" :key="item.id">
-                <td class="whitespace-nowrap date-cell">{{ item.date }}</td>
                 <td class="whitespace-nowrap">
                   <span class="office-tag">{{ item.office_code || item.office_name }}</span>
+                </td>
+                <td class="whitespace-nowrap">
+                  <span class="category-tag">{{ item.category_code || item.category_name || '-' }}</span>
                 </td>
                 <td class="desc-cell">{{ item.description }}</td>
                 <td class="remarks-cell">{{ item.remarks || '-' }}</td>
@@ -155,11 +165,11 @@ import { useRoute } from 'vue-router'
 import { IonSpinner, IonIcon, onIonViewWillEnter } from '@ionic/vue'
 import {
   addOutline,
-  printOutline,
   clipboardOutline,
   eyeOutline,
   createOutline,
-  trashOutline
+  trashOutline,
+  calendarOutline
 } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
@@ -180,18 +190,49 @@ const route = useRoute()
 
 const loading = ref(true)
 const records = ref<AccomplishmentItem[]>([])
-const commsStats = reactive({ incoming: 0, outgoing: 0 })
 
+const dateInputRef = ref<HTMLInputElement | null>(null)
 const filterDate = ref(new Date().toISOString().split('T')[0])
+const filterCategoryId = ref(0)
 const filterOfficeId = ref(0)
 const searchQuery = ref('')
+
+function openDatePicker() {
+  if (dateInputRef.value) {
+    if (typeof (dateInputRef.value as any).showPicker === 'function') {
+      (dateInputRef.value as any).showPicker()
+    } else {
+      dateInputRef.value.focus()
+      dateInputRef.value.click()
+    }
+  }
+}
+
+function formatDate(dateStr?: string | null): string {
+  if (!dateStr) return '-'
+  const cleanStr = dateStr.split('T')[0]
+  const parts = cleanStr.split('-')
+  if (parts.length === 3) {
+    const year = parts[0]
+    const month = parts[1]
+    const day = parts[2]
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const mIdx = parseInt(month, 10) - 1
+    if (mIdx >= 0 && mIdx < 12) {
+      return `${day} ${months[mIdx]} ${year}`
+    }
+    return `${day}/${month}/${year}`
+  }
+  return dateStr
+}
 
 const isFormOpen = ref(false)
 const isDetailOpen = ref(false)
 const selectedRecord = ref<AccomplishmentItem | null>(null)
 
 const options = reactive<AccomplishmentOptions>({
-  offices: []
+  offices: [],
+  categories: []
 })
 
 onMounted(() => {
@@ -213,14 +254,13 @@ async function loadData() {
   const res = await fetchDailyAccomplishments(
     filterDate.value,
     filterOfficeId.value > 0 ? filterOfficeId.value : undefined,
-    searchQuery.value
+    searchQuery.value,
+    filterCategoryId.value > 0 ? filterCategoryId.value : undefined
   )
   loading.value = false
 
   if (res.success && res.data) {
     records.value = res.data.records || []
-    commsStats.incoming = res.data.communications_stats?.incoming || 0
-    commsStats.outgoing = res.data.communications_stats?.outgoing || 0
   }
 }
 
@@ -228,12 +268,14 @@ async function loadOptions() {
   const res = await fetchAccomplishmentOptions()
   if (res.success && res.data) {
     options.offices = res.data.offices || []
+    options.categories = res.data.categories || []
   }
 }
 
 function resetFilters() {
   filterDate.value = new Date().toISOString().split('T')[0]
   filterOfficeId.value = 0
+  filterCategoryId.value = 0
   searchQuery.value = ''
   loadData()
 }
@@ -260,12 +302,12 @@ function handleEditFromDetail(record: AccomplishmentItem) {
 }
 
 async function handleDeletePrompt(item: AccomplishmentItem) {
-  if (confirm(`Are you sure you want to delete this accomplishment for ${item.office_code || item.office_name}?`)) {
+  if (confirm(`Are you sure you want to delete this accomplishment record?\n\n"${item.description}"`)) {
     const res = await deleteAccomplishment(item.id)
     if (res.success) {
       loadData()
     } else {
-      alert(res.message || 'Failed to delete record.')
+      alert(res.message || 'Failed to delete accomplishment record.')
     }
   }
 }
@@ -278,7 +320,7 @@ function handlePrint() {
 <style scoped>
 .report-page-container {
   padding: 24px;
-  max-width: 1280px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 
@@ -304,8 +346,28 @@ function handlePrint() {
 
 .header-action-group {
   display: flex;
+  align-items: center;
   gap: 12px;
 }
+
+.add-btn {
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
+  transition: background-color 0.15s ease;
+}
+
+.add-btn:hover { background: #1d4ed8; }
+.add-btn ion-icon { font-size: 18px; }
 
 .btn-print {
   background: #ffffff;
@@ -319,54 +381,47 @@ function handlePrint() {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  transition: background-color 0.15s ease;
+  transition: all 0.15s ease;
 }
 
-.btn-print:hover { background: #f8fafc; }
-
-.add-btn {
-  background: #2563eb;
-  color: #ffffff;
-  border: none;
-  padding: 10px 18px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+.btn-print:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
 }
 
-.add-btn:hover { background: #1d4ed8; }
+.btn-print ion-icon { font-size: 18px; }
 
 .toolbar-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 14px;
-  padding: 20px;
-  margin-bottom: 20px;
+  padding: 18px 20px;
+  margin-bottom: 24px;
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
 }
 
 .toolbar-grid {
   display: flex;
-  flex-wrap: wrap;
   gap: 16px;
   align-items: flex-end;
+  flex-wrap: wrap;
 }
 
 .filter-item {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  flex: 1;
   min-width: 160px;
+  flex: 1;
+}
+
+.date-filter-item {
+  max-width: 220px;
 }
 
 .filter-item.search-box {
   flex: 2;
-  min-width: 220px;
+  min-width: 240px;
 }
 
 label {
@@ -377,7 +432,38 @@ label {
   letter-spacing: 0.05em;
 }
 
-input, select {
+.date-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.date-input-container input[type="date"] {
+  width: 100%;
+  padding-right: 36px;
+}
+
+.calendar-icon-btn {
+  position: absolute;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: #2563eb;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+}
+
+.calendar-icon-btn:hover {
+  color: #1d4ed8;
+}
+
+input[type="date"],
+select,
+input[type="text"] {
   width: 100%;
   padding: 9px 12px;
   font-size: 14px;
@@ -385,23 +471,34 @@ input, select {
   border-radius: 8px;
   outline: none;
   background: #ffffff;
+  color: #0f172a;
+}
+
+input[type="date"]:focus,
+select:focus,
+input[type="text"]:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 .filter-actions {
   display: flex;
-  gap: 8px;
+  gap: 10px;
 }
 
 .btn-filter {
   background: #2563eb;
   color: #ffffff;
   border: none;
-  padding: 9px 16px;
+  padding: 9px 18px;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
 }
+
+.btn-filter:hover { background: #1d4ed8; }
 
 .btn-reset {
   background: #f1f5f9;
@@ -412,33 +509,17 @@ input, select {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
 }
 
-.stats-strip {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-.stat-pill {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  padding: 10px 16px;
-  border-radius: 10px;
-  font-size: 13px;
-  color: #475569;
-  display: flex;
-  gap: 8px;
-}
-
-.stat-pill strong { color: #0f172a; }
+.btn-reset:hover { background: #e2e8f0; }
 
 .table-card {
   background: #ffffff;
-  border: 1px solid #e2e8f0;
   border-radius: 14px;
-  padding: 24px;
+  border: 1px solid #e2e8f0;
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+  padding: 20px;
 }
 
 .state-container {
@@ -446,14 +527,21 @@ input, select {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px;
+  padding: 60px 20px;
   color: #64748b;
   gap: 12px;
+  text-align: center;
 }
 
-.empty-icon { font-size: 40px; color: #cbd5e1; }
+.empty-icon {
+  font-size: 48px;
+  color: #cbd5e1;
+}
 
-.table-responsive { width: 100%; overflow-x: auto; }
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
 
 .report-table {
   width: 100%;
@@ -479,7 +567,7 @@ input, select {
   vertical-align: top;
 }
 
-.date-cell { font-weight: 600; color: #0f172a; }
+.whitespace-nowrap { white-space: nowrap; }
 
 .office-tag {
   background: #eff6ff;
@@ -490,40 +578,94 @@ input, select {
   border-radius: 6px;
 }
 
-.desc-cell { line-height: 1.5; }
-.remarks-cell { color: #64748b; font-size: 13px; }
+.category-tag {
+  background: #f1f5f9;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+}
+
+.desc-cell {
+  line-height: 1.5;
+  max-width: 450px;
+}
+
+.remarks-cell {
+  color: #64748b;
+  font-size: 13px;
+  max-width: 250px;
+}
 
 .text-right { text-align: right; }
-.actions-cell { white-space: nowrap; }
+
+.actions-cell {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
 
 .icon-action-btn {
-  background: transparent;
+  background: #f1f5f9;
   border: none;
-  font-size: 16px;
-  padding: 6px;
-  cursor: pointer;
+  width: 32px;
+  height: 32px;
   border-radius: 6px;
-  margin-left: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
 .view-btn { color: #2563eb; }
-.edit-btn { color: #10b981; }
-.delete-btn { color: #ef4444; }
+.view-btn:hover { background: #dbeafe; }
 
-/* Print Styles */
-.print-only { display: none; }
+.edit-btn { color: #d97706; }
+.edit-btn:hover { background: #fef3c7; }
+
+.delete-btn { color: #dc2626; }
+.delete-btn:hover { background: #fee2e2; }
+
+/* PRINT MEDIA STYLES */
+.printable-header,
+.print-only {
+  display: none;
+}
 
 @media print {
   .print-hide { display: none !important; }
   .print-only { display: block !important; }
-  .table-card { border: none; padding: 0; box-shadow: none; }
-  .report-table th, .report-table td { border-bottom: 1px solid #000; }
-  .printable-header {
-    text-align: center;
-    margin-bottom: 20px;
+
+  .report-page-container {
+    padding: 0;
+    max-width: 100%;
   }
-  .print-org-title { font-size: 16px; font-weight: bold; }
-  .print-report-title { font-size: 18px; font-weight: bold; margin-top: 4px; }
-  .print-meta { font-size: 12px; color: #555; margin-top: 4px; }
+
+  .printable-header {
+    margin-bottom: 20px;
+    text-align: center;
+    border-bottom: 2px solid #000;
+    padding-bottom: 10px;
+  }
+
+  .print-org-title { font-size: 14pt; font-weight: bold; }
+  .print-report-title { font-size: 16pt; font-weight: bold; margin-top: 4px; }
+  .print-meta { font-size: 10pt; color: #555; margin-top: 4px; }
+
+  .table-card {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .report-table th, .report-table td {
+    border: 1px solid #000 !important;
+    padding: 8px !important;
+    font-size: 10pt !important;
+  }
 }
 </style>

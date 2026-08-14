@@ -31,11 +31,11 @@
 
       <button class="user-button" type="button">
         <ion-icon :icon="personCircleOutline" class="user-avatar-icon"></ion-icon>
-        <span>Administrator</span>
+        <span>{{ activeUser?.username || 'User' }}</span>
         <ion-icon :icon="chevronDownOutline" class="user-chevron"></ion-icon>
       </button>
 
-      <button class="logout-button" type="button" aria-label="Logout">
+      <button class="logout-button" type="button" aria-label="Logout" title="Logout" @click="handleLogout">
         <ion-icon :icon="logOutOutline"></ion-icon>
       </button>
 
@@ -45,6 +45,7 @@
 </template>
 
 <script setup lang="ts">
+import { useRouter } from 'vue-router'
 import { IonIcon } from '@ionic/vue'
 import {
   menuOutline,
@@ -52,9 +53,17 @@ import {
   personCircleOutline,
   logOutOutline,
   chevronDownOutline
-} from 'ionicons/icons';
+} from 'ionicons/icons'
+import { activeUser, logout } from '../services/authService'
 
 import '../assets/styles/layouts/header.css'
+
+const router = useRouter()
+
+async function handleLogout() {
+  await logout()
+  router.replace('/login')
+}
 </script>
 
 <style scoped>
@@ -99,6 +108,20 @@ import '../assets/styles/layouts/header.css'
 
 .user-chevron {
   font-size: 14px;
+  opacity: 0.8;
+}
+
+.logout-button {
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logout-button:hover {
   opacity: 0.8;
 }
 </style>
