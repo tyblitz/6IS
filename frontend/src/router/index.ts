@@ -1,8 +1,17 @@
 import { createRouter, createWebHistory } from '@ionic/vue-router'
 import { RouteRecordRaw } from 'vue-router'
+
 import DashboardView from '../views/DashboardView.vue'
 import LoginView from '../views/auth/LoginView.vue'
+
+// Administrator Management Views
 import AdministratorView from '../views/administrator/AdministratorView.vue'
+import AdminInventoryView from '../views/administrator/AdminInventoryView.vue'
+import AdminCommunicationsView from '../views/administrator/AdminCommunicationsView.vue'
+import AdminAccomplishmentsView from '../views/administrator/AdminAccomplishmentsView.vue'
+import AdminUsersView from '../views/administrator/AdminUsersView.vue'
+
+// Operational Views
 import CommunicationsView from '../views/communications/CommunicationsView.vue'
 import InventoryView from '../views/inventory/InventoryView.vue'
 import EquipmentView from '../views/inventory/EquipmentView.vue'
@@ -13,6 +22,7 @@ import AccomplishmentMonthlyView from '../views/accomplishments/AccomplishmentMo
 import AccomplishmentQuarterlyView from '../views/accomplishments/AccomplishmentQuarterlyView.vue'
 import AccomplishmentAnnualView from '../views/accomplishments/AccomplishmentAnnualView.vue'
 import AccomplishmentCustomView from '../views/accomplishments/AccomplishmentCustomView.vue'
+
 import { ModuleName } from '../types/module'
 import { fetchCurrentUser } from '../services/authService'
 
@@ -38,9 +48,11 @@ const routes: Array<RouteRecordRaw> = [
       requiresAuth: true
     }
   },
+
+  // ADMINISTRATOR MANAGEMENT ROUTES (Requires Administrator Role)
   {
     path: '/administrator',
-    name: 'Administrator',
+    name: 'Administrator Overview',
     component: AdministratorView,
     meta: {
       module: ModuleName.Administrator,
@@ -48,6 +60,48 @@ const routes: Array<RouteRecordRaw> = [
       requiresRole: 'Administrator'
     }
   },
+  {
+    path: '/administrator/inventory',
+    name: 'Inventory Management',
+    component: AdminInventoryView,
+    meta: {
+      module: ModuleName.Administrator,
+      requiresAuth: true,
+      requiresRole: 'Administrator'
+    }
+  },
+  {
+    path: '/administrator/communications',
+    name: 'Communications Management',
+    component: AdminCommunicationsView,
+    meta: {
+      module: ModuleName.Administrator,
+      requiresAuth: true,
+      requiresRole: 'Administrator'
+    }
+  },
+  {
+    path: '/administrator/accomplishments',
+    name: 'Accomplishments Management',
+    component: AdminAccomplishmentsView,
+    meta: {
+      module: ModuleName.Administrator,
+      requiresAuth: true,
+      requiresRole: 'Administrator'
+    }
+  },
+  {
+    path: '/administrator/users',
+    name: 'User Management',
+    component: AdminUsersView,
+    meta: {
+      module: ModuleName.Administrator,
+      requiresAuth: true,
+      requiresRole: 'Administrator'
+    }
+  },
+
+  // OPERATIONAL MODULE ROUTES
   {
     path: '/communications',
     name: 'Communications',

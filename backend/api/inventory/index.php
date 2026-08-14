@@ -52,7 +52,6 @@ $view = $_GET['view'] ?? '';
 
 $currentYearMonth = date('Y-m');
 
-// Helper to format YYYY-MM to human label (e.g. "August 2026")
 function formatPeriodLabel($ym) {
     $date = DateTime::createFromFormat('Y-m-d', $ym . '-01');
     return $date ? $date->format('F Y') : $ym;
@@ -85,17 +84,7 @@ if ($method === 'GET') {
 
     // 2. Overview Metrics & Readiness Calculations
     if ($view === 'overview') {
-        // Query Equipment Data for selected period
         if ($isCurrentMonth) {
-            $eqStmt = $pdo->prepare("
-                SELECT equipment_type, status, COUNT(*) as count
-                FROM tbl_inventory_equipment
-                WHERE deleted_at IS NULL
-                GROUP BY equipment_type, status
-            ");
-            $eqStmt->execute();
-            $equipmentCounts = $eqStmt->fetchAll();
-
             $totalStmt = $pdo->query("SELECT COUNT(*) FROM tbl_inventory_equipment WHERE deleted_at IS NULL");
             $totalEquipment = (int)$totalStmt->fetchColumn();
 
@@ -108,15 +97,6 @@ if ($method === 'GET') {
             $turnInStmt = $pdo->query("SELECT COUNT(*) FROM tbl_inventory_equipment WHERE status = 'For Turn-In / Unserviceable' AND deleted_at IS NULL");
             $unserviceableCount = (int)$turnInStmt->fetchColumn();
         } else {
-            $eqStmt = $pdo->prepare("
-                SELECT equipment_type, status, COUNT(*) as count
-                FROM tbl_inventory_history
-                WHERE `year_month` = :period
-                GROUP BY equipment_type, status
-            ");
-            $eqStmt->execute([':period' => $selectedPeriod]);
-            $equipmentCounts = $eqStmt->fetchAll();
-
             $totalStmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_inventory_history WHERE `year_month` = :period");
             $totalStmt->execute([':period' => $selectedPeriod]);
             $totalEquipment = (int)$totalStmt->fetchColumn();
@@ -134,27 +114,22 @@ if ($method === 'GET') {
             $unserviceableCount = (int)$turnInStmt->fetchColumn();
         }
 
-        // Maintenance Readiness Formula: Serviceable / Total * 100
         $maintenanceReadinessPct = $totalEquipment > 0
             ? round(($serviceableCount / $totalEquipment) * 100, 1)
             : 0.0;
 
-        // Query JRRS Target Quantities
         $jrrsStmt = $pdo->query("SELECT equipment_type, target_quantity FROM tbl_inventory_jrrs WHERE deleted_at IS NULL");
         $jrrsTargets = $jrrsStmt->fetchAll();
 
-        // Calculate Equipment Readiness Per Type & Overall
         $totalTargetQty = 0;
         $totalCurrentQty = 0;
 
-        // Process equipment types
         $typeBreakdown = [];
         foreach ($jrrsTargets as $jrrs) {
             $type = $jrrs['equipment_type'];
             $target = (int)$jrrs['target_quantity'];
             $totalTargetQty += $target;
 
-            // Count actual current quantity for this type
             if ($isCurrentMonth) {
                 $cStmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_inventory_equipment WHERE equipment_type = :type AND deleted_at IS NULL");
                 $cStmt->execute([':type' => $type]);
@@ -177,7 +152,6 @@ if ($method === 'GET') {
             ];
         }
 
-        // Overall Equipment Readiness Formula: Total Current Qty / Total Target Qty * 100
         $equipmentReadinessPct = $totalTargetQty > 0
             ? round(($totalCurrentQty / $totalTargetQty) * 100, 1)
             : 0.0;
@@ -266,6 +240,13 @@ if ($method === 'GET') {
             'items' => $result
         ]);
     }
+
+    // 5. Offices reference list
+    if ($view === 'offices') {
+        $stmt = $pdo->query("SELECT id, office_name, office_code, office_abbv FROM tbl_offices WHERE is_active = 1 AND deleted_at IS NULL ORDER BY office_abbv ASC");
+        $offices = $stmt->fetchAll();
+        sendJsonResponse(true, 'Offices retrieved.', $offices);
+    }
 }
 
 // POST Handler (Requires Administrator role for updates/snapshots)
@@ -273,7 +254,7 @@ if ($method === 'POST') {
 
     // 1. Action: update_jrrs (Modify Target Quantity - Admin only)
     if ($action === 'update_jrrs') {
-        requireRole('Administrator'); // Returns HTTP 403 Forbidden for normal users
+        requireRole('Administrator');
 
         $rawInput = file_get_contents('php://input');
         $input = json_decode($rawInput, true);
@@ -298,9 +279,113 @@ if ($method === 'POST') {
         sendJsonResponse(true, "JRRS target quantity for '{$equipmentType}' updated successfully.");
     }
 
-    // 2. Action: generate_snapshot (Create Frozen Snapshot - Admin only)
+    // 2. Action: create_equipment (Add new equipment - Admin only)
+    if ($action === 'create_equipment') {
+        requireRole('Administrator');
+
+        $rawInput = file_get_contents('php://input');
+        $input = json_decode($rawInput, true);
+
+        $officeId = (int)($input['office_id'] ?? 0);
+        $equipmentType = trim($input['equipment_type'] ?? '');
+        $description = trim($input['description'] ?? '');
+        $serialNumber = trim($input['serial_number'] ?? '');
+        $dateAcquired = trim($input['date_acquired'] ?? '');
+        $status = trim($input['status'] ?? 'Serviceable');
+
+        if ($officeId <= 0 || empty($equipmentType) || empty($description)) {
+            sendJsonResponse(false, 'Office, equipment type, and description are required.', null, null, 400);
+        }
+
+        if (!in_array($status, ['Serviceable', 'For Repair', 'For Turn-In / Unserviceable'])) {
+            $status = 'Serviceable';
+        }
+
+        $stmt = $pdo->prepare("
+            INSERT INTO tbl_inventory_equipment (office_id, equipment_type, description, serial_number, date_acquired, status, created_at, updated_at, created_by, modified_by)
+            VALUES (:office_id, :type, :desc, :sn, :date_acq, :status, NOW(), NOW(), :created_by, :modified_by)
+        ");
+        $stmt->execute([
+            ':office_id' => $officeId,
+            ':type' => $equipmentType,
+            ':desc' => $description,
+            ':sn' => $serialNumber ?: null,
+            ':date_acq' => $dateAcquired ?: null,
+            ':status' => $status,
+            ':created_by' => $_SESSION['user_id'],
+            ':modified_by' => $_SESSION['user_id']
+        ]);
+
+        sendJsonResponse(true, "Equipment record created successfully.");
+    }
+
+    // 3. Action: update_equipment (Update equipment - Admin only)
+    if ($action === 'update_equipment') {
+        requireRole('Administrator');
+
+        $rawInput = file_get_contents('php://input');
+        $input = json_decode($rawInput, true);
+
+        $id = (int)($input['id'] ?? 0);
+        $officeId = (int)($input['office_id'] ?? 0);
+        $equipmentType = trim($input['equipment_type'] ?? '');
+        $description = trim($input['description'] ?? '');
+        $serialNumber = trim($input['serial_number'] ?? '');
+        $dateAcquired = trim($input['date_acquired'] ?? '');
+        $status = trim($input['status'] ?? 'Serviceable');
+
+        if ($id <= 0 || $officeId <= 0 || empty($equipmentType) || empty($description)) {
+            sendJsonResponse(false, 'Equipment ID, office, type, and description are required.', null, null, 400);
+        }
+
+        $stmt = $pdo->prepare("
+            UPDATE tbl_inventory_equipment
+            SET office_id = :office_id, equipment_type = :type, description = :desc, serial_number = :sn, date_acquired = :date_acq, status = :status, updated_at = NOW(), modified_by = :modified_by
+            WHERE id = :id AND deleted_at IS NULL
+        ");
+        $stmt->execute([
+            ':office_id' => $officeId,
+            ':type' => $equipmentType,
+            ':desc' => $description,
+            ':sn' => $serialNumber ?: null,
+            ':date_acq' => $dateAcquired ?: null,
+            ':status' => $status,
+            ':modified_by' => $_SESSION['user_id'],
+            ':id' => $id
+        ]);
+
+        sendJsonResponse(true, "Equipment record updated successfully.");
+    }
+
+    // 4. Action: delete_equipment (SOFT DELETE - Admin only)
+    if ($action === 'delete_equipment') {
+        requireRole('Administrator');
+
+        $rawInput = file_get_contents('php://input');
+        $input = json_decode($rawInput, true);
+        $id = (int)($input['id'] ?? 0);
+
+        if ($id <= 0) {
+            sendJsonResponse(false, 'Valid equipment ID is required.', null, null, 400);
+        }
+
+        // SOFT DELETE ONLY - Historical snapshots remain untouched
+        $stmt = $pdo->prepare("
+            UPDATE tbl_inventory_equipment
+            SET deleted_at = NOW(), modified_by = :modified_by
+            WHERE id = :id AND deleted_at IS NULL
+        ");
+        $stmt->execute([
+            ':modified_by' => $_SESSION['user_id'],
+            ':id' => $id
+        ]);
+
+        sendJsonResponse(true, "Equipment record soft-deleted successfully.");
+    }
+
+    // 5. Action: generate_snapshot (Create Frozen Snapshot - Admin only)
     if ($action === 'generate_snapshot') {
-        requireRole('Administrator'); // Returns HTTP 403 Forbidden for normal users
+        requireRole('Administrator');
 
         $rawInput = file_get_contents('php://input');
         $input = json_decode($rawInput, true);
@@ -310,11 +395,9 @@ if ($method === 'POST') {
             sendJsonResponse(false, 'Invalid year_month format. Use YYYY-MM.', null, null, 400);
         }
 
-        // Delete any existing snapshot for targetYm to ensure idempotency
         $delStmt = $pdo->prepare("DELETE FROM tbl_inventory_history WHERE `year_month` = :ym");
         $delStmt->execute([':ym' => $targetYm]);
 
-        // Copy current tbl_inventory_equipment state into tbl_inventory_history
         $snapshotDate = date('Y-m-t', strtotime($targetYm . '-01'));
         $copyStmt = $pdo->prepare("
             INSERT INTO tbl_inventory_history (`year_month`, equipment_id, office_id, equipment_type, description, serial_number, date_acquired, status, snapshot_date, created_at, updated_at)
