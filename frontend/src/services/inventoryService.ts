@@ -5,6 +5,8 @@ import type {
   ReportingPeriod,
   OverviewData,
   EquipmentItem,
+  EquipmentFormPayload,
+  OfficeItem,
   JrrsItem,
   ApiResponse
 } from '../types/inventory'
@@ -86,6 +88,92 @@ export async function fetchEquipmentList(period: string): Promise<ApiResponse<{ 
       success: false,
       message: 'Failed to fetch equipment records.',
       data: { period, period_label: period, is_current: true, items: [] },
+      errors: { network: err.message }
+    }
+  }
+}
+
+/**
+ * Fetches active offices for dropdown selection
+ */
+export async function fetchOffices(): Promise<ApiResponse<OfficeItem[]>> {
+  try {
+    const res = await fetch(`${API_BASE_URL}?view=offices`, {
+      method: 'GET',
+      credentials: 'include'
+    })
+    return await res.json()
+  } catch (err: any) {
+    return {
+      success: false,
+      message: 'Failed to fetch offices.',
+      data: [],
+      errors: { network: err.message }
+    }
+  }
+}
+
+/**
+ * Creates new equipment entry (Current month only)
+ */
+export async function createEquipment(payload: EquipmentFormPayload): Promise<ApiResponse<null>> {
+  try {
+    const res = await fetch(`${API_BASE_URL}?action=create_equipment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    })
+    return await res.json()
+  } catch (err: any) {
+    return {
+      success: false,
+      message: 'Failed to create equipment record.',
+      data: null,
+      errors: { network: err.message }
+    }
+  }
+}
+
+/**
+ * Updates an existing equipment entry (Current month only)
+ */
+export async function updateEquipment(payload: EquipmentFormPayload): Promise<ApiResponse<null>> {
+  try {
+    const res = await fetch(`${API_BASE_URL}?action=update_equipment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    })
+    return await res.json()
+  } catch (err: any) {
+    return {
+      success: false,
+      message: 'Failed to update equipment record.',
+      data: null,
+      errors: { network: err.message }
+    }
+  }
+}
+
+/**
+ * Soft deletes an equipment entry (Current month only)
+ */
+export async function deleteEquipment(id: number): Promise<ApiResponse<null>> {
+  try {
+    const res = await fetch(`${API_BASE_URL}?action=delete_equipment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ id })
+    })
+    return await res.json()
+  } catch (err: any) {
+    return {
+      success: false,
+      message: 'Failed to delete equipment record.',
+      data: null,
       errors: { network: err.message }
     }
   }

@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// Require authenticated session
+// Require authenticated session for all inventory requests
 require_once __DIR__ . '/../../helpers/auth.php';
 requireAuth();
 
@@ -172,8 +172,25 @@ if ($method === 'GET') {
         sendJsonResponse(true, 'Overview summary calculated.', $overviewData);
     }
 
-    // 3. Equipment List Retrieval
+    // 3. Equipment List Retrieval or Single Item
     if ($view === 'equipment') {
+        if (!empty($_GET['id'])) {
+            $id = (int)$_GET['id'];
+            $stmt = $pdo->prepare("
+                SELECT e.id, e.office_id, o.office_abbv, o.office_name, e.equipment_type, e.description, e.serial_number, e.date_acquired, e.status
+                FROM tbl_inventory_equipment e
+                JOIN tbl_offices o ON e.office_id = o.id
+                WHERE e.id = :id AND e.deleted_at IS NULL
+            ");
+            $stmt->execute([':id' => $id]);
+            $item = $stmt->fetch();
+            if ($item) {
+                sendJsonResponse(true, 'Equipment record retrieved.', $item);
+            } else {
+                sendJsonResponse(false, 'Equipment record not found.', null, null, 404);
+            }
+        }
+
         if ($isCurrentMonth) {
             $stmt = $pdo->prepare("
                 SELECT e.id, e.office_id, o.office_abbv, o.office_name, e.equipment_type, e.description, e.serial_number, e.date_acquired, e.status
@@ -241,7 +258,7 @@ if ($method === 'GET') {
         ]);
     }
 
-    // 5. Offices reference list
+    // 5. Offices reference list (Only active offices)
     if ($view === 'offices') {
         $stmt = $pdo->query("SELECT id, office_name, office_code, office_abbv FROM tbl_offices WHERE is_active = 1 AND deleted_at IS NULL ORDER BY office_abbv ASC");
         $offices = $stmt->fetchAll();
@@ -249,10 +266,10 @@ if ($method === 'GET') {
     }
 }
 
-// POST Handler (Requires Administrator role for updates/snapshots)
+// POST Handler
 if ($method === 'POST') {
 
-    // 1. Action: update_jrrs (Modify Target Quantity - Admin only)
+    // 1. Action: update_jrrs (Modify Target Quantity - Administrator only)
     if ($action === 'update_jrrs') {
         requireRole('Administrator');
 
@@ -279,10 +296,8 @@ if ($method === 'POST') {
         sendJsonResponse(true, "JRRS target quantity for '{$equipmentType}' updated successfully.");
     }
 
-    // 2. Action: create_equipment (Add new equipment - Admin only)
+    // 2. Action: create_equipment (Add new equipment - Authenticated users)
     if ($action === 'create_equipment') {
-        requireRole('Administrator');
-
         $rawInput = file_get_contents('php://input');
         $input = json_decode($rawInput, true);
 
@@ -293,8 +308,9 @@ if ($method === 'POST') {
         $dateAcquired = trim($input['date_acquired'] ?? '');
         $status = trim($input['status'] ?? 'Serviceable');
 
-        if ($officeId <= 0 || empty($equipmentType) || empty($description)) {
-            sendJsonResponse(false, 'Office, equipment type, and description are required.', null, null, 400);
+        // Validation: Office, Equipment Type, Serial Number, Date Acquired, and Status are required
+        if ($officeId <= 0 || empty($equipmentType) || empty($serialNumber) || empty($dateAcquired)) {
+            sendJsonResponse(false, 'Office, equipment type, serial number, and date acquired are required.', null, null, 400);
         }
 
         if (!in_array($status, ['Serviceable', 'For Repair', 'For Turn-In / Unserviceable'])) {
@@ -308,9 +324,9 @@ if ($method === 'POST') {
         $stmt->execute([
             ':office_id' => $officeId,
             ':type' => $equipmentType,
-            ':desc' => $description,
-            ':sn' => $serialNumber ?: null,
-            ':date_acq' => $dateAcquired ?: null,
+            ':desc' => $description ?: '',
+            ':sn' => $serialNumber,
+            ':date_acq' => $dateAcquired,
             ':status' => $status,
             ':created_by' => $_SESSION['user_id'],
             ':modified_by' => $_SESSION['user_id']
@@ -319,10 +335,8 @@ if ($method === 'POST') {
         sendJsonResponse(true, "Equipment record created successfully.");
     }
 
-    // 3. Action: update_equipment (Update equipment - Admin only)
+    // 3. Action: update_equipment (Update equipment - Authenticated users)
     if ($action === 'update_equipment') {
-        requireRole('Administrator');
-
         $rawInput = file_get_contents('php://input');
         $input = json_decode($rawInput, true);
 
@@ -334,8 +348,12 @@ if ($method === 'POST') {
         $dateAcquired = trim($input['date_acquired'] ?? '');
         $status = trim($input['status'] ?? 'Serviceable');
 
-        if ($id <= 0 || $officeId <= 0 || empty($equipmentType) || empty($description)) {
-            sendJsonResponse(false, 'Equipment ID, office, type, and description are required.', null, null, 400);
+        if ($id <= 0 || $officeId <= 0 || empty($equipmentType) || empty($serialNumber) || empty($dateAcquired)) {
+            sendJsonResponse(false, 'Equipment ID, office, type, serial number, and date acquired are required.', null, null, 400);
+        }
+
+        if (!in_array($status, ['Serviceable', 'For Repair', 'For Turn-In / Unserviceable'])) {
+            $status = 'Serviceable';
         }
 
         $stmt = $pdo->prepare("
@@ -346,9 +364,9 @@ if ($method === 'POST') {
         $stmt->execute([
             ':office_id' => $officeId,
             ':type' => $equipmentType,
-            ':desc' => $description,
-            ':sn' => $serialNumber ?: null,
-            ':date_acq' => $dateAcquired ?: null,
+            ':desc' => $description ?: '',
+            ':sn' => $serialNumber,
+            ':date_acq' => $dateAcquired,
             ':status' => $status,
             ':modified_by' => $_SESSION['user_id'],
             ':id' => $id
@@ -357,10 +375,8 @@ if ($method === 'POST') {
         sendJsonResponse(true, "Equipment record updated successfully.");
     }
 
-    // 4. Action: delete_equipment (SOFT DELETE - Admin only)
+    // 4. Action: delete_equipment (SOFT DELETE - Authenticated users)
     if ($action === 'delete_equipment') {
-        requireRole('Administrator');
-
         $rawInput = file_get_contents('php://input');
         $input = json_decode($rawInput, true);
         $id = (int)($input['id'] ?? 0);
@@ -383,7 +399,7 @@ if ($method === 'POST') {
         sendJsonResponse(true, "Equipment record soft-deleted successfully.");
     }
 
-    // 5. Action: generate_snapshot (Create Frozen Snapshot - Admin only)
+    // 5. Action: generate_snapshot (Create Frozen Snapshot - Administrator only)
     if ($action === 'generate_snapshot') {
         requireRole('Administrator');
 

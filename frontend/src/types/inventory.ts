@@ -15,6 +15,23 @@ export interface EquipmentItem {
   status: EquipmentStatus
 }
 
+export interface EquipmentFormPayload {
+  id?: number
+  office_id: number
+  equipment_type: string
+  description?: string
+  serial_number: string
+  date_acquired: string
+  status: EquipmentStatus
+}
+
+export interface OfficeItem {
+  id: number
+  office_name: string
+  office_code: string
+  office_abbv: string
+}
+
 export interface JrrsItem {
   id: number
   equipment_type: string
@@ -43,7 +60,7 @@ export interface OverviewData {
   type_breakdown: JrrsItem[]
 }
 
-export interface ApiResponse<T> {
+export interface ApiResponse<T = any> {
   success: boolean
   message: string
   data: T

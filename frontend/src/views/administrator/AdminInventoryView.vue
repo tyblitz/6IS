@@ -136,7 +136,7 @@
               <select id="eqOffice" v-model="eqForm.office_id" class="input-select" required>
                 <option value="0" disabled>Select Office...</option>
                 <option v-for="off in offices" :key="off.id" :value="off.id">
-                  {{ off.office_abbv }} — {{ off.office_name }}
+                  {{ off.office_abbv }}{{ off.office_name ? ' — ' + off.office_name : '' }}
                 </option>
               </select>
             </div>
