@@ -9,6 +9,7 @@ import AdministratorView from '../views/administrator/AdministratorView.vue'
 import AdminInventoryView from '../views/administrator/AdminInventoryView.vue'
 import AdminCommunicationsView from '../views/administrator/AdminCommunicationsView.vue'
 import AdminAccomplishmentsView from '../views/administrator/AdminAccomplishmentsView.vue'
+import AdminAccomplishmentCategoriesView from '../views/administrator/AdminAccomplishmentCategoriesView.vue'
 import AdminUsersView from '../views/administrator/AdminUsersView.vue'
 
 // Operational Views
@@ -84,6 +85,16 @@ const routes: Array<RouteRecordRaw> = [
     path: '/administrator/accomplishments',
     name: 'Accomplishments Management',
     component: AdminAccomplishmentsView,
+    meta: {
+      module: ModuleName.Administrator,
+      requiresAuth: true,
+      requiresRole: 'Administrator'
+    }
+  },
+  {
+    path: '/administrator/accomplishments/categories',
+    name: 'Accomplishment Categories',
+    component: AdminAccomplishmentCategoriesView,
     meta: {
       module: ModuleName.Administrator,
       requiresAuth: true,

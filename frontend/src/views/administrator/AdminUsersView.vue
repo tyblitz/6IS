@@ -279,14 +279,7 @@ async function handleToggleActive(user: UserAccount) {
   }
 }
 
-function formatDate(dateStr: string) {
-  if (!dateStr) return 'N/A'
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  })
-}
+import { formatDate } from '../../utils/dateUtils'
 
 onMounted(() => {
   loadUsers()

@@ -8,11 +8,20 @@ import type {
   AccomplishmentFormPayload
 } from '../types/accomplishment'
 
-const API_BASE_URL = 'http://localhost/6IS/backend/api/accomplishments/index.php'
+function resolveApiUrl(): string {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname || 'localhost'
+    const protocol = window.location.protocol || 'http:'
+    return `${protocol}//${host}/6IS/backend/api/accomplishments/index.php`
+  }
+  return 'http://localhost/6IS/backend/api/accomplishments/index.php'
+}
+
+const API_BASE_URL = resolveApiUrl()
 
 export async function fetchAccomplishmentOptions(): Promise<ApiResponse<AccomplishmentOptions>> {
   try {
-    const res = await fetch(`${API_BASE_URL}?view=options`)
+    const res = await fetch(`${API_BASE_URL}?view=options`, { credentials: 'include' })
     return await res.json()
   } catch (err: any) {
     return { success: false, message: 'Failed to connect to backend.', data: null, errors: { network: err.message } }
@@ -21,7 +30,7 @@ export async function fetchAccomplishmentOptions(): Promise<ApiResponse<Accompli
 
 export async function fetchOverviewSummary(): Promise<ApiResponse<OverviewSummary>> {
   try {
-    const res = await fetch(`${API_BASE_URL}?view=overview`)
+    const res = await fetch(`${API_BASE_URL}?view=overview`, { credentials: 'include' })
     return await res.json()
   } catch (err: any) {
     return { success: false, message: 'Failed to connect to backend.', data: null, errors: { network: err.message } }
@@ -30,7 +39,7 @@ export async function fetchOverviewSummary(): Promise<ApiResponse<OverviewSummar
 
 export async function fetchAccomplishmentById(id: number): Promise<ApiResponse<AccomplishmentItem>> {
   try {
-    const res = await fetch(`${API_BASE_URL}?id=${id}`)
+    const res = await fetch(`${API_BASE_URL}?id=${id}`, { credentials: 'include' })
     return await res.json()
   } catch (err: any) {
     return { success: false, message: 'Failed to connect to backend.', data: null, errors: { network: err.message } }
@@ -50,7 +59,7 @@ export async function fetchDailyAccomplishments(
     if (categoryId && categoryId > 0) params.append('category_id', categoryId.toString())
     if (search) params.append('search', search)
 
-    const res = await fetch(`${API_BASE_URL}?${params.toString()}`)
+    const res = await fetch(`${API_BASE_URL}?${params.toString()}`, { credentials: 'include' })
     return await res.json()
   } catch (err: any) {
     return { success: false, message: 'Failed to connect to backend.', data: null, errors: { network: err.message } }
@@ -66,61 +75,15 @@ export async function fetchMonthlyAccomplishments(
     if (year) params.append('year', year.toString())
     if (month) params.append('month', month.toString())
 
-    const res = await fetch(`${API_BASE_URL}?${params.toString()}`)
-    const data = await res.json()
-    if (data.success && data.data) {
-      if (!data.data.accomplishments_by_category || data.data.accomplishments_by_category.length === 0) {
-        data.data.accomplishments_by_category = [
-          { category_id: 1, category_name: 'Installation of Public Address System (PAS)', category_code: 'PAS', count: 6 },
-          { category_id: 2, category_name: 'Conducted Repair and Maintenance of ICT Equipment', category_code: 'ICT Repair', count: 5 },
-          { category_id: 3, category_name: 'Supervised/Assisted TELCO Personnel', category_code: 'TELCO', count: 5 },
-          { category_id: 4, category_name: 'LED Board Support', category_code: 'LED', count: 4 }
-        ]
-      }
-      if (!data.data.outgoing_comms_by_category || data.data.outgoing_comms_by_category.length === 0) {
-        data.data.outgoing_comms_by_category = [
-          { category_id: 1, category_name: 'Disposition Form (DF)', category_code: 'DF', count: 4 },
-          { category_id: 2, category_name: 'Summary Disposition Form (SDF)', category_code: 'SDF', count: 2 },
-          { category_id: 3, category_name: 'Subject to Letter (STL)', category_code: 'STL', count: 2 },
-          { category_id: 4, category_name: 'Memorandum (Memo)', category_code: 'Memo', count: 1 },
-          { category_id: 5, category_name: 'Standard Operating Procedure (SOP)', category_code: 'SOP', count: 1 }
-        ]
-      }
-      if (!data.data.clearances_by_purpose || data.data.clearances_by_purpose.length === 0) {
-        data.data.clearances_by_purpose = [
-          { purpose_id: 1, purpose_name: 'Access Pass', count: 3 }
-        ]
-      }
-      return data
-    }
+    const res = await fetch(`${API_BASE_URL}?${params.toString()}`, { credentials: 'include' })
+    return await res.json()
   } catch (err: any) {
-    // Fallback below
-  }
-
-  return {
-    success: true,
-    message: 'Monthly accomplishment summary loaded.',
-    data: {
-      records: [],
-      accomplishments_by_category: [
-        { category_id: 1, category_name: 'Installation of Public Address System (PAS)', category_code: 'PAS', count: 6 },
-        { category_id: 2, category_name: 'Conducted Repair and Maintenance of ICT Equipment', category_code: 'ICT Repair', count: 5 },
-        { category_id: 3, category_name: 'Supervised/Assisted TELCO Personnel', category_code: 'TELCO', count: 5 },
-        { category_id: 4, category_name: 'LED Board Support', category_code: 'LED', count: 4 }
-      ],
-      outgoing_comms_by_category: [
-        { category_id: 1, category_name: 'Disposition Form (DF)', category_code: 'DF', count: 4 },
-        { category_id: 2, category_name: 'Summary Disposition Form (SDF)', category_code: 'SDF', count: 2 },
-        { category_id: 3, category_name: 'Subject to Letter (STL)', category_code: 'STL', count: 2 },
-        { category_id: 4, category_name: 'Memorandum (Memo)', category_code: 'Memo', count: 1 },
-        { category_id: 5, category_name: 'Standard Operating Procedure (SOP)', category_code: 'SOP', count: 1 }
-      ],
-      clearances_by_purpose: [
-        { purpose_id: 1, purpose_name: 'Access Pass', count: 3 }
-      ],
-      communications_stats: { incoming: 0, outgoing: 10 }
-    },
-    errors: null
+    return {
+      success: false,
+      message: 'Failed to fetch monthly accomplishments.',
+      data: { records: [], accomplishments_by_category: [], outgoing_comms_by_category: [], clearances_by_purpose: [], communications_stats: { incoming: 0, outgoing: 0 } },
+      errors: { network: err.message }
+    }
   }
 }
 
@@ -133,61 +96,15 @@ export async function fetchQuarterlyAccomplishments(
     if (year) params.append('year', year.toString())
     if (quarter) params.append('quarter', quarter.toString())
 
-    const res = await fetch(`${API_BASE_URL}?${params.toString()}`)
-    const data = await res.json()
-    if (data.success && data.data) {
-      if (!data.data.accomplishments_by_category || data.data.accomplishments_by_category.length === 0) {
-        data.data.accomplishments_by_category = [
-          { category_id: 1, category_name: 'Installation of Public Address System (PAS)', category_code: 'PAS', count: 12 },
-          { category_id: 2, category_name: 'Conducted Repair and Maintenance of ICT Equipment', category_code: 'ICT Repair', count: 15 },
-          { category_id: 3, category_name: 'Supervised/Assisted TELCO Personnel', category_code: 'TELCO', count: 10 },
-          { category_id: 4, category_name: 'LED Board Support', category_code: 'LED', count: 8 }
-        ]
-      }
-      if (!data.data.outgoing_comms_by_category || data.data.outgoing_comms_by_category.length === 0) {
-        data.data.outgoing_comms_by_category = [
-          { category_id: 1, category_name: 'Disposition Form (DF)', category_code: 'DF', count: 10 },
-          { category_id: 2, category_name: 'Summary Disposition Form (SDF)', category_code: 'SDF', count: 6 },
-          { category_id: 3, category_name: 'Subject to Letter (STL)', category_code: 'STL', count: 5 },
-          { category_id: 4, category_name: 'Memorandum (Memo)', category_code: 'Memo', count: 4 },
-          { category_id: 5, category_name: 'Standard Operating Procedure (SOP)', category_code: 'SOP', count: 2 }
-        ]
-      }
-      if (!data.data.clearances_by_purpose || data.data.clearances_by_purpose.length === 0) {
-        data.data.clearances_by_purpose = [
-          { purpose_id: 1, purpose_name: 'Access Pass', count: 8 }
-        ]
-      }
-      return data
-    }
+    const res = await fetch(`${API_BASE_URL}?${params.toString()}`, { credentials: 'include' })
+    return await res.json()
   } catch (err: any) {
-    // Fallback below
-  }
-
-  return {
-    success: true,
-    message: 'Quarterly accomplishment summary loaded.',
-    data: {
-      records: [],
-      accomplishments_by_category: [
-        { category_id: 1, category_name: 'Installation of Public Address System (PAS)', category_code: 'PAS', count: 12 },
-        { category_id: 2, category_name: 'Conducted Repair and Maintenance of ICT Equipment', category_code: 'ICT Repair', count: 15 },
-        { category_id: 3, category_name: 'Supervised/Assisted TELCO Personnel', category_code: 'TELCO', count: 10 },
-        { category_id: 4, category_name: 'LED Board Support', category_code: 'LED', count: 8 }
-      ],
-      outgoing_comms_by_category: [
-        { category_id: 1, category_name: 'Disposition Form (DF)', category_code: 'DF', count: 10 },
-        { category_id: 2, category_name: 'Summary Disposition Form (SDF)', category_code: 'SDF', count: 6 },
-        { category_id: 3, category_name: 'Subject to Letter (STL)', category_code: 'STL', count: 5 },
-        { category_id: 4, category_name: 'Memorandum (Memo)', category_code: 'Memo', count: 4 },
-        { category_id: 5, category_name: 'Standard Operating Procedure (SOP)', category_code: 'SOP', count: 2 }
-      ],
-      clearances_by_purpose: [
-        { purpose_id: 1, purpose_name: 'Access Pass', count: 8 }
-      ],
-      communications_stats: { incoming: 0, outgoing: 27 }
-    },
-    errors: null
+    return {
+      success: false,
+      message: 'Failed to fetch quarterly accomplishments.',
+      data: { records: [], accomplishments_by_category: [], outgoing_comms_by_category: [], clearances_by_purpose: [], communications_stats: { incoming: 0, outgoing: 0 } },
+      errors: { network: err.message }
+    }
   }
 }
 
@@ -198,61 +115,15 @@ export async function fetchAnnualAccomplishments(
     const params = new URLSearchParams({ view: 'annual' })
     if (year) params.append('year', year.toString())
 
-    const res = await fetch(`${API_BASE_URL}?${params.toString()}`)
-    const data = await res.json()
-    if (data.success && data.data) {
-      if (!data.data.accomplishments_by_category || data.data.accomplishments_by_category.length === 0) {
-        data.data.accomplishments_by_category = [
-          { category_id: 1, category_name: 'Installation of Public Address System (PAS)', category_code: 'PAS', count: 48 },
-          { category_id: 2, category_name: 'Conducted Repair and Maintenance of ICT Equipment', category_code: 'ICT Repair', count: 60 },
-          { category_id: 3, category_name: 'Supervised/Assisted TELCO Personnel', category_code: 'TELCO', count: 40 },
-          { category_id: 4, category_name: 'LED Board Support', category_code: 'LED', count: 32 }
-        ]
-      }
-      if (!data.data.outgoing_comms_by_category || data.data.outgoing_comms_by_category.length === 0) {
-        data.data.outgoing_comms_by_category = [
-          { category_id: 1, category_name: 'Disposition Form (DF)', category_code: 'DF', count: 40 },
-          { category_id: 2, category_name: 'Summary Disposition Form (SDF)', category_code: 'SDF', count: 24 },
-          { category_id: 3, category_name: 'Subject to Letter (STL)', category_code: 'STL', count: 20 },
-          { category_id: 4, category_name: 'Memorandum (Memo)', category_code: 'Memo', count: 16 },
-          { category_id: 5, category_name: 'Standard Operating Procedure (SOP)', category_code: 'SOP', count: 8 }
-        ]
-      }
-      if (!data.data.clearances_by_purpose || data.data.clearances_by_purpose.length === 0) {
-        data.data.clearances_by_purpose = [
-          { purpose_id: 1, purpose_name: 'Access Pass', count: 32 }
-        ]
-      }
-      return data
-    }
+    const res = await fetch(`${API_BASE_URL}?${params.toString()}`, { credentials: 'include' })
+    return await res.json()
   } catch (err: any) {
-    // Fallback below
-  }
-
-  return {
-    success: true,
-    message: 'Annual accomplishment summary loaded.',
-    data: {
-      records: [],
-      accomplishments_by_category: [
-        { category_id: 1, category_name: 'Installation of Public Address System (PAS)', category_code: 'PAS', count: 48 },
-        { category_id: 2, category_name: 'Conducted Repair and Maintenance of ICT Equipment', category_code: 'ICT Repair', count: 60 },
-        { category_id: 3, category_name: 'Supervised/Assisted TELCO Personnel', category_code: 'TELCO', count: 40 },
-        { category_id: 4, category_name: 'LED Board Support', category_code: 'LED', count: 32 }
-      ],
-      outgoing_comms_by_category: [
-        { category_id: 1, category_name: 'Disposition Form (DF)', category_code: 'DF', count: 40 },
-        { category_id: 2, category_name: 'Summary Disposition Form (SDF)', category_code: 'SDF', count: 24 },
-        { category_id: 3, category_name: 'Subject to Letter (STL)', category_code: 'STL', count: 20 },
-        { category_id: 4, category_name: 'Memorandum (Memo)', category_code: 'Memo', count: 16 },
-        { category_id: 5, category_name: 'Standard Operating Procedure (SOP)', category_code: 'SOP', count: 8 }
-      ],
-      clearances_by_purpose: [
-        { purpose_id: 1, purpose_name: 'Access Pass', count: 32 }
-      ],
-      communications_stats: { incoming: 0, outgoing: 108 }
-    },
-    errors: null
+    return {
+      success: false,
+      message: 'Failed to fetch annual accomplishments.',
+      data: { records: [], accomplishments_by_category: [], outgoing_comms_by_category: [], clearances_by_purpose: [], communications_stats: { incoming: 0, outgoing: 0 } },
+      errors: { network: err.message }
+    }
   }
 }
 
@@ -267,61 +138,15 @@ export async function fetchCustomPeriodAccomplishments(
       end_date: endDate
     })
 
-    const res = await fetch(`${API_BASE_URL}?${params.toString()}`)
-    const data = await res.json()
-    if (data.success && data.data) {
-      if (!data.data.accomplishments_by_category || data.data.accomplishments_by_category.length === 0) {
-        data.data.accomplishments_by_category = [
-          { category_id: 1, category_name: 'Installation of Public Address System (PAS)', category_code: 'PAS', count: 8 },
-          { category_id: 2, category_name: 'Conducted Repair and Maintenance of ICT Equipment', category_code: 'ICT Repair', count: 10 },
-          { category_id: 3, category_name: 'Supervised/Assisted TELCO Personnel', category_code: 'TELCO', count: 7 },
-          { category_id: 4, category_name: 'LED Board Support', category_code: 'LED', count: 5 }
-        ]
-      }
-      if (!data.data.outgoing_comms_by_category || data.data.outgoing_comms_by_category.length === 0) {
-        data.data.outgoing_comms_by_category = [
-          { category_id: 1, category_name: 'Disposition Form (DF)', category_code: 'DF', count: 6 },
-          { category_id: 2, category_name: 'Summary Disposition Form (SDF)', category_code: 'SDF', count: 3 },
-          { category_id: 3, category_name: 'Subject to Letter (STL)', category_code: 'STL', count: 4 },
-          { category_id: 4, category_name: 'Memorandum (Memo)', category_code: 'Memo', count: 3 },
-          { category_id: 5, category_name: 'Standard Operating Procedure (SOP)', category_code: 'SOP', count: 1 }
-        ]
-      }
-      if (!data.data.clearances_by_purpose || data.data.clearances_by_purpose.length === 0) {
-        data.data.clearances_by_purpose = [
-          { purpose_id: 1, purpose_name: 'Access Pass', count: 5 }
-        ]
-      }
-      return data
-    }
+    const res = await fetch(`${API_BASE_URL}?${params.toString()}`, { credentials: 'include' })
+    return await res.json()
   } catch (err: any) {
-    // Fallback below
-  }
-
-  return {
-    success: true,
-    message: 'Custom period accomplishment summary loaded.',
-    data: {
-      records: [],
-      accomplishments_by_category: [
-        { category_id: 1, category_name: 'Installation of Public Address System (PAS)', category_code: 'PAS', count: 8 },
-        { category_id: 2, category_name: 'Conducted Repair and Maintenance of ICT Equipment', category_code: 'ICT Repair', count: 10 },
-        { category_id: 3, category_name: 'Supervised/Assisted TELCO Personnel', category_code: 'TELCO', count: 7 },
-        { category_id: 4, category_name: 'LED Board Support', category_code: 'LED', count: 5 }
-      ],
-      outgoing_comms_by_category: [
-        { category_id: 1, category_name: 'Disposition Form (DF)', category_code: 'DF', count: 6 },
-        { category_id: 2, category_name: 'Summary Disposition Form (SDF)', category_code: 'SDF', count: 3 },
-        { category_id: 3, category_name: 'Subject to Letter (STL)', category_code: 'STL', count: 4 },
-        { category_id: 4, category_name: 'Memorandum (Memo)', category_code: 'Memo', count: 3 },
-        { category_id: 5, category_name: 'Standard Operating Procedure (SOP)', category_code: 'SOP', count: 1 }
-      ],
-      clearances_by_purpose: [
-        { purpose_id: 1, purpose_name: 'Access Pass', count: 5 }
-      ],
-      communications_stats: { incoming: 0, outgoing: 17 }
-    },
-    errors: null
+    return {
+      success: false,
+      message: 'Failed to fetch custom period accomplishments.',
+      data: { records: [], accomplishments_by_category: [], outgoing_comms_by_category: [], clearances_by_purpose: [], communications_stats: { incoming: 0, outgoing: 0 } },
+      errors: { network: err.message }
+    }
   }
 }
 
@@ -330,6 +155,7 @@ export async function createAccomplishment(payload: AccomplishmentFormPayload): 
     const res = await fetch(API_BASE_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(payload)
     })
     return await res.json()
@@ -343,6 +169,7 @@ export async function updateAccomplishment(id: number, payload: AccomplishmentFo
     const res = await fetch(`${API_BASE_URL}?id=${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(payload)
     })
     return await res.json()
@@ -354,7 +181,8 @@ export async function updateAccomplishment(id: number, payload: AccomplishmentFo
 export async function deleteAccomplishment(id: number): Promise<ApiResponse> {
   try {
     const res = await fetch(`${API_BASE_URL}?id=${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      credentials: 'include'
     })
     return await res.json()
   } catch (err: any) {

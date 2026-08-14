@@ -64,7 +64,7 @@
                 <td class="font-bold">{{ item.equipment_type }}</td>
                 <td>{{ item.description }}</td>
                 <td class="code-text">{{ item.serial_number || 'N/A' }}</td>
-                <td>{{ item.date_acquired || 'N/A' }}</td>
+                <td>{{ formatDate(item.date_acquired) }}</td>
                 <td class="text-center">
                   <span :class="['status-badge', getStatusClass(item.status)]">{{ item.status }}</span>
                 </td>
@@ -76,7 +76,7 @@
                     </button>
                     <button class="action-btn delete-btn" @click="handleSoftDeleteEquipment(item)">
                       <ion-icon :icon="trashOutline" />
-                      <span>Soft Delete</span>
+                      <span>Delete</span>
                     </button>
                   </div>
                 </td>
@@ -229,6 +229,7 @@ import {
 } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
+import { formatDate } from '../../utils/dateUtils'
 import {
   fetchEquipmentList,
   fetchJrrsList,

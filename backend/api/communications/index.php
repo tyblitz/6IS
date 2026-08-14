@@ -55,14 +55,14 @@ if ($method === 'GET') {
     // 1. List Communications
     if ($view === '' || $view === 'communications') {
         $stmt = $pdo->query("
-            SELECT c.id, c.control_number, c.comm_type, c.comm_date, c.subject, c.originating_office_id, o.office_abbv as originating_office,
-                   c.category_id, cat.category_name, c.purpose_id, p.purpose_name, c.status, c.remarks, c.created_at
+            SELECT c.id, c.communication_type, c.communication_date, c.subject, c.office_id, o.office_abbv as originating_office,
+                   c.category_id, cat.name as category_name, c.purpose_id, p.name as purpose_name, c.status, c.created_at
             FROM tbl_communications c
-            LEFT JOIN tbl_offices o ON c.originating_office_id = o.id
+            LEFT JOIN tbl_offices o ON c.office_id = o.id
             LEFT JOIN tbl_communication_categories cat ON c.category_id = cat.id
             LEFT JOIN tbl_communication_purposes p ON c.purpose_id = p.id
             WHERE c.deleted_at IS NULL
-            ORDER BY c.comm_date DESC, c.id DESC
+            ORDER BY c.communication_date DESC, c.id DESC
         ");
         $comms = $stmt->fetchAll();
         sendJsonResponse(true, 'Communications retrieved.', $comms);
@@ -70,14 +70,14 @@ if ($method === 'GET') {
 
     // 2. List Categories
     if ($view === 'categories') {
-        $stmt = $pdo->query("SELECT id, category_name, description, is_active FROM tbl_communication_categories WHERE deleted_at IS NULL ORDER BY category_name ASC");
+        $stmt = $pdo->query("SELECT id, name as category_name, code, is_active FROM tbl_communication_categories WHERE deleted_at IS NULL ORDER BY name ASC");
         $categories = $stmt->fetchAll();
         sendJsonResponse(true, 'Communication categories retrieved.', $categories);
     }
 
     // 3. List Purposes
     if ($view === 'purposes') {
-        $stmt = $pdo->query("SELECT id, purpose_name, description, is_active FROM tbl_communication_purposes WHERE deleted_at IS NULL ORDER BY purpose_name ASC");
+        $stmt = $pdo->query("SELECT id, name as purpose_name, is_active FROM tbl_communication_purposes WHERE deleted_at IS NULL ORDER BY name ASC");
         $purposes = $stmt->fetchAll();
         sendJsonResponse(true, 'Communication purposes retrieved.', $purposes);
     }
@@ -92,32 +92,28 @@ if ($method === 'POST') {
 
     // 1. Create Communication
     if ($action === 'create_communication') {
-        $controlNumber = trim($input['control_number'] ?? '');
-        $commType = trim($input['comm_type'] ?? 'Incoming');
-        $commDate = trim($input['comm_date'] ?? date('Y-m-d'));
+        $commType = trim($input['communication_type'] ?? 'Incoming');
+        $commDate = trim($input['communication_date'] ?? date('Y-m-d'));
         $subject = trim($input['subject'] ?? '');
-        $officeId = (int)($input['originating_office_id'] ?? 1);
+        $officeId = (int)($input['office_id'] ?? 1);
         $categoryId = (int)($input['category_id'] ?? 1);
         $purposeId = (int)($input['purpose_id'] ?? 1);
-        $remarks = trim($input['remarks'] ?? '');
 
-        if (empty($controlNumber) || empty($subject)) {
-            sendJsonResponse(false, 'Control number and subject are required.', null, null, 400);
+        if (empty($subject)) {
+            sendJsonResponse(false, 'Subject is required.', null, null, 400);
         }
 
         $stmt = $pdo->prepare("
-            INSERT INTO tbl_communications (control_number, comm_type, comm_date, subject, originating_office_id, category_id, purpose_id, remarks, created_at, updated_at, created_by, modified_by)
-            VALUES (:control_num, :type, :date, :subject, :office_id, :cat_id, :purpose_id, :remarks, NOW(), NOW(), :created_by, :modified_by)
+            INSERT INTO tbl_communications (communication_type, office_id, category_id, purpose_id, subject, communication_date, status, created_at, updated_at, created_by, modified_by)
+            VALUES (:type, :office_id, :cat_id, :purpose_id, :subject, :date, 'Pending', NOW(), NOW(), :created_by, :modified_by)
         ");
         $stmt->execute([
-            ':control_num' => $controlNumber,
             ':type' => $commType,
-            ':date' => $commDate,
-            ':subject' => $subject,
             ':office_id' => $officeId,
             ':cat_id' => $categoryId,
             ':purpose_id' => $purposeId,
-            ':remarks' => $remarks,
+            ':subject' => $subject,
+            ':date' => $commDate,
             ':created_by' => $_SESSION['user_id'],
             ':modified_by' => $_SESSION['user_id']
         ]);
@@ -141,17 +137,17 @@ if ($method === 'POST') {
     // 3. Save Category (Add / Update)
     if ($action === 'save_category') {
         $name = trim($input['category_name'] ?? '');
-        $desc = trim($input['description'] ?? '');
+        $code = trim($input['code'] ?? '');
         if (empty($name)) {
             sendJsonResponse(false, 'Category name is required.', null, null, 400);
         }
 
         $stmt = $pdo->prepare("
-            INSERT INTO tbl_communication_categories (category_name, description, is_active, created_at, updated_at)
-            VALUES (:name, :desc, 1, NOW(), NOW())
-            ON DUPLICATE KEY UPDATE description = VALUES(description), updated_at = NOW()
+            INSERT INTO tbl_communication_categories (name, code, is_active, created_at, updated_at)
+            VALUES (:name, :code, 1, NOW(), NOW())
+            ON DUPLICATE KEY UPDATE code = VALUES(code), updated_at = NOW()
         ");
-        $stmt->execute([':name' => $name, ':desc' => $desc]);
+        $stmt->execute([':name' => $name, ':code' => $code ?: null]);
 
         sendJsonResponse(true, "Communication category '{$name}' saved successfully.");
     }
@@ -159,17 +155,16 @@ if ($method === 'POST') {
     // 4. Save Purpose (Add / Update)
     if ($action === 'save_purpose') {
         $name = trim($input['purpose_name'] ?? '');
-        $desc = trim($input['description'] ?? '');
         if (empty($name)) {
             sendJsonResponse(false, 'Purpose name is required.', null, null, 400);
         }
 
         $stmt = $pdo->prepare("
-            INSERT INTO tbl_communication_purposes (purpose_name, description, is_active, created_at, updated_at)
-            VALUES (:name, :desc, 1, NOW(), NOW())
-            ON DUPLICATE KEY UPDATE description = VALUES(description), updated_at = NOW()
+            INSERT INTO tbl_communication_purposes (name, is_active, created_at, updated_at)
+            VALUES (:name, 1, NOW(), NOW())
+            ON DUPLICATE KEY UPDATE updated_at = NOW()
         ");
-        $stmt->execute([':name' => $name, ':desc' => $desc]);
+        $stmt->execute([':name' => $name]);
 
         sendJsonResponse(true, "Communication purpose '{$name}' saved successfully.");
     }

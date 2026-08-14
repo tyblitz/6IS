@@ -56,35 +56,43 @@
           <p>Loading communications...</p>
         </div>
 
+        <div v-else-if="commsList.length === 0" class="empty-state">
+          <p>No communications found.</p>
+        </div>
+
         <div v-else class="table-responsive">
           <table class="data-table">
             <thead>
               <tr>
-                <th>Control #</th>
                 <th>Type</th>
                 <th>Date</th>
                 <th>Subject</th>
                 <th>Originating Office</th>
                 <th>Category</th>
+                <th>Purpose</th>
+                <th class="text-center">Status</th>
                 <th class="text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="item in commsList" :key="item.id">
-                <td class="font-bold code-text">{{ item.control_number }}</td>
                 <td>
-                  <span :class="['type-badge', item.comm_type === 'Incoming' ? 'type-in' : 'type-out']">
-                    {{ item.comm_type }}
+                  <span :class="['type-badge', item.communication_type === 'Incoming' ? 'type-in' : 'type-out']">
+                    {{ item.communication_type }}
                   </span>
                 </td>
-                <td>{{ item.comm_date }}</td>
+                <td>{{ formatDate(item.communication_date) }}</td>
                 <td class="font-semibold">{{ item.subject }}</td>
                 <td><span class="office-tag">{{ item.originating_office || 'N/A' }}</span></td>
                 <td>{{ item.category_name || 'N/A' }}</td>
+                <td>{{ item.purpose_name || 'N/A' }}</td>
+                <td class="text-center">
+                  <span class="status-badge status-active">{{ item.status || 'Pending' }}</span>
+                </td>
                 <td class="text-center">
                   <button class="action-btn delete-btn" @click="handleSoftDeleteComm(item)">
                     <ion-icon :icon="trashOutline" />
-                    <span>Soft Delete</span>
+                    <span>Delete</span>
                   </button>
                 </td>
               </tr>
@@ -96,7 +104,7 @@
       <!-- TAB 2: CATEGORIES -->
       <div v-if="activeTab === 'categories'" class="table-card">
         <div class="table-card-header">
-          <h3>Communication Categories</h3>
+          <h3>Communication Categories ({{ categoryList.length }})</h3>
         </div>
 
         <div v-if="loading" class="loading-state">
@@ -104,19 +112,23 @@
           <p>Loading categories...</p>
         </div>
 
+        <div v-else-if="categoryList.length === 0" class="empty-state">
+          <p>No categories found.</p>
+        </div>
+
         <div v-else class="table-responsive">
           <table class="data-table">
             <thead>
               <tr>
                 <th>Category Name</th>
-                <th>Description</th>
+                <th>Code</th>
                 <th class="text-center">Status</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="cat in categoryList" :key="cat.id">
                 <td class="font-bold">{{ cat.category_name }}</td>
-                <td>{{ cat.description || 'N/A' }}</td>
+                <td class="code-text">{{ cat.code || 'N/A' }}</td>
                 <td class="text-center">
                   <span :class="['status-badge', cat.is_active === 1 ? 'status-active' : 'status-inactive']">
                     {{ cat.is_active === 1 ? 'Active' : 'Inactive' }}
@@ -131,7 +143,7 @@
       <!-- TAB 3: PURPOSES -->
       <div v-if="activeTab === 'purposes'" class="table-card">
         <div class="table-card-header">
-          <h3>Communication Purposes</h3>
+          <h3>Communication Purposes ({{ purposeList.length }})</h3>
         </div>
 
         <div v-if="loading" class="loading-state">
@@ -139,19 +151,21 @@
           <p>Loading purposes...</p>
         </div>
 
+        <div v-else-if="purposeList.length === 0" class="empty-state">
+          <p>No purposes found.</p>
+        </div>
+
         <div v-else class="table-responsive">
           <table class="data-table">
             <thead>
               <tr>
                 <th>Purpose Name</th>
-                <th>Description</th>
                 <th class="text-center">Status</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="p in purposeList" :key="p.id">
                 <td class="font-bold">{{ p.purpose_name }}</td>
-                <td>{{ p.description || 'N/A' }}</td>
                 <td class="text-center">
                   <span :class="['status-badge', p.is_active === 1 ? 'status-active' : 'status-inactive']">
                     {{ p.is_active === 1 ? 'Active' : 'Inactive' }}
@@ -173,13 +187,8 @@
 
           <form @submit.prevent="handleSaveComm" class="modal-body">
             <div class="form-group">
-              <label for="commCtrl">Control Number</label>
-              <input id="commCtrl" v-model="commForm.control_number" type="text" placeholder="e.g. COMM-2026-001" required class="input-text" />
-            </div>
-
-            <div class="form-group">
               <label for="commType">Type</label>
-              <select id="commType" v-model="commForm.comm_type" class="input-select" required>
+              <select id="commType" v-model="commForm.communication_type" class="input-select" required>
                 <option value="Incoming">Incoming</option>
                 <option value="Outgoing">Outgoing</option>
               </select>
@@ -187,12 +196,36 @@
 
             <div class="form-group">
               <label for="commDate">Communication Date</label>
-              <input id="commDate" v-model="commForm.comm_date" type="date" required class="input-text" />
+              <input id="commDate" v-model="commForm.communication_date" type="date" required class="input-text" />
             </div>
 
             <div class="form-group">
               <label for="commSubject">Subject / Title</label>
               <input id="commSubject" v-model="commForm.subject" type="text" placeholder="Enter communication subject" required class="input-text" />
+            </div>
+
+            <div class="form-group">
+              <label for="commOffice">Originating Office</label>
+              <select id="commOffice" v-model="commForm.office_id" class="input-select" required>
+                <option value="1">OG1</option>
+                <option value="2">ESG</option>
+                <option value="3">MOC</option>
+                <option value="4">OG3</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="commCategory">Category</label>
+              <select id="commCategory" v-model="commForm.category_id" class="input-select" required>
+                <option v-for="cat in categoryList" :key="cat.id" :value="cat.id">{{ cat.category_name }}</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="commPurpose">Purpose</label>
+              <select id="commPurpose" v-model="commForm.purpose_id" class="input-select" required>
+                <option v-for="p in purposeList" :key="p.id" :value="p.id">{{ p.purpose_name }}</option>
+              </select>
             </div>
 
             <div v-if="modalError" class="modal-error">{{ modalError }}</div>
@@ -222,8 +255,8 @@
             </div>
 
             <div class="form-group">
-              <label for="catDesc">Description</label>
-              <input id="catDesc" v-model="catForm.description" type="text" placeholder="Description..." class="input-text" />
+              <label for="catCode">Code (Optional)</label>
+              <input id="catCode" v-model="catForm.code" type="text" placeholder="e.g. DIR" class="input-text" />
             </div>
 
             <div v-if="modalError" class="modal-error">{{ modalError }}</div>
@@ -248,11 +281,6 @@
             <div class="form-group">
               <label for="pName">Purpose Name</label>
               <input id="pName" v-model="purposeForm.purpose_name" type="text" placeholder="e.g. Information" required class="input-text" />
-            </div>
-
-            <div class="form-group">
-              <label for="pDesc">Description</label>
-              <input id="pDesc" v-model="purposeForm.description" type="text" placeholder="Description..." class="input-text" />
             </div>
 
             <div v-if="modalError" class="modal-error">{{ modalError }}</div>
@@ -281,6 +309,7 @@ import {
 } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
+import { formatDate } from '../../utils/dateUtils'
 
 const activeTab = ref<'comms' | 'categories' | 'purposes'>('comms')
 const commsList = ref<any[]>([])
@@ -290,21 +319,19 @@ const loading = ref(true)
 
 const showCommModal = ref(false)
 const commForm = ref({
-  control_number: '',
-  comm_type: 'Incoming',
-  comm_date: new Date().toISOString().slice(0, 10),
+  communication_type: 'Incoming',
+  communication_date: new Date().toISOString().slice(0, 10),
   subject: '',
-  originating_office_id: 1,
+  office_id: 1,
   category_id: 1,
-  purpose_id: 1,
-  remarks: ''
+  purpose_id: 1
 })
 
 const showCatModal = ref(false)
-const catForm = ref({ category_name: '', description: '' })
+const catForm = ref({ category_name: '', code: '' })
 
 const showPurposeModal = ref(false)
-const purposeForm = ref({ purpose_name: '', description: '' })
+const purposeForm = ref({ purpose_name: '' })
 
 const saving = ref(false)
 const modalError = ref('')
@@ -329,14 +356,12 @@ async function loadData() {
 
 function openAddCommModal() {
   commForm.value = {
-    control_number: `COMM-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
-    comm_type: 'Incoming',
-    comm_date: new Date().toISOString().slice(0, 10),
+    communication_type: 'Incoming',
+    communication_date: new Date().toISOString().slice(0, 10),
     subject: '',
-    originating_office_id: 1,
-    category_id: 1,
-    purpose_id: 1,
-    remarks: ''
+    office_id: 1,
+    category_id: categoryList.value[0]?.id || 1,
+    purpose_id: purposeList.value[0]?.id || 1
   }
   modalError.value = ''
   showCommModal.value = true
@@ -367,7 +392,7 @@ async function handleSaveComm() {
 }
 
 async function handleSoftDeleteComm(item: any) {
-  if (!confirm(`Are you sure you want to soft-delete communication '${item.control_number}'? Activity history will remain preserved.`)) return
+  if (!confirm(`Are you sure you want to soft-delete communication '${item.subject}'? Activity history will remain preserved.`)) return
   try {
     const res = await fetch('/6IS/backend/api/communications/index.php?action=delete_communication', {
       method: 'POST',
@@ -384,7 +409,7 @@ async function handleSoftDeleteComm(item: any) {
 }
 
 function openAddCategoryModal() {
-  catForm.value = { category_name: '', description: '' }
+  catForm.value = { category_name: '', code: '' }
   modalError.value = ''
   showCatModal.value = true
 }
@@ -414,7 +439,7 @@ async function handleSaveCategory() {
 }
 
 function openAddPurposeModal() {
-  purposeForm.value = { purpose_name: '', description: '' }
+  purposeForm.value = { purpose_name: '' }
   modalError.value = ''
   showPurposeModal.value = true
 }
@@ -474,7 +499,7 @@ onMounted(() => {
 .table-card { background: #ffffff; border-radius: 14px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
 .table-card-header { padding: 16px 24px; border-bottom: 1px solid #f1f5f9; background: #f8fafc; }
 .table-card-header h3 { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0; }
-.loading-state { text-align: center; padding: 48px; color: #64748b; }
+.loading-state, .empty-state { text-align: center; padding: 48px; color: #64748b; }
 .spinner {
   display: inline-block; width: 24px; height: 24px; border: 3px solid #cbd5e1;
   border-radius: 50%; border-top-color: #2563eb; animation: spin 0.8s linear infinite; margin-bottom: 12px;

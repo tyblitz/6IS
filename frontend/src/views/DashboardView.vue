@@ -161,12 +161,10 @@ import '../assets/styles/pages/dashboard.css'
 
 const router = useRouter()
 
+import { formatDate } from '../utils/dateUtils'
+
 const currentDateFormatted = computed(() => {
-  return new Date().toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  })
+  return formatDate(new Date().toISOString())
 })
 
 const currentDayOfWeek = computed(() => {

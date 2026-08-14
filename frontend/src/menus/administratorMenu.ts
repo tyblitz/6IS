@@ -4,6 +4,7 @@ import {
   cubeOutline,
   chatbubbleEllipsesOutline,
   clipboardOutline,
+  folderOutline,
   peopleOutline
 } from 'ionicons/icons'
 
@@ -27,6 +28,11 @@ export const administratorMenu: SidebarItem[] = [
     label: 'Accomplishments',
     route: '/administrator/accomplishments',
     icon: clipboardOutline
+  },
+  {
+    label: 'Accomplishment Categories',
+    route: '/administrator/accomplishments/categories',
+    icon: folderOutline
   },
   {
     label: 'Users',
