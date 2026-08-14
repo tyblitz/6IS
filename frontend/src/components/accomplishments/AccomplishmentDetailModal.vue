@@ -62,23 +62,7 @@ function close() {
   emit('close')
 }
 
-function formatDate(dateStr?: string | null): string {
-  if (!dateStr) return '-'
-  const cleanStr = dateStr.split('T')[0]
-  const parts = cleanStr.split('-')
-  if (parts.length === 3) {
-    const year = parts[0]
-    const month = parts[1]
-    const day = parts[2]
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-    const mIdx = parseInt(month, 10) - 1
-    if (mIdx >= 0 && mIdx < 12) {
-      return `${day} ${months[mIdx]} ${year}`
-    }
-    return `${day}/${month}/${year}`
-  }
-  return dateStr
-}
+import { formatDate } from '../../utils/dateUtils'
 
 function emitEdit() {
   if (props.data) {

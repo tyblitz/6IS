@@ -9,7 +9,16 @@ import type {
   OfficeOption
 } from '../types/accomplishment'
 
-const API_BASE_URL = 'http://localhost/6IS/backend/api/accomplishments/index.php'
+function resolveApiUrl(): string {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname || 'localhost'
+    const protocol = window.location.protocol || 'http:'
+    return `${protocol}//${host}/6IS/backend/api/accomplishments/index.php`
+  }
+  return 'http://localhost/6IS/backend/api/accomplishments/index.php'
+}
+
+const API_BASE_URL = resolveApiUrl()
 
 const FALLBACK_OFFICES: OfficeOption[] = [
   { id: 1, office_name: 'Information & Communications Technology', office_code: 'ICT' },
@@ -220,10 +229,15 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
 
 export async function fetchAccomplishmentOptions(): Promise<ApiResponse<AccomplishmentOptions>> {
   try {
+<<<<<<< HEAD
     const res = await fetchWithTimeout(`${API_BASE_URL}?view=options`)
     const data = await res.json()
     if (data.success && data.data && data.data.offices?.length > 0) return data
     return { success: true, message: 'Options loaded', data: { offices: FALLBACK_OFFICES }, errors: null }
+=======
+    const res = await fetch(`${API_BASE_URL}?view=options`, { credentials: 'include' })
+    return await res.json()
+>>>>>>> module/admin
   } catch (err: any) {
     return { success: true, message: 'Fallback options loaded.', data: { offices: FALLBACK_OFFICES }, errors: null }
   }
@@ -231,11 +245,16 @@ export async function fetchAccomplishmentOptions(): Promise<ApiResponse<Accompli
 
 export async function fetchOverviewSummary(): Promise<ApiResponse<OverviewSummary>> {
   try {
+<<<<<<< HEAD
     const res = await fetchWithTimeout(`${API_BASE_URL}?view=overview`)
     const data = await res.json()
     if (data.success && data.data && (data.data.counts?.annual > 0 || data.data.today_records?.length > 0)) {
       return data
     }
+=======
+    const res = await fetch(`${API_BASE_URL}?view=overview`, { credentials: 'include' })
+    return await res.json()
+>>>>>>> module/admin
   } catch (err: any) {
     // Fallback
   }
@@ -267,6 +286,7 @@ export async function fetchOverviewSummary(): Promise<ApiResponse<OverviewSummar
 
 export async function fetchAccomplishmentById(id: number): Promise<ApiResponse<AccomplishmentItem>> {
   try {
+<<<<<<< HEAD
     const res = await fetchWithTimeout(`${API_BASE_URL}?id=${id}`)
     const data = await res.json()
     if (data.success && data.data) return data
@@ -274,6 +294,10 @@ export async function fetchAccomplishmentById(id: number): Promise<ApiResponse<A
     const found = fallbackAccomplishmentsStore.find(item => item.id === id)
     if (found) return { success: true, message: 'Accomplishment details loaded.', data: found, errors: null }
     return { success: false, message: 'Accomplishment record not found.', data: null, errors: null }
+=======
+    const res = await fetch(`${API_BASE_URL}?id=${id}`, { credentials: 'include' })
+    return await res.json()
+>>>>>>> module/admin
   } catch (err: any) {
     const found = fallbackAccomplishmentsStore.find(item => item.id === id)
     if (found) return { success: true, message: 'Accomplishment details loaded.', data: found, errors: null }
@@ -310,9 +334,14 @@ export async function fetchDailyAccomplishments(
     if (categoryId && categoryId > 0) params.append('category_id', categoryId.toString())
     if (search) params.append('search', search)
 
+<<<<<<< HEAD
     const res = await fetchWithTimeout(`${API_BASE_URL}?${params.toString()}`)
     const data = await res.json()
     if (data.success && data.data && data.data.records?.length > 0) return data
+=======
+    const res = await fetch(`${API_BASE_URL}?${params.toString()}`, { credentials: 'include' })
+    return await res.json()
+>>>>>>> module/admin
   } catch (err: any) {
     // Fallback
   }
@@ -341,6 +370,7 @@ export async function fetchMonthlyAccomplishments(
     if (year) params.append('year', year.toString())
     if (month) params.append('month', month.toString())
 
+<<<<<<< HEAD
 <<<<<<< HEAD
     const res = await fetchWithTimeout(`${API_BASE_URL}?${params.toString()}`)
     const data = await res.json()
@@ -419,6 +449,17 @@ export async function fetchMonthlyAccomplishments(
 >>>>>>> module/login
     },
     errors: null
+=======
+    const res = await fetch(`${API_BASE_URL}?${params.toString()}`, { credentials: 'include' })
+    return await res.json()
+  } catch (err: any) {
+    return {
+      success: false,
+      message: 'Failed to fetch monthly accomplishments.',
+      data: { records: [], accomplishments_by_category: [], outgoing_comms_by_category: [], clearances_by_purpose: [], communications_stats: { incoming: 0, outgoing: 0 } },
+      errors: { network: err.message }
+    }
+>>>>>>> module/admin
   }
 }
 
@@ -431,6 +472,7 @@ export async function fetchQuarterlyAccomplishments(
     if (year) params.append('year', year.toString())
     if (quarter) params.append('quarter', quarter.toString())
 
+<<<<<<< HEAD
 <<<<<<< HEAD
     const res = await fetchWithTimeout(`${API_BASE_URL}?${params.toString()}`)
     const data = await res.json()
@@ -514,6 +556,17 @@ export async function fetchQuarterlyAccomplishments(
 >>>>>>> module/login
     },
     errors: null
+=======
+    const res = await fetch(`${API_BASE_URL}?${params.toString()}`, { credentials: 'include' })
+    return await res.json()
+  } catch (err: any) {
+    return {
+      success: false,
+      message: 'Failed to fetch quarterly accomplishments.',
+      data: { records: [], accomplishments_by_category: [], outgoing_comms_by_category: [], clearances_by_purpose: [], communications_stats: { incoming: 0, outgoing: 0 } },
+      errors: { network: err.message }
+    }
+>>>>>>> module/admin
   }
 }
 
@@ -524,6 +577,7 @@ export async function fetchAnnualAccomplishments(
     const params = new URLSearchParams({ view: 'annual' })
     if (year) params.append('year', year.toString())
 
+<<<<<<< HEAD
 <<<<<<< HEAD
     const res = await fetchWithTimeout(`${API_BASE_URL}?${params.toString()}`)
     const data = await res.json()
@@ -599,6 +653,17 @@ export async function fetchAnnualAccomplishments(
 >>>>>>> module/login
     },
     errors: null
+=======
+    const res = await fetch(`${API_BASE_URL}?${params.toString()}`, { credentials: 'include' })
+    return await res.json()
+  } catch (err: any) {
+    return {
+      success: false,
+      message: 'Failed to fetch annual accomplishments.',
+      data: { records: [], accomplishments_by_category: [], outgoing_comms_by_category: [], clearances_by_purpose: [], communications_stats: { incoming: 0, outgoing: 0 } },
+      errors: { network: err.message }
+    }
+>>>>>>> module/admin
   }
 }
 
@@ -613,6 +678,7 @@ export async function fetchCustomPeriodAccomplishments(
       end_date: endDate
     })
 
+<<<<<<< HEAD
 <<<<<<< HEAD
     const res = await fetchWithTimeout(`${API_BASE_URL}?${params.toString()}`)
     const data = await res.json()
@@ -687,6 +753,17 @@ export async function fetchCustomPeriodAccomplishments(
 >>>>>>> module/login
     },
     errors: null
+=======
+    const res = await fetch(`${API_BASE_URL}?${params.toString()}`, { credentials: 'include' })
+    return await res.json()
+  } catch (err: any) {
+    return {
+      success: false,
+      message: 'Failed to fetch custom period accomplishments.',
+      data: { records: [], accomplishments_by_category: [], outgoing_comms_by_category: [], clearances_by_purpose: [], communications_stats: { incoming: 0, outgoing: 0 } },
+      errors: { network: err.message }
+    }
+>>>>>>> module/admin
   }
 }
 
@@ -695,6 +772,7 @@ export async function createAccomplishment(payload: AccomplishmentFormPayload): 
     const res = await fetchWithTimeout(API_BASE_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(payload)
     })
     const data = await res.json()
@@ -723,6 +801,7 @@ export async function updateAccomplishment(id: number, payload: AccomplishmentFo
     const res = await fetchWithTimeout(`${API_BASE_URL}?id=${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(payload)
     })
     const data = await res.json()
@@ -751,8 +830,14 @@ export async function updateAccomplishment(id: number, payload: AccomplishmentFo
 
 export async function deleteAccomplishment(id: number): Promise<ApiResponse> {
   try {
+<<<<<<< HEAD
     const res = await fetchWithTimeout(`${API_BASE_URL}?id=${id}`, {
       method: 'DELETE'
+=======
+    const res = await fetch(`${API_BASE_URL}?id=${id}`, {
+      method: 'DELETE',
+      credentials: 'include'
+>>>>>>> module/admin
     })
     const data = await res.json()
     if (data.success) return data

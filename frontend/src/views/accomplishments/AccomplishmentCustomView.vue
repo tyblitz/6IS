@@ -47,7 +47,7 @@
               </div>
               <div>
                 <h3>Activities</h3>
-                <p class="group-subtitle">Total activities recorded between {{ startDate }} and {{ endDate }}</p>
+                <p class="group-subtitle">Total activities recorded between {{ formatDate(startDate) }} and {{ formatDate(endDate) }}</p>
               </div>
               <div class="total-badge count-accomplishment">
                 <span>Total:</span>
@@ -56,7 +56,7 @@
             </div>
 
             <div v-if="activeAccomplishmentsByCategory.length === 0" class="empty-category-msg">
-              No activities recorded between {{ startDate }} and {{ endDate }}.
+              No activities recorded between {{ formatDate(startDate) }} and {{ formatDate(endDate) }}.
             </div>
 
             <div v-else class="compact-category-grid">
@@ -92,7 +92,7 @@
               </div>
               <div>
                 <h3>Outgoing Communications</h3>
-                <p class="group-subtitle">Total outgoing communications between {{ startDate }} and {{ endDate }}</p>
+                <p class="group-subtitle">Total outgoing communications between {{ formatDate(startDate) }} and {{ formatDate(endDate) }}</p>
               </div>
               <div class="total-badge count-outgoing">
                 <span>Total Outgoing:</span>
@@ -101,7 +101,7 @@
             </div>
 
             <div v-if="activeOutgoingCommsByCategory.length === 0" class="empty-category-msg">
-              No outgoing communications recorded between {{ startDate }} and {{ endDate }}.
+              No outgoing communications recorded between {{ formatDate(startDate) }} and {{ formatDate(endDate) }}.
             </div>
 
             <div v-else class="compact-category-grid">
@@ -142,19 +142,19 @@
               </div>
               <div>
                 <h3>Clearances</h3>
-                <p class="group-subtitle">Access Pass count between {{ startDate }} and {{ endDate }}</p>
+                <p class="group-subtitle">Access Pass count between {{ formatDate(startDate) }} and {{ formatDate(endDate) }}</p>
               </div>
             </div>
 
             <div v-if="activeClearancesByPurpose.length === 0" class="empty-category-msg">
-              No Access Pass clearances recorded between {{ startDate }} and {{ endDate }}.
+              No Access Pass clearances recorded between {{ formatDate(startDate) }} and {{ formatDate(endDate) }}.
             </div>
 
             <div v-else class="clearance-single-card">
               <div class="clearance-hero-box">
                 <div class="clearance-number">{{ totalClearances }}</div>
                 <div class="clearance-label">Released Access Pass Clearances</div>
-                <div class="clearance-subtext">{{ startDate }} to {{ endDate }}</div>
+                <div class="clearance-subtext">{{ formatDate(startDate) }} to {{ formatDate(endDate) }}</div>
               </div>
             </div>
           </div>
@@ -178,6 +178,7 @@ import {
 } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
+import { formatDate } from '../../utils/dateUtils'
 import type { 
   AccomplishmentCategorySummary, 
   OutgoingCommCategorySummary,

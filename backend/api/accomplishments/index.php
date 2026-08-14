@@ -1,6 +1,6 @@
 <?php
 // backend/api/accomplishments/index.php
-// REST API Endpoint for 6IS Accomplishment Module
+// REST API Endpoint for 6IS Accomplishment Module & Admin Category Management
 
 $allowedOrigin = $_SERVER['HTTP_ORIGIN'] ?? 'http://localhost:5173';
 header("Access-Control-Allow-Origin: {$allowedOrigin}");
@@ -14,6 +14,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
 }
+
+require_once __DIR__ . '/../../helpers/auth.php';
+requireAuth();
 
 /**
  * Standardized Response Helper
@@ -73,10 +76,21 @@ function handleGet(PDO $pdo) {
     $view = isset($_GET['view']) ? trim($_GET['view']) : '';
     $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-    // View: Return Reference Options (Offices)
+    // View: Return Reference Categories
+    if ($view === 'categories') {
+        $categories = $pdo->query("
+            SELECT id, category_name, category_code, created_at, updated_at
+            FROM tbl_accomplishment_categories
+            WHERE deleted_at IS NULL
+            ORDER BY id ASC
+        ")->fetchAll();
+        sendResponse(true, 'Categories fetched successfully.', $categories);
+    }
+
+    // View: Return Reference Options (Offices + Categories)
     if ($view === 'options') {
         try {
-            $offices = $pdo->query("SELECT id, office_name, office_code FROM tbl_offices WHERE deleted_at IS NULL ORDER BY office_name ASC")->fetchAll();
+            $offices = $pdo->query("SELECT id, office_name, office_code, office_abbv FROM tbl_offices WHERE deleted_at IS NULL ORDER BY office_abbv ASC")->fetchAll();
             $categories = $pdo->query("SELECT id, category_name, category_code FROM tbl_accomplishment_categories WHERE deleted_at IS NULL ORDER BY id ASC")->fetchAll();
             sendResponse(true, 'Options fetched successfully.', [
                 'offices' => $offices,
@@ -119,7 +133,8 @@ function handleGet(PDO $pdo) {
             SELECT 
                 a.*,
                 o.office_name,
-                o.office_code
+                o.office_code,
+                o.office_abbv
             FROM tbl_accomplishments a
             LEFT JOIN tbl_offices o ON a.office_id = o.id
             WHERE a.id = :id AND a.deleted_at IS NULL
@@ -134,7 +149,7 @@ function handleGet(PDO $pdo) {
         sendResponse(true, 'Accomplishment details fetched successfully.', $record);
     }
 
-    // View: Overview Dashboard (Card Counts & Today Preview Table)
+    // View: Overview Dashboard
     if ($view === 'overview') {
         try {
             $todayCount = (int)$pdo->query("SELECT COUNT(*) FROM tbl_accomplishments WHERE `date` = CURDATE() AND deleted_at IS NULL")->fetchColumn();
@@ -150,7 +165,8 @@ function handleGet(PDO $pdo) {
                     a.description,
                     a.remarks,
                     o.office_name,
-                    o.office_code
+                    o.office_code,
+                    o.office_abbv
                 FROM tbl_accomplishments a
                 LEFT JOIN tbl_offices o ON a.office_id = o.id
                 WHERE a.date = CURDATE() AND a.deleted_at IS NULL
@@ -164,8 +180,8 @@ function handleGet(PDO $pdo) {
                     'monthly' => $monthlyCount,
                     'quarterly' => $quarterlyCount,
                     'annual' => $annualCount,
-                    'incoming_comms' => 0, // Placeholder for Communications Module integration
-                    'outgoing_comms' => 0  // Placeholder for Communications Module integration
+                    'incoming_comms' => 0,
+                    'outgoing_comms' => 0
                 ],
                 'today_records' => $todayRecords
             ]);
@@ -178,32 +194,50 @@ function handleGet(PDO $pdo) {
     $where = ["a.deleted_at IS NULL"];
     $params = [];
 
+    $commWhere = ["c.deleted_at IS NULL"];
+    $commParams = [];
+
     if ($view === 'daily') {
-        $targetDate = !empty($_GET['date']) ? trim($_GET['date']) : date('Y-m-d');
-        $where[] = "a.date = :target_date";
-        $params[':target_date'] = $targetDate;
+        if (!empty($_GET['date'])) {
+            $targetDate = trim($_GET['date']);
+            $where[] = "a.date = :target_date";
+            $params[':target_date'] = $targetDate;
+            $commWhere[] = "c.communication_date = :target_date";
+            $commParams[':target_date'] = $targetDate;
+        }
     } elseif ($view === 'monthly') {
         $year = !empty($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
         $month = !empty($_GET['month']) ? (int)$_GET['month'] : (int)date('m');
         $where[] = "YEAR(a.date) = :year AND MONTH(a.date) = :month";
         $params[':year'] = $year;
         $params[':month'] = $month;
+        $commWhere[] = "YEAR(c.communication_date) = :year AND MONTH(c.communication_date) = :month";
+        $commParams[':year'] = $year;
+        $commParams[':month'] = $month;
     } elseif ($view === 'quarterly') {
         $year = !empty($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
         $quarter = !empty($_GET['quarter']) ? (int)$_GET['quarter'] : (int)ceil((int)date('m') / 3);
         $where[] = "YEAR(a.date) = :year AND QUARTER(a.date) = :quarter";
         $params[':year'] = $year;
         $params[':quarter'] = $quarter;
+        $commWhere[] = "YEAR(c.communication_date) = :year AND QUARTER(c.communication_date) = :quarter";
+        $commParams[':year'] = $year;
+        $commParams[':quarter'] = $quarter;
     } elseif ($view === 'annual') {
         $year = !empty($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
         $where[] = "YEAR(a.date) = :year";
         $params[':year'] = $year;
+        $commWhere[] = "YEAR(c.communication_date) = :year";
+        $commParams[':year'] = $year;
     } elseif ($view === 'custom') {
         $startDate = !empty($_GET['start_date']) ? trim($_GET['start_date']) : date('Y-m-01');
         $endDate = !empty($_GET['end_date']) ? trim($_GET['end_date']) : date('Y-m-d');
         $where[] = "a.date >= :start_date AND a.date <= :end_date";
         $params[':start_date'] = $startDate;
         $params[':end_date'] = $endDate;
+        $commWhere[] = "c.communication_date >= :start_date AND c.communication_date <= :end_date";
+        $commParams[':start_date'] = $startDate;
+        $commParams[':end_date'] = $endDate;
     }
 
     if (!empty($_GET['office_id'])) {
@@ -217,11 +251,12 @@ function handleGet(PDO $pdo) {
     }
 
     if (!empty($_GET['search'])) {
-        $where[] = "(a.description LIKE :search OR a.remarks LIKE :search OR o.office_name LIKE :search OR ac.category_name LIKE :search OR ac.category_code LIKE :search)";
+        $where[] = "(a.description LIKE :search OR a.remarks LIKE :search OR o.office_name LIKE :search OR o.office_abbv LIKE :search OR ac.category_name LIKE :search OR ac.category_code LIKE :search)";
         $params[':search'] = '%' . trim($_GET['search']) . '%';
     }
 
     $whereSql = implode(' AND ', $where);
+    $commWhereSql = implode(' AND ', $commWhere);
 
     $sql = "
         SELECT 
@@ -235,6 +270,7 @@ function handleGet(PDO $pdo) {
             a.updated_at,
             o.office_name,
             o.office_code,
+            o.office_abbv,
             ac.category_name,
             ac.category_code
         FROM tbl_accomplishments a
@@ -249,250 +285,58 @@ function handleGet(PDO $pdo) {
         $stmt->execute($params);
         $records = $stmt->fetchAll();
 
-        // Calculate Monthly Summary Stats if view is monthly
-        $accomplishmentsByCategory = [];
-        $outgoingCommsByCategory = [];
-        $clearancesByPurpose = [];
+        // 1. Aggregate Accomplishments By Category
+        $accByCatStmt = $pdo->prepare("
+            SELECT 
+                ac.id as category_id,
+                ac.category_name,
+                ac.category_code,
+                COUNT(a.id) as count
+            FROM tbl_accomplishment_categories ac
+            LEFT JOIN tbl_accomplishments a ON a.category_id = ac.id AND {$whereSql}
+            WHERE ac.deleted_at IS NULL
+            GROUP BY ac.id, ac.category_name, ac.category_code
+            ORDER BY ac.id ASC
+        ");
+        $accByCatStmt->execute($params);
+        $accByCat = $accByCatStmt->fetchAll();
 
-        if ($view === 'monthly') {
-            $mYear = !empty($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
-            $mMonth = !empty($_GET['month']) ? (int)$_GET['month'] : (int)date('m');
+        // 2. Aggregate Outgoing Communications By Category
+        $outCommsStmt = $pdo->prepare("
+            SELECT 
+                cc.id as category_id,
+                cc.name as category_name,
+                cc.code as category_code,
+                COUNT(c.id) as count
+            FROM tbl_communication_categories cc
+            LEFT JOIN tbl_communications c ON c.category_id = cc.id AND c.communication_type = 'Outgoing' AND {$commWhereSql}
+            WHERE cc.deleted_at IS NULL
+            GROUP BY cc.id, cc.name, cc.code
+            ORDER BY cc.id ASC
+        ");
+        $outCommsStmt->execute($commParams);
+        $outComms = $outCommsStmt->fetchAll();
 
-            $accByCatStmt = $pdo->prepare("
-                SELECT 
-                    ac.id AS category_id,
-                    ac.category_name,
-                    ac.category_code,
-                    COUNT(a.id) AS count
-                FROM tbl_accomplishment_categories ac
-                LEFT JOIN tbl_accomplishments a ON (a.category_id = ac.id OR (a.category_id IS NULL AND ac.id = 1))
-                    AND MONTH(a.date) = :month 
-                    AND YEAR(a.date) = :year 
-                    AND a.deleted_at IS NULL
-                WHERE ac.deleted_at IS NULL
-                GROUP BY ac.id, ac.category_name, ac.category_code
-                ORDER BY ac.id ASC
-            ");
-            $accByCatStmt->execute([':month' => $mMonth, ':year' => $mYear]);
-            $accomplishmentsByCategory = $accByCatStmt->fetchAll();
-
-            $outgoingByCatStmt = $pdo->prepare("
-                SELECT 
-                    cc.id AS category_id,
-                    cc.name AS category_name,
-                    cc.code AS category_code,
-                    COUNT(com.id) AS count
-                FROM tbl_communication_categories cc
-                LEFT JOIN tbl_communications com ON com.category_id = cc.id 
-                    AND com.communication_type = 'Outgoing'
-                    AND MONTH(com.communication_date) = :month 
-                    AND YEAR(com.communication_date) = :year 
-                    AND com.deleted_at IS NULL
-                WHERE cc.deleted_at IS NULL
-                GROUP BY cc.id, cc.name, cc.code
-                ORDER BY cc.id ASC
-            ");
-            $outgoingByCatStmt->execute([':month' => $mMonth, ':year' => $mYear]);
-            $outgoingCommsByCategory = $outgoingByCatStmt->fetchAll();
-
-            $clearancesByPurposeStmt = $pdo->prepare("
-                SELECT 
-                    cp.id AS purpose_id,
-                    cp.name AS purpose_name,
-                    COUNT(com.id) AS count
-                FROM tbl_communication_purposes cp
-                LEFT JOIN tbl_communications com ON com.purpose_id = cp.id 
-                    AND com.communication_type = 'Outgoing'
-                    AND MONTH(com.communication_date) = :month 
-                    AND YEAR(com.communication_date) = :year 
-                    AND com.deleted_at IS NULL
-                WHERE cp.deleted_at IS NULL AND cp.name = 'Access Pass'
-                GROUP BY cp.id, cp.name
-                ORDER BY cp.id ASC
-            ");
-            $clearancesByPurposeStmt->execute([':month' => $mMonth, ':year' => $mYear]);
-            $clearancesByPurpose = $clearancesByPurposeStmt->fetchAll();
-        } elseif ($view === 'quarterly') {
-            $qYear = !empty($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
-            $qQuarter = !empty($_GET['quarter']) ? (int)$_GET['quarter'] : (int)ceil((int)date('m') / 3);
-
-            $accByCatStmt = $pdo->prepare("
-                SELECT 
-                    ac.id AS category_id,
-                    ac.category_name,
-                    ac.category_code,
-                    COUNT(a.id) AS count
-                FROM tbl_accomplishment_categories ac
-                LEFT JOIN tbl_accomplishments a ON (a.category_id = ac.id OR (a.category_id IS NULL AND ac.id = 1))
-                    AND QUARTER(a.date) = :quarter 
-                    AND YEAR(a.date) = :year 
-                    AND a.deleted_at IS NULL
-                WHERE ac.deleted_at IS NULL
-                GROUP BY ac.id, ac.category_name, ac.category_code
-                ORDER BY ac.id ASC
-            ");
-            $accByCatStmt->execute([':quarter' => $qQuarter, ':year' => $qYear]);
-            $accomplishmentsByCategory = $accByCatStmt->fetchAll();
-
-            $outgoingByCatStmt = $pdo->prepare("
-                SELECT 
-                    cc.id AS category_id,
-                    cc.name AS category_name,
-                    cc.code AS category_code,
-                    COUNT(com.id) AS count
-                FROM tbl_communication_categories cc
-                LEFT JOIN tbl_communications com ON com.category_id = cc.id 
-                    AND com.communication_type = 'Outgoing'
-                    AND QUARTER(com.communication_date) = :quarter 
-                    AND YEAR(com.communication_date) = :year 
-                    AND com.deleted_at IS NULL
-                WHERE cc.deleted_at IS NULL
-                GROUP BY cc.id, cc.name, cc.code
-                ORDER BY cc.id ASC
-            ");
-            $outgoingByCatStmt->execute([':quarter' => $qQuarter, ':year' => $qYear]);
-            $outgoingCommsByCategory = $outgoingByCatStmt->fetchAll();
-
-            $clearancesByPurposeStmt = $pdo->prepare("
-                SELECT 
-                    cp.id AS purpose_id,
-                    cp.name AS purpose_name,
-                    COUNT(com.id) AS count
-                FROM tbl_communication_purposes cp
-                LEFT JOIN tbl_communications com ON com.purpose_id = cp.id 
-                    AND com.communication_type = 'Outgoing'
-                    AND QUARTER(com.communication_date) = :quarter 
-                    AND YEAR(com.communication_date) = :year 
-                    AND com.deleted_at IS NULL
-                WHERE cp.deleted_at IS NULL AND cp.name = 'Access Pass'
-                GROUP BY cp.id, cp.name
-                ORDER BY cp.id ASC
-            ");
-            $clearancesByPurposeStmt->execute([':quarter' => $qQuarter, ':year' => $qYear]);
-            $clearancesByPurpose = $clearancesByPurposeStmt->fetchAll();
-        } elseif ($view === 'annual') {
-            $aYear = !empty($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
-
-            $accByCatStmt = $pdo->prepare("
-                SELECT 
-                    ac.id AS category_id,
-                    ac.category_name,
-                    ac.category_code,
-                    COUNT(a.id) AS count
-                FROM tbl_accomplishment_categories ac
-                LEFT JOIN tbl_accomplishments a ON (a.category_id = ac.id OR (a.category_id IS NULL AND ac.id = 1))
-                    AND YEAR(a.date) = :year 
-                    AND a.deleted_at IS NULL
-                WHERE ac.deleted_at IS NULL
-                GROUP BY ac.id, ac.category_name, ac.category_code
-                ORDER BY ac.id ASC
-            ");
-            $accByCatStmt->execute([':year' => $aYear]);
-            $accomplishmentsByCategory = $accByCatStmt->fetchAll();
-
-            $outgoingByCatStmt = $pdo->prepare("
-                SELECT 
-                    cc.id AS category_id,
-                    cc.name AS category_name,
-                    cc.code AS category_code,
-                    COUNT(com.id) AS count
-                FROM tbl_communication_categories cc
-                LEFT JOIN tbl_communications com ON com.category_id = cc.id 
-                    AND com.communication_type = 'Outgoing'
-                    AND YEAR(com.communication_date) = :year 
-                    AND com.deleted_at IS NULL
-                WHERE cc.deleted_at IS NULL
-                GROUP BY cc.id, cc.name, cc.code
-                ORDER BY cc.id ASC
-            ");
-            $outgoingByCatStmt->execute([':year' => $aYear]);
-            $outgoingCommsByCategory = $outgoingByCatStmt->fetchAll();
-
-            $clearancesByPurposeStmt = $pdo->prepare("
-                SELECT 
-                    cp.id AS purpose_id,
-                    cp.name AS purpose_name,
-                    COUNT(com.id) AS count
-                FROM tbl_communication_purposes cp
-                LEFT JOIN tbl_communications com ON com.purpose_id = cp.id 
-                    AND com.communication_type = 'Outgoing'
-                    AND YEAR(com.communication_date) = :year 
-                    AND com.deleted_at IS NULL
-                WHERE cp.deleted_at IS NULL AND cp.name = 'Access Pass'
-                GROUP BY cp.id, cp.name
-                ORDER BY cp.id ASC
-            ");
-            $clearancesByPurposeStmt->execute([':year' => $aYear]);
-            $clearancesByPurpose = $clearancesByPurposeStmt->fetchAll();
-        } elseif ($view === 'custom') {
-            $startDate = !empty($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-01');
-            $endDate = !empty($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-t');
-
-            $accByCatStmt = $pdo->prepare("
-                SELECT 
-                    ac.id AS category_id,
-                    ac.category_name,
-                    ac.category_code,
-                    COUNT(a.id) AS count
-                FROM tbl_accomplishment_categories ac
-                LEFT JOIN tbl_accomplishments a ON (a.category_id = ac.id OR (a.category_id IS NULL AND ac.id = 1))
-                    AND a.date >= :start_date 
-                    AND a.date <= :end_date 
-                    AND a.deleted_at IS NULL
-                WHERE ac.deleted_at IS NULL
-                GROUP BY ac.id, ac.category_name, ac.category_code
-                ORDER BY ac.id ASC
-            ");
-            $accByCatStmt->execute([':start_date' => $startDate, ':end_date' => $endDate]);
-            $accomplishmentsByCategory = $accByCatStmt->fetchAll();
-
-            $outgoingByCatStmt = $pdo->prepare("
-                SELECT 
-                    cc.id AS category_id,
-                    cc.name AS category_name,
-                    cc.code AS category_code,
-                    COUNT(com.id) AS count
-                FROM tbl_communication_categories cc
-                LEFT JOIN tbl_communications com ON com.category_id = cc.id 
-                    AND com.communication_type = 'Outgoing'
-                    AND com.communication_date >= :start_date 
-                    AND com.communication_date <= :end_date 
-                    AND com.deleted_at IS NULL
-                WHERE cc.deleted_at IS NULL
-                GROUP BY cc.id, cc.name, cc.code
-                ORDER BY cc.id ASC
-            ");
-            $outgoingByCatStmt->execute([':start_date' => $startDate, ':end_date' => $endDate]);
-            $outgoingCommsByCategory = $outgoingByCatStmt->fetchAll();
-
-            $clearancesByPurposeStmt = $pdo->prepare("
-                SELECT 
-                    cp.id AS purpose_id,
-                    cp.name AS purpose_name,
-                    COUNT(com.id) AS count
-                FROM tbl_communication_purposes cp
-                LEFT JOIN tbl_communications com ON com.purpose_id = cp.id 
-                    AND com.communication_type = 'Outgoing'
-                    AND com.communication_date >= :start_date 
-                    AND com.communication_date <= :end_date 
-                    AND com.deleted_at IS NULL
-                WHERE cp.deleted_at IS NULL AND cp.name = 'Access Pass'
-                GROUP BY cp.id, cp.name
-                ORDER BY cp.id ASC
-            ");
-            $clearancesByPurposeStmt->execute([':start_date' => $startDate, ':end_date' => $endDate]);
-            $clearancesByPurpose = $clearancesByPurposeStmt->fetchAll();
-        }
+        // 3. Aggregate Clearances By Purpose
+        $clearancesStmt = $pdo->prepare("
+            SELECT 
+                cp.id as purpose_id,
+                cp.name as purpose_name,
+                COUNT(c.id) as count
+            FROM tbl_communication_purposes cp
+            LEFT JOIN tbl_communications c ON c.purpose_id = cp.id AND {$commWhereSql}
+            WHERE cp.deleted_at IS NULL
+            GROUP BY cp.id, cp.name
+            ORDER BY cp.id ASC
+        ");
+        $clearancesStmt->execute($commParams);
+        $clearances = $clearancesStmt->fetchAll();
 
         sendResponse(true, 'Accomplishments list fetched successfully.', [
             'records' => $records,
-            'accomplishments_by_category' => $accomplishmentsByCategory,
-            'outgoing_comms_by_category' => $outgoingCommsByCategory,
-            'clearances_by_purpose' => $clearancesByPurpose,
-            'communications_stats' => [
-                'incoming' => 0,
-                'outgoing' => 0
-            ]
+            'accomplishments_by_category' => $accByCat,
+            'outgoing_comms_by_category' => $outComms,
+            'clearances_by_purpose' => $clearances
         ]);
     } catch (Exception $e) {
         sendResponse(false, 'Failed to fetch accomplishment records.', null, ['error' => $e->getMessage()], 500);
@@ -500,9 +344,10 @@ function handleGet(PDO $pdo) {
 }
 
 /**
- * POST Handler (Create)
+ * POST Handler (Create & Admin Category Actions)
  */
 function handlePost(PDO $pdo) {
+    $action = $_GET['action'] ?? '';
     $rawInput = file_get_contents('php://input');
     $data = json_decode($rawInput, true);
 
@@ -510,12 +355,81 @@ function handlePost(PDO $pdo) {
         sendResponse(false, 'Invalid JSON payload.', null, null, 400);
     }
 
+    // Admin Action: Create Category
+    if ($action === 'create_category') {
+        requireRole('Administrator');
+        $catName = trim($data['category_name'] ?? '');
+        $catCode = trim($data['category_code'] ?? '');
+
+        if (empty($catName)) {
+            sendResponse(false, 'Category name is required.', null, null, 400);
+        }
+
+        $stmt = $pdo->prepare("
+            INSERT INTO tbl_accomplishment_categories (category_name, category_code, created_at, updated_at, created_by, modified_by)
+            VALUES (:name, :code, NOW(), NOW(), :uid, :uid)
+        ");
+        $stmt->execute([
+            ':name' => $catName,
+            ':code' => $catCode ?: null,
+            ':uid' => $_SESSION['user_id']
+        ]);
+
+        sendResponse(true, "Accomplishment category '{$catName}' created successfully.");
+    }
+
+    // Admin Action: Update Category
+    if ($action === 'update_category') {
+        requireRole('Administrator');
+        $id = (int)($data['id'] ?? 0);
+        $catName = trim($data['category_name'] ?? '');
+        $catCode = trim($data['category_code'] ?? '');
+
+        if ($id <= 0 || empty($catName)) {
+            sendResponse(false, 'Category ID and name are required.', null, null, 400);
+        }
+
+        $stmt = $pdo->prepare("
+            UPDATE tbl_accomplishment_categories
+            SET category_name = :name, category_code = :code, updated_at = NOW(), modified_by = :uid
+            WHERE id = :id AND deleted_at IS NULL
+        ");
+        $stmt->execute([
+            ':name' => $catName,
+            ':code' => $catCode ?: null,
+            ':uid' => $_SESSION['user_id'],
+            ':id' => $id
+        ]);
+
+        sendResponse(true, "Accomplishment category updated successfully.");
+    }
+
+    // Admin Action: Delete Category
+    if ($action === 'delete_category') {
+        requireRole('Administrator');
+        $id = (int)($data['id'] ?? 0);
+        if ($id <= 0) {
+            sendResponse(false, 'Valid category ID is required.', null, null, 400);
+        }
+
+        $stmt = $pdo->prepare("
+            UPDATE tbl_accomplishment_categories
+            SET deleted_at = NOW(), modified_by = :uid
+            WHERE id = :id AND deleted_at IS NULL
+        ");
+        $stmt->execute([':uid' => $_SESSION['user_id'], ':id' => $id]);
+
+        sendResponse(true, "Accomplishment category deleted successfully.");
+    }
+
+    // Standard Create Accomplishment Entry
     $errors = validatePayload($pdo, $data);
     if (!empty($errors)) {
         sendResponse(false, 'Validation failed.', null, $errors, 400);
     }
 
     $officeId = (int)$data['office_id'];
+    $categoryId = (int)($data['category_id'] ?? 1);
     $date = trim($data['date']);
     $description = trim($data['description']);
     $remarks = isset($data['remarks']) ? trim($data['remarks']) : null;
@@ -523,15 +437,17 @@ function handlePost(PDO $pdo) {
     try {
         $stmt = $pdo->prepare("
             INSERT INTO tbl_accomplishments 
-            (office_id, date, description, remarks, created_at, updated_at, created_by, modified_by)
+            (office_id, category_id, date, description, remarks, created_at, updated_at, created_by, modified_by)
             VALUES 
-            (:office_id, :date, :description, :remarks, NOW(), NOW(), 1, 1)
+            (:office_id, :category_id, :date, :description, :remarks, NOW(), NOW(), :uid, :uid)
         ");
         $stmt->execute([
             ':office_id' => $officeId,
+            ':category_id' => $categoryId,
             ':date' => $date,
             ':description' => $description,
-            ':remarks' => $remarks
+            ':remarks' => $remarks,
+            ':uid' => $_SESSION['user_id']
         ]);
 
         $newId = $pdo->lastInsertId();
@@ -557,7 +473,6 @@ function handlePut(PDO $pdo) {
         sendResponse(false, 'Record ID is required for update.', null, null, 400);
     }
 
-    // Verify existing active record
     $checkStmt = $pdo->prepare("SELECT id FROM tbl_accomplishments WHERE id = :id AND deleted_at IS NULL");
     $checkStmt->execute([':id' => $id]);
     if (!$checkStmt->fetch()) {
@@ -570,6 +485,7 @@ function handlePut(PDO $pdo) {
     }
 
     $officeId = (int)$data['office_id'];
+    $categoryId = (int)($data['category_id'] ?? 1);
     $date = trim($data['date']);
     $description = trim($data['description']);
     $remarks = isset($data['remarks']) ? trim($data['remarks']) : null;
@@ -578,19 +494,22 @@ function handlePut(PDO $pdo) {
         $stmt = $pdo->prepare("
             UPDATE tbl_accomplishments SET
                 office_id = :office_id,
+                category_id = :category_id,
                 date = :date,
                 description = :description,
                 remarks = :remarks,
                 updated_at = NOW(),
-                modified_by = 1
+                modified_by = :uid
             WHERE id = :id AND deleted_at IS NULL
         ");
         $stmt->execute([
             ':id' => $id,
             ':office_id' => $officeId,
+            ':category_id' => $categoryId,
             ':date' => $date,
             ':description' => $description,
-            ':remarks' => $remarks
+            ':remarks' => $remarks,
+            ':uid' => $_SESSION['user_id']
         ]);
 
         sendResponse(true, 'Accomplishment updated successfully.', ['id' => $id]);
@@ -600,7 +519,7 @@ function handlePut(PDO $pdo) {
 }
 
 /**
- * DELETE Handler (Soft Delete)
+ * DELETE Handler
  */
 function handleDelete(PDO $pdo) {
     $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -611,10 +530,10 @@ function handleDelete(PDO $pdo) {
     try {
         $stmt = $pdo->prepare("
             UPDATE tbl_accomplishments 
-            SET deleted_at = NOW(), modified_by = 1 
+            SET deleted_at = NOW(), modified_by = :uid 
             WHERE id = :id AND deleted_at IS NULL
         ");
-        $stmt->execute([':id' => $id]);
+        $stmt->execute([':uid' => $_SESSION['user_id'], ':id' => $id]);
 
         if ($stmt->rowCount() === 0) {
             sendResponse(false, 'Record not found or already deleted.', null, null, 404);
