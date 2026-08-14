@@ -211,7 +211,7 @@ let fallbackAccomplishmentsStore: AccomplishmentItem[] = [
   }
 ]
 
-async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 400): Promise<Response> {
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 500): Promise<Response> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
@@ -229,15 +229,10 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
 
 export async function fetchAccomplishmentOptions(): Promise<ApiResponse<AccomplishmentOptions>> {
   try {
-<<<<<<< HEAD
-    const res = await fetchWithTimeout(`${API_BASE_URL}?view=options`)
+    const res = await fetchWithTimeout(`${API_BASE_URL}?view=options`, { credentials: 'include' })
     const data = await res.json()
     if (data.success && data.data && data.data.offices?.length > 0) return data
     return { success: true, message: 'Options loaded', data: { offices: FALLBACK_OFFICES }, errors: null }
-=======
-    const res = await fetch(`${API_BASE_URL}?view=options`, { credentials: 'include' })
-    return await res.json()
->>>>>>> module/admin
   } catch (err: any) {
     return { success: true, message: 'Fallback options loaded.', data: { offices: FALLBACK_OFFICES }, errors: null }
   }
@@ -245,18 +240,13 @@ export async function fetchAccomplishmentOptions(): Promise<ApiResponse<Accompli
 
 export async function fetchOverviewSummary(): Promise<ApiResponse<OverviewSummary>> {
   try {
-<<<<<<< HEAD
-    const res = await fetchWithTimeout(`${API_BASE_URL}?view=overview`)
+    const res = await fetchWithTimeout(`${API_BASE_URL}?view=overview`, { credentials: 'include' })
     const data = await res.json()
-    if (data.success && data.data && (data.data.counts?.annual > 0 || data.data.today_records?.length > 0)) {
+    if (data.success && data.data) {
       return data
     }
-=======
-    const res = await fetch(`${API_BASE_URL}?view=overview`, { credentials: 'include' })
-    return await res.json()
->>>>>>> module/admin
   } catch (err: any) {
-    // Fallback
+    // Fallback below
   }
 
   const currentMonthStr = todayStr.substring(0, 7)
@@ -286,18 +276,13 @@ export async function fetchOverviewSummary(): Promise<ApiResponse<OverviewSummar
 
 export async function fetchAccomplishmentById(id: number): Promise<ApiResponse<AccomplishmentItem>> {
   try {
-<<<<<<< HEAD
-    const res = await fetchWithTimeout(`${API_BASE_URL}?id=${id}`)
+    const res = await fetchWithTimeout(`${API_BASE_URL}?id=${id}`, { credentials: 'include' })
     const data = await res.json()
     if (data.success && data.data) return data
 
     const found = fallbackAccomplishmentsStore.find(item => item.id === id)
     if (found) return { success: true, message: 'Accomplishment details loaded.', data: found, errors: null }
     return { success: false, message: 'Accomplishment record not found.', data: null, errors: null }
-=======
-    const res = await fetch(`${API_BASE_URL}?id=${id}`, { credentials: 'include' })
-    return await res.json()
->>>>>>> module/admin
   } catch (err: any) {
     const found = fallbackAccomplishmentsStore.find(item => item.id === id)
     if (found) return { success: true, message: 'Accomplishment details loaded.', data: found, errors: null }
@@ -334,16 +319,11 @@ export async function fetchDailyAccomplishments(
     if (categoryId && categoryId > 0) params.append('category_id', categoryId.toString())
     if (search) params.append('search', search)
 
-<<<<<<< HEAD
-    const res = await fetchWithTimeout(`${API_BASE_URL}?${params.toString()}`)
+    const res = await fetchWithTimeout(`${API_BASE_URL}?${params.toString()}`, { credentials: 'include' })
     const data = await res.json()
-    if (data.success && data.data && data.data.records?.length > 0) return data
-=======
-    const res = await fetch(`${API_BASE_URL}?${params.toString()}`, { credentials: 'include' })
-    return await res.json()
->>>>>>> module/admin
+    if (data.success && data.data) return data
   } catch (err: any) {
-    // Fallback
+    // Fallback below
   }
 
   const targetDate = date || todayStr
@@ -370,13 +350,13 @@ export async function fetchMonthlyAccomplishments(
     if (year) params.append('year', year.toString())
     if (month) params.append('month', month.toString())
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-    const res = await fetchWithTimeout(`${API_BASE_URL}?${params.toString()}`)
+    const res = await fetchWithTimeout(`${API_BASE_URL}?${params.toString()}`, { credentials: 'include' })
     const data = await res.json()
-    if (data.success && data.data && data.data.records?.length > 0) return data
+    if (data.success && data.data) {
+      return data
+    }
   } catch (err: any) {
-    // Fallback
+    // Fallback below
   }
 
   const y = year || 2026
@@ -384,51 +364,12 @@ export async function fetchMonthlyAccomplishments(
   const monthPrefix = `${y}-${m}`
 
   const matched = fallbackAccomplishmentsStore.filter(a => a.date.startsWith(monthPrefix))
-  const filtered = filterFallbackRecords(matched, officeId, search)
-
-  return {
-    success: true,
-    message: 'Monthly accomplishments loaded.',
-    data: {
-      records: filtered,
-      communications_stats: { incoming: 10, outgoing: 10 }
-=======
-    const res = await fetch(`${API_BASE_URL}?${params.toString()}`)
-    const data = await res.json()
-    if (data.success && data.data) {
-      if (!data.data.accomplishments_by_category || data.data.accomplishments_by_category.length === 0) {
-        data.data.accomplishments_by_category = [
-          { category_id: 1, category_name: 'Installation of Public Address System (PAS)', category_code: 'PAS', count: 6 },
-          { category_id: 2, category_name: 'Conducted Repair and Maintenance of ICT Equipment', category_code: 'ICT Repair', count: 5 },
-          { category_id: 3, category_name: 'Supervised/Assisted TELCO Personnel', category_code: 'TELCO', count: 5 },
-          { category_id: 4, category_name: 'LED Board Support', category_code: 'LED', count: 4 }
-        ]
-      }
-      if (!data.data.outgoing_comms_by_category || data.data.outgoing_comms_by_category.length === 0) {
-        data.data.outgoing_comms_by_category = [
-          { category_id: 1, category_name: 'Disposition Form (DF)', category_code: 'DF', count: 4 },
-          { category_id: 2, category_name: 'Summary Disposition Form (SDF)', category_code: 'SDF', count: 2 },
-          { category_id: 3, category_name: 'Subject to Letter (STL)', category_code: 'STL', count: 2 },
-          { category_id: 4, category_name: 'Memorandum (Memo)', category_code: 'Memo', count: 1 },
-          { category_id: 5, category_name: 'Standard Operating Procedure (SOP)', category_code: 'SOP', count: 1 }
-        ]
-      }
-      if (!data.data.clearances_by_purpose || data.data.clearances_by_purpose.length === 0) {
-        data.data.clearances_by_purpose = [
-          { purpose_id: 1, purpose_name: 'Access Pass', count: 3 }
-        ]
-      }
-      return data
-    }
-  } catch (err: any) {
-    // Fallback below
-  }
 
   return {
     success: true,
     message: 'Monthly accomplishment summary loaded.',
     data: {
-      records: [],
+      records: matched,
       accomplishments_by_category: [
         { category_id: 1, category_name: 'Installation of Public Address System (PAS)', category_code: 'PAS', count: 6 },
         { category_id: 2, category_name: 'Conducted Repair and Maintenance of ICT Equipment', category_code: 'ICT Repair', count: 5 },
@@ -446,20 +387,8 @@ export async function fetchMonthlyAccomplishments(
         { purpose_id: 1, purpose_name: 'Access Pass', count: 3 }
       ],
       communications_stats: { incoming: 0, outgoing: 10 }
->>>>>>> module/login
     },
     errors: null
-=======
-    const res = await fetch(`${API_BASE_URL}?${params.toString()}`, { credentials: 'include' })
-    return await res.json()
-  } catch (err: any) {
-    return {
-      success: false,
-      message: 'Failed to fetch monthly accomplishments.',
-      data: { records: [], accomplishments_by_category: [], outgoing_comms_by_category: [], clearances_by_purpose: [], communications_stats: { incoming: 0, outgoing: 0 } },
-      errors: { network: err.message }
-    }
->>>>>>> module/admin
   }
 }
 
@@ -472,13 +401,13 @@ export async function fetchQuarterlyAccomplishments(
     if (year) params.append('year', year.toString())
     if (quarter) params.append('quarter', quarter.toString())
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-    const res = await fetchWithTimeout(`${API_BASE_URL}?${params.toString()}`)
+    const res = await fetchWithTimeout(`${API_BASE_URL}?${params.toString()}`, { credentials: 'include' })
     const data = await res.json()
-    if (data.success && data.data && data.data.records?.length > 0) return data
+    if (data.success && data.data) {
+      return data
+    }
   } catch (err: any) {
-    // Fallback
+    // Fallback below
   }
 
   const q = quarter || 3
@@ -491,51 +420,12 @@ export async function fetchQuarterlyAccomplishments(
   else allowedMonths = [`${y}-10`, `${y}-11`, `${y}-12`]
 
   const matched = fallbackAccomplishmentsStore.filter(a => allowedMonths.some(m => a.date.startsWith(m)))
-  const filtered = filterFallbackRecords(matched, officeId, search)
-
-  return {
-    success: true,
-    message: 'Quarterly accomplishments loaded.',
-    data: {
-      records: filtered,
-      communications_stats: { incoming: 10, outgoing: 10 }
-=======
-    const res = await fetch(`${API_BASE_URL}?${params.toString()}`)
-    const data = await res.json()
-    if (data.success && data.data) {
-      if (!data.data.accomplishments_by_category || data.data.accomplishments_by_category.length === 0) {
-        data.data.accomplishments_by_category = [
-          { category_id: 1, category_name: 'Installation of Public Address System (PAS)', category_code: 'PAS', count: 12 },
-          { category_id: 2, category_name: 'Conducted Repair and Maintenance of ICT Equipment', category_code: 'ICT Repair', count: 15 },
-          { category_id: 3, category_name: 'Supervised/Assisted TELCO Personnel', category_code: 'TELCO', count: 10 },
-          { category_id: 4, category_name: 'LED Board Support', category_code: 'LED', count: 8 }
-        ]
-      }
-      if (!data.data.outgoing_comms_by_category || data.data.outgoing_comms_by_category.length === 0) {
-        data.data.outgoing_comms_by_category = [
-          { category_id: 1, category_name: 'Disposition Form (DF)', category_code: 'DF', count: 10 },
-          { category_id: 2, category_name: 'Summary Disposition Form (SDF)', category_code: 'SDF', count: 6 },
-          { category_id: 3, category_name: 'Subject to Letter (STL)', category_code: 'STL', count: 5 },
-          { category_id: 4, category_name: 'Memorandum (Memo)', category_code: 'Memo', count: 4 },
-          { category_id: 5, category_name: 'Standard Operating Procedure (SOP)', category_code: 'SOP', count: 2 }
-        ]
-      }
-      if (!data.data.clearances_by_purpose || data.data.clearances_by_purpose.length === 0) {
-        data.data.clearances_by_purpose = [
-          { purpose_id: 1, purpose_name: 'Access Pass', count: 8 }
-        ]
-      }
-      return data
-    }
-  } catch (err: any) {
-    // Fallback below
-  }
 
   return {
     success: true,
     message: 'Quarterly accomplishment summary loaded.',
     data: {
-      records: [],
+      records: matched,
       accomplishments_by_category: [
         { category_id: 1, category_name: 'Installation of Public Address System (PAS)', category_code: 'PAS', count: 12 },
         { category_id: 2, category_name: 'Conducted Repair and Maintenance of ICT Equipment', category_code: 'ICT Repair', count: 15 },
@@ -553,20 +443,8 @@ export async function fetchQuarterlyAccomplishments(
         { purpose_id: 1, purpose_name: 'Access Pass', count: 8 }
       ],
       communications_stats: { incoming: 0, outgoing: 27 }
->>>>>>> module/login
     },
     errors: null
-=======
-    const res = await fetch(`${API_BASE_URL}?${params.toString()}`, { credentials: 'include' })
-    return await res.json()
-  } catch (err: any) {
-    return {
-      success: false,
-      message: 'Failed to fetch quarterly accomplishments.',
-      data: { records: [], accomplishments_by_category: [], outgoing_comms_by_category: [], clearances_by_purpose: [], communications_stats: { incoming: 0, outgoing: 0 } },
-      errors: { network: err.message }
-    }
->>>>>>> module/admin
   }
 }
 
@@ -577,62 +455,23 @@ export async function fetchAnnualAccomplishments(
     const params = new URLSearchParams({ view: 'annual' })
     if (year) params.append('year', year.toString())
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-    const res = await fetchWithTimeout(`${API_BASE_URL}?${params.toString()}`)
-    const data = await res.json()
-    if (data.success && data.data && data.data.records?.length > 0) return data
-  } catch (err: any) {
-    // Fallback
-  }
-
-  const y = (year || 2026).toString()
-  const matched = fallbackAccomplishmentsStore.filter(a => a.date.startsWith(y))
-  const filtered = filterFallbackRecords(matched, officeId, search)
-
-  return {
-    success: true,
-    message: 'Annual accomplishments loaded.',
-    data: {
-      records: filtered,
-      communications_stats: { incoming: 10, outgoing: 10 }
-=======
-    const res = await fetch(`${API_BASE_URL}?${params.toString()}`)
+    const res = await fetchWithTimeout(`${API_BASE_URL}?${params.toString()}`, { credentials: 'include' })
     const data = await res.json()
     if (data.success && data.data) {
-      if (!data.data.accomplishments_by_category || data.data.accomplishments_by_category.length === 0) {
-        data.data.accomplishments_by_category = [
-          { category_id: 1, category_name: 'Installation of Public Address System (PAS)', category_code: 'PAS', count: 48 },
-          { category_id: 2, category_name: 'Conducted Repair and Maintenance of ICT Equipment', category_code: 'ICT Repair', count: 60 },
-          { category_id: 3, category_name: 'Supervised/Assisted TELCO Personnel', category_code: 'TELCO', count: 40 },
-          { category_id: 4, category_name: 'LED Board Support', category_code: 'LED', count: 32 }
-        ]
-      }
-      if (!data.data.outgoing_comms_by_category || data.data.outgoing_comms_by_category.length === 0) {
-        data.data.outgoing_comms_by_category = [
-          { category_id: 1, category_name: 'Disposition Form (DF)', category_code: 'DF', count: 40 },
-          { category_id: 2, category_name: 'Summary Disposition Form (SDF)', category_code: 'SDF', count: 24 },
-          { category_id: 3, category_name: 'Subject to Letter (STL)', category_code: 'STL', count: 20 },
-          { category_id: 4, category_name: 'Memorandum (Memo)', category_code: 'Memo', count: 16 },
-          { category_id: 5, category_name: 'Standard Operating Procedure (SOP)', category_code: 'SOP', count: 8 }
-        ]
-      }
-      if (!data.data.clearances_by_purpose || data.data.clearances_by_purpose.length === 0) {
-        data.data.clearances_by_purpose = [
-          { purpose_id: 1, purpose_name: 'Access Pass', count: 32 }
-        ]
-      }
       return data
     }
   } catch (err: any) {
     // Fallback below
   }
 
+  const y = (year || 2026).toString()
+  const matched = fallbackAccomplishmentsStore.filter(a => a.date.startsWith(y))
+
   return {
     success: true,
     message: 'Annual accomplishment summary loaded.',
     data: {
-      records: [],
+      records: matched,
       accomplishments_by_category: [
         { category_id: 1, category_name: 'Installation of Public Address System (PAS)', category_code: 'PAS', count: 48 },
         { category_id: 2, category_name: 'Conducted Repair and Maintenance of ICT Equipment', category_code: 'ICT Repair', count: 60 },
@@ -650,20 +489,8 @@ export async function fetchAnnualAccomplishments(
         { purpose_id: 1, purpose_name: 'Access Pass', count: 32 }
       ],
       communications_stats: { incoming: 0, outgoing: 108 }
->>>>>>> module/login
     },
     errors: null
-=======
-    const res = await fetch(`${API_BASE_URL}?${params.toString()}`, { credentials: 'include' })
-    return await res.json()
-  } catch (err: any) {
-    return {
-      success: false,
-      message: 'Failed to fetch annual accomplishments.',
-      data: { records: [], accomplishments_by_category: [], outgoing_comms_by_category: [], clearances_by_purpose: [], communications_stats: { incoming: 0, outgoing: 0 } },
-      errors: { network: err.message }
-    }
->>>>>>> module/admin
   }
 }
 
@@ -678,61 +505,22 @@ export async function fetchCustomPeriodAccomplishments(
       end_date: endDate
     })
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-    const res = await fetchWithTimeout(`${API_BASE_URL}?${params.toString()}`)
-    const data = await res.json()
-    if (data.success && data.data && data.data.records?.length > 0) return data
-  } catch (err: any) {
-    // Fallback
-  }
-
-  const matched = fallbackAccomplishmentsStore.filter(a => a.date >= startDate && a.date <= endDate)
-  const filtered = filterFallbackRecords(matched, officeId, search)
-
-  return {
-    success: true,
-    message: 'Custom accomplishments loaded.',
-    data: {
-      records: filtered,
-      communications_stats: { incoming: 10, outgoing: 10 }
-=======
-    const res = await fetch(`${API_BASE_URL}?${params.toString()}`)
+    const res = await fetchWithTimeout(`${API_BASE_URL}?${params.toString()}`, { credentials: 'include' })
     const data = await res.json()
     if (data.success && data.data) {
-      if (!data.data.accomplishments_by_category || data.data.accomplishments_by_category.length === 0) {
-        data.data.accomplishments_by_category = [
-          { category_id: 1, category_name: 'Installation of Public Address System (PAS)', category_code: 'PAS', count: 8 },
-          { category_id: 2, category_name: 'Conducted Repair and Maintenance of ICT Equipment', category_code: 'ICT Repair', count: 10 },
-          { category_id: 3, category_name: 'Supervised/Assisted TELCO Personnel', category_code: 'TELCO', count: 7 },
-          { category_id: 4, category_name: 'LED Board Support', category_code: 'LED', count: 5 }
-        ]
-      }
-      if (!data.data.outgoing_comms_by_category || data.data.outgoing_comms_by_category.length === 0) {
-        data.data.outgoing_comms_by_category = [
-          { category_id: 1, category_name: 'Disposition Form (DF)', category_code: 'DF', count: 6 },
-          { category_id: 2, category_name: 'Summary Disposition Form (SDF)', category_code: 'SDF', count: 3 },
-          { category_id: 3, category_name: 'Subject to Letter (STL)', category_code: 'STL', count: 4 },
-          { category_id: 4, category_name: 'Memorandum (Memo)', category_code: 'Memo', count: 3 },
-          { category_id: 5, category_name: 'Standard Operating Procedure (SOP)', category_code: 'SOP', count: 1 }
-        ]
-      }
-      if (!data.data.clearances_by_purpose || data.data.clearances_by_purpose.length === 0) {
-        data.data.clearances_by_purpose = [
-          { purpose_id: 1, purpose_name: 'Access Pass', count: 5 }
-        ]
-      }
       return data
     }
   } catch (err: any) {
     // Fallback below
   }
 
+  const matched = fallbackAccomplishmentsStore.filter(a => a.date >= startDate && a.date <= endDate)
+
   return {
     success: true,
     message: 'Custom period accomplishment summary loaded.',
     data: {
-      records: [],
+      records: matched,
       accomplishments_by_category: [
         { category_id: 1, category_name: 'Installation of Public Address System (PAS)', category_code: 'PAS', count: 8 },
         { category_id: 2, category_name: 'Conducted Repair and Maintenance of ICT Equipment', category_code: 'ICT Repair', count: 10 },
@@ -750,20 +538,8 @@ export async function fetchCustomPeriodAccomplishments(
         { purpose_id: 1, purpose_name: 'Access Pass', count: 5 }
       ],
       communications_stats: { incoming: 0, outgoing: 17 }
->>>>>>> module/login
     },
     errors: null
-=======
-    const res = await fetch(`${API_BASE_URL}?${params.toString()}`, { credentials: 'include' })
-    return await res.json()
-  } catch (err: any) {
-    return {
-      success: false,
-      message: 'Failed to fetch custom period accomplishments.',
-      data: { records: [], accomplishments_by_category: [], outgoing_comms_by_category: [], clearances_by_purpose: [], communications_stats: { incoming: 0, outgoing: 0 } },
-      errors: { network: err.message }
-    }
->>>>>>> module/admin
   }
 }
 
@@ -830,14 +606,9 @@ export async function updateAccomplishment(id: number, payload: AccomplishmentFo
 
 export async function deleteAccomplishment(id: number): Promise<ApiResponse> {
   try {
-<<<<<<< HEAD
     const res = await fetchWithTimeout(`${API_BASE_URL}?id=${id}`, {
-      method: 'DELETE'
-=======
-    const res = await fetch(`${API_BASE_URL}?id=${id}`, {
       method: 'DELETE',
       credentials: 'include'
->>>>>>> module/admin
     })
     const data = await res.json()
     if (data.success) return data
@@ -1006,7 +777,7 @@ export function generateClientSideWordDoc(month: number, year: number): void {
 export async function exportMonthlyReportDocx(month: number, year: number): Promise<void> {
   const url = `${API_BASE_URL}?view=monthly_report&month=${month}&year=${year}`
   try {
-    const response = await fetchWithTimeout(url, {}, 500)
+    const response = await fetchWithTimeout(url, { credentials: 'include' }, 500)
     if (!response.ok) throw new Error('Backend offline or error')
     const blob = await response.blob()
     const downloadUrl = URL.createObjectURL(blob)
