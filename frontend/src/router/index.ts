@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from '@ionic/vue-router'
 import { RouteRecordRaw } from 'vue-router'
 import DashboardView from '../views/DashboardView.vue'
 import LoginView from '../views/auth/LoginView.vue'
+import AdministratorView from '../views/administrator/AdministratorView.vue'
 import CommunicationsView from '../views/communications/CommunicationsView.vue'
 import InventoryView from '../views/inventory/InventoryView.vue'
 import EquipmentView from '../views/inventory/EquipmentView.vue'
@@ -35,6 +36,16 @@ const routes: Array<RouteRecordRaw> = [
     meta: {
       module: ModuleName.Dashboard,
       requiresAuth: true
+    }
+  },
+  {
+    path: '/administrator',
+    name: 'Administrator',
+    component: AdministratorView,
+    meta: {
+      module: ModuleName.Administrator,
+      requiresAuth: true,
+      requiresRole: 'Administrator'
     }
   },
   {
@@ -134,16 +145,20 @@ const router = createRouter({
   routes
 })
 
-// Centralized Authentication Navigation Guard
+// Centralized Authentication & Authorization Navigation Guard
 router.beforeEach(async (to, _from, next) => {
   const isPublicRoute = to.meta.requiresAuth === false
+  const requiredRole = to.meta.requiresRole as string | undefined
   const user = await fetchCurrentUser()
 
   if (!isPublicRoute && !user) {
-    // Unauthenticated user attempting to access protected route
+    // Unauthenticated user attempting to access protected route -> redirect to /login
     next({ path: '/login', query: { redirect: to.fullPath } })
   } else if (to.path === '/login' && user) {
-    // Authenticated user attempting to access login page
+    // Authenticated user attempting to access login page -> redirect to /home
+    next('/home')
+  } else if (requiredRole && user && user.role !== requiredRole) {
+    // Authenticated user attempting role-restricted route without permission -> redirect to /home
     next('/home')
   } else {
     next()
