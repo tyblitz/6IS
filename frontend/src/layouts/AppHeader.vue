@@ -3,7 +3,7 @@
 
     <!-- Left Section -->
     <div class="header-left">
-      <button class="menu-button" type="button" aria-label="Menu">
+      <button class="menu-button" type="button" aria-label="Toggle Sidebar Menu" @click="toggleSidebar">
         <ion-icon :icon="menuOutline"></ion-icon>
       </button>
 
@@ -55,10 +55,12 @@ import {
   chevronDownOutline
 } from 'ionicons/icons'
 import { activeUser, logout } from '../services/authService'
+import { useSidebar } from '../composables/useSidebar'
 
 import '../assets/styles/layouts/header.css'
 
 const router = useRouter()
+const { toggleSidebar } = useSidebar()
 
 async function handleLogout() {
   await logout()

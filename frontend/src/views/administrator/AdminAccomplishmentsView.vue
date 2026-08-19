@@ -30,9 +30,9 @@
         <div class="filter-group">
           <label for="categoryFilter">Category</label>
           <select id="categoryFilter" v-model="filterCategoryId" class="input-select" @change="handleFilterChange">
-            <option :value="0">All Categories</option>
+            <option :value="0">-Select-</option>
             <option v-for="cat in categories" :key="cat.id" :value="cat.id">
-              {{ cat.category_name }}
+              {{ cat.category_code ? (cat.category_code + ' - ' + cat.category_name) : cat.category_name }}
             </option>
           </select>
         </div>
@@ -40,7 +40,7 @@
         <div class="filter-group">
           <label for="officeFilter">Office</label>
           <select id="officeFilter" v-model="filterOfficeId" class="input-select" @change="handleFilterChange">
-            <option :value="0">All Offices</option>
+            <option :value="0">-Select-</option>
             <option v-for="off in offices" :key="off.id" :value="off.id">
               {{ off.office_abbv || off.office_name }}
             </option>
@@ -58,7 +58,7 @@
       <!-- Master Entries Data Table -->
       <div class="table-card">
         <div class="table-card-header">
-          <h3>Master Accomplishments Registry ({{ accomplishments.length }} items)</h3>
+          <h3>Master Accomplishments Registry</h3>
         </div>
 
         <div v-if="loading" class="loading-state">
@@ -85,7 +85,7 @@
             <tbody>
               <tr v-for="item in paginatedAccomplishments" :key="item.id">
                 <td class="font-bold date-cell">{{ formatDate(item.date) }}</td>
-                <td><span class="category-badge">{{ item.category_name || 'General' }}</span></td>
+                <td><span class="category-badge">{{ item.category_code || item.category_name || 'General' }}</span></td>
                 <td class="font-semibold">{{ item.description }}</td>
                 <td><span class="office-tag">{{ item.office_abbv || item.office_code || item.office_name }}</span></td>
                 <td class="text-subtle">{{ item.remarks || 'N/A' }}</td>

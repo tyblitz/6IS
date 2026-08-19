@@ -131,7 +131,8 @@
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Equipment Type</th>
+                  <th>Category</th>
+                  <th>Equipment Subtype</th>
                   <th class="text-center">JRRS Target</th>
                   <th class="text-center">Current Quantity</th>
                   <th class="text-center">Shortage</th>
@@ -139,9 +140,10 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="item in overview.type_breakdown" :key="item.equipment_type">
-                  <td class="font-semibold">{{ item.equipment_type }}</td>
-                  <td class="text-center">{{ item.target_quantity }}</td>
+                <tr v-for="item in overview.type_breakdown" :key="item.equipment_subtype_id || item.equipment_subtype">
+                  <td><span class="category-tag">{{ item.equipment_type }}</span></td>
+                  <td class="font-semibold text-primary">{{ item.equipment_subtype }}</td>
+                  <td class="text-center font-bold">{{ item.target_quantity }}</td>
                   <td class="text-center">{{ item.current_quantity }}</td>
                   <td class="text-center">
                     <span :class="['badge', item.shortage > 0 ? 'badge-warning' : 'badge-success']">
@@ -494,7 +496,18 @@ onMounted(() => {
 }
 
 .font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; color: #0f172a; }
+.text-primary { color: #2563eb; }
 .text-center { text-align: center; }
+
+.category-tag {
+  background: #f1f5f9;
+  color: #475569;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
 
 .badge {
   display: inline-block;

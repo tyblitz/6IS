@@ -6,7 +6,7 @@
       <div class="header-action-bar">
         <div>
           <h2>JRRS Table of Equipment Comparison</h2>
-          <p class="subtitle">Approved targets vs actual equipment readiness metrics.</p>
+          <p class="subtitle">Approved targets vs actual equipment readiness metrics by subtype.</p>
         </div>
 
         <div class="period-selector-wrapper">
@@ -46,7 +46,7 @@
       <!-- JRRS Data Table -->
       <div class="table-card">
         <div class="table-card-header">
-          <h3>Approved Equipment Targets & Readiness</h3>
+          <h3>Approved Equipment Subtype Targets & Readiness</h3>
         </div>
 
         <div v-if="loading" class="loading-state">
@@ -58,7 +58,8 @@
           <table class="data-table">
             <thead>
               <tr>
-                <th>Equipment Type</th>
+                <th>Category</th>
+                <th>Equipment Subtype</th>
                 <th class="text-center">Target Quantity</th>
                 <th class="text-center">Current Quantity</th>
                 <th class="text-center">Shortage</th>
@@ -68,7 +69,8 @@
             </thead>
             <tbody>
               <tr v-for="item in jrrsList" :key="item.id">
-                <td class="font-semibold">{{ item.equipment_type }}</td>
+                <td><span class="category-tag">{{ item.equipment_type }}</span></td>
+                <td class="font-semibold text-primary">{{ item.equipment_subtype }}</td>
                 <td class="text-center font-bold">{{ item.target_quantity }}</td>
                 <td class="text-center">{{ item.current_quantity }}</td>
                 <td class="text-center">
@@ -100,18 +102,18 @@
       <div v-if="showModal" class="modal-backdrop">
         <div class="modal-card">
           <div class="modal-header">
-            <h3>Modify JRRS Target</h3>
+            <h3>Modify JRRS Target Quantity</h3>
             <button class="close-btn" @click="closeModal">&times;</button>
           </div>
 
           <form @submit.prevent="saveTarget" class="modal-body">
             <div class="form-group">
-              <label>Equipment Type</label>
-              <input type="text" :value="editItem?.equipment_type" disabled class="input-disabled" />
+              <label>Equipment Subtype</label>
+              <input type="text" :value="editItem ? (editItem.equipment_subtype + ' (' + editItem.equipment_type + ')') : ''" disabled class="input-disabled" />
             </div>
 
             <div class="form-group">
-              <label for="targetQty">Target Quantity</label>
+              <label for="targetQty">Target Quantity <span class="required-star">*</span></label>
               <input
                 id="targetQty"
                 v-model.number="editTargetQty"
@@ -226,7 +228,7 @@ async function saveTarget() {
   saving.value = true
   modalError.value = ''
 
-  const res = await updateJrrsTarget(editItem.value.equipment_type, editTargetQty.value)
+  const res = await updateJrrsTarget(editItem.value.equipment_subtype_id, editTargetQty.value)
   saving.value = false
 
   if (res.success) {
@@ -418,7 +420,17 @@ onMounted(() => {
 
 .font-semibold { font-weight: 600; }
 .font-bold { font-weight: 700; color: #0f172a; }
+.text-primary { color: #2563eb; }
 .text-center { text-align: center; }
+
+.category-tag {
+  background: #f1f5f9;
+  color: #475569;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
 
 .badge {
   display: inline-block;
@@ -546,6 +558,8 @@ onMounted(() => {
   font-weight: 600;
   color: #334155;
 }
+
+.required-star { color: #dc2626; }
 
 .input-text, .input-disabled {
   width: 100%;

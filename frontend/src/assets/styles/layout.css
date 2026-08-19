@@ -51,4 +51,35 @@ html, body {
     flex: 1;
     padding: var(--space-xl);
     overflow-y: auto;
+    position: relative;
+    transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Page View Transition Animation (Slight Fade + Subtle Horizontal Slide: 150-200ms) */
+.page-fade-enter-active {
+    transition: opacity 0.2s cubic-bezier(0.25, 1, 0.5, 1), transform 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.page-fade-leave-active {
+    transition: opacity 0.15s cubic-bezier(0.4, 0, 1, 1), transform 0.15s cubic-bezier(0.4, 0, 1, 1);
+}
+
+.page-fade-enter-from {
+    opacity: 0;
+    transform: translateX(10px);
+}
+
+.page-fade-leave-to {
+    opacity: 0;
+    transform: translateX(-8px);
+}
+
+/* Accessibility: prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+    .app-content,
+    .page-fade-enter-active,
+    .page-fade-leave-active {
+        transition: none !important;
+        transform: none !important;
+    }
 }

@@ -1,5 +1,6 @@
 export interface SidebarItem {
-    label: string
-    route: string
-    icon?: string | object
+  label: string
+  route: string
+  icon?: string | object
+  children?: SidebarItem[]
 }

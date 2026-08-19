@@ -15,10 +15,45 @@
         </button>
       </div>
 
+      <!-- Filter & Search Controls Bar -->
+      <div class="filter-controls-card">
+        <div class="filter-group search-group">
+          <label for="userSearch">Search</label>
+          <div class="search-input-wrapper">
+            <ion-icon :icon="searchOutline" class="search-icon" />
+            <input
+              id="userSearch"
+              type="text"
+              v-model="searchQuery"
+              placeholder="Search username or full name..."
+              class="input-search"
+            />
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <label for="userRoleFilter">Role</label>
+          <select id="userRoleFilter" v-model="filterRole" class="input-select">
+            <option value="all">-Select-</option>
+            <option value="Administrator">Administrator</option>
+            <option value="User">User</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="userStatusFilter">Status</label>
+          <select id="userStatusFilter" v-model="filterStatus" class="input-select">
+            <option value="all">-Select-</option>
+            <option value="active">Active Only</option>
+            <option value="inactive">Inactive Only</option>
+          </select>
+        </div>
+      </div>
+
       <!-- Users Table Card -->
       <div class="table-card">
         <div class="table-card-header">
-          <h3>Registered Users ({{ users.length }})</h3>
+          <h3>Registered Users</h3>
         </div>
 
         <div v-if="loading" class="loading-state">
@@ -26,8 +61,8 @@
           <p>Loading user accounts...</p>
         </div>
 
-        <div v-else-if="users.length === 0" class="empty-state">
-          <p>No user accounts found.</p>
+        <div v-else-if="filteredUsers.length === 0" class="empty-state">
+          <p>No user accounts found matching your filters.</p>
         </div>
 
         <div v-else class="table-responsive">
@@ -43,7 +78,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="user in users" :key="user.id">
+              <tr v-for="user in filteredUsers" :key="user.id">
                 <td class="font-bold code-text">{{ user.username }}</td>
                 <td>{{ user.full_name || 'N/A' }}</td>
                 <td class="text-center">
@@ -59,19 +94,17 @@
                 <td>{{ formatDate(user.created_at) }}</td>
                 <td class="text-center">
                   <div class="action-buttons">
-                    <button class="action-btn edit-btn" @click="openEditModal(user)" title="Edit User">
+                    <button class="icon-btn edit-btn" @click="openEditModal(user)" title="Edit User">
                       <ion-icon :icon="createOutline" />
-                      <span>Edit</span>
                     </button>
 
                     <button
-                      :class="['action-btn', user.is_active === 1 ? 'deactivate-btn' : 'activate-btn']"
+                      :class="['icon-btn', user.is_active === 1 ? 'deactivate-btn' : 'activate-btn']"
                       @click="handleToggleActive(user)"
                       :disabled="user.id === currentSessionUserId"
                       :title="user.id === currentSessionUserId ? 'Cannot deactivate your active session' : (user.is_active === 1 ? 'Deactivate account' : 'Activate account')"
                     >
                       <ion-icon :icon="user.is_active === 1 ? banOutline : checkmarkCircleOutline" />
-                      <span>{{ user.is_active === 1 ? 'Deactivate' : 'Activate' }}</span>
                     </button>
                   </div>
                 </td>
@@ -161,7 +194,8 @@ import {
   personAddOutline,
   createOutline,
   banOutline,
-  checkmarkCircleOutline
+  checkmarkCircleOutline,
+  searchOutline
 } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
@@ -176,6 +210,33 @@ import type { UserAccount, UserRole } from '../../types/user'
 
 const users = ref<UserAccount[]>([])
 const loading = ref(true)
+
+const searchQuery = ref('')
+const filterRole = ref('all')
+const filterStatus = ref('all')
+
+const filteredUsers = computed(() => {
+  return users.value.filter(u => {
+    // Search Filter
+    if (searchQuery.value.trim()) {
+      const q = searchQuery.value.toLowerCase()
+      const matchesUser = u.username.toLowerCase().includes(q)
+      const matchesName = (u.full_name || '').toLowerCase().includes(q)
+      if (!matchesUser && !matchesName) return false
+    }
+
+    // Role Filter
+    if (filterRole.value !== 'all' && u.role !== filterRole.value) {
+      return false
+    }
+
+    // Status Filter
+    if (filterStatus.value === 'active' && u.is_active !== 1) return false
+    if (filterStatus.value === 'inactive' && u.is_active !== 0) return false
+
+    return true
+  })
+})
 
 const showModal = ref(false)
 const isEditMode = ref(false)
@@ -428,23 +489,96 @@ onMounted(() => {
 .status-active { background: #f0fdf4; color: #16a34a; }
 .status-inactive { background: #fef2f2; color: #dc2626; }
 
+.filter-controls-card {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  padding: 18px 24px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.search-group {
+  flex: 1;
+  min-width: 260px;
+}
+
+.filter-group label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  font-size: 18px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.input-search {
+  width: 100%;
+  padding: 9px 14px 9px 38px;
+  font-size: 14px;
+  border-radius: 8px;
+  border: 1.5px solid #cbd5e1;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.input-search:focus { border-color: #2563eb; }
+
+.input-select {
+  padding: 9px 14px;
+  font-size: 14px;
+  border-radius: 8px;
+  border: 1.5px solid #cbd5e1;
+  outline: none;
+  background: #ffffff;
+  min-width: 160px;
+  box-sizing: border-box;
+}
+
+.input-select:focus { border-color: #2563eb; }
+
 .action-buttons {
   display: flex;
   gap: 8px;
   justify-content: center;
 }
 
-.action-btn {
-  padding: 6px 12px;
+.icon-btn {
+  width: 32px;
+  height: 32px;
   border-radius: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  display: inline-flex;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  border: 1px solid transparent;
+  justify-content: center;
+  cursor: pointer;
   transition: all 0.15s ease;
+  font-size: 16px;
 }
 
 .edit-btn { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
@@ -456,7 +590,7 @@ onMounted(() => {
 .activate-btn { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
 .activate-btn:hover { background: #16a34a; color: #ffffff; }
 
-.action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* Modal Styles */
 .modal-backdrop {

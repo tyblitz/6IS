@@ -7,7 +7,15 @@ import LoginView from '../views/auth/LoginView.vue'
 // Administrator Management Views
 import AdministratorView from '../views/administrator/AdministratorView.vue'
 import AdminInventoryView from '../views/administrator/AdminInventoryView.vue'
+import AdminEquipmentDetailView from '../views/administrator/AdminEquipmentDetailView.vue'
+import AdminEquipmentTypesView from '../views/administrator/AdminEquipmentTypesView.vue'
+import AdminEquipmentSubtypesView from '../views/administrator/AdminEquipmentSubtypesView.vue'
+import AdminEquipmentStatusesView from '../views/administrator/AdminEquipmentStatusesView.vue'
+import AdminEquipmentAttributesView from '../views/administrator/AdminEquipmentAttributesView.vue'
 import AdminCommunicationsView from '../views/administrator/AdminCommunicationsView.vue'
+import AdminCommunicationCategoriesView from '../views/administrator/AdminCommunicationCategoriesView.vue'
+import AdminCommunicationPurposesView from '../views/administrator/AdminCommunicationPurposesView.vue'
+import AdminCommunicationStatusesView from '../views/administrator/AdminCommunicationStatusesView.vue'
 import AdminAccomplishmentsView from '../views/administrator/AdminAccomplishmentsView.vue'
 import AdminAccomplishmentCategoriesView from '../views/administrator/AdminAccomplishmentCategoriesView.vue'
 import AdminUsersView from '../views/administrator/AdminUsersView.vue'
@@ -75,9 +83,89 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/administrator/inventory/equipment/:id',
+    name: 'Equipment Detail',
+    component: AdminEquipmentDetailView,
+    meta: {
+      module: ModuleName.Administrator,
+      requiresAuth: true,
+      requiresRole: 'Administrator'
+    }
+  },
+  {
+    path: '/administrator/inventory/types',
+    name: 'Equipment Types',
+    component: AdminEquipmentTypesView,
+    meta: {
+      module: ModuleName.Administrator,
+      requiresAuth: true,
+      requiresRole: 'Administrator'
+    }
+  },
+  {
+    path: '/administrator/inventory/subtypes',
+    name: 'Equipment Subtypes',
+    component: AdminEquipmentSubtypesView,
+    meta: {
+      module: ModuleName.Administrator,
+      requiresAuth: true,
+      requiresRole: 'Administrator'
+    }
+  },
+  {
+    path: '/administrator/inventory/statuses',
+    name: 'Equipment Statuses',
+    component: AdminEquipmentStatusesView,
+    meta: {
+      module: ModuleName.Administrator,
+      requiresAuth: true,
+      requiresRole: 'Administrator'
+    }
+  },
+  {
+    path: '/administrator/inventory/attributes',
+    name: 'Equipment Attributes',
+    component: AdminEquipmentAttributesView,
+    meta: {
+      module: ModuleName.Administrator,
+      requiresAuth: true,
+      requiresRole: 'Administrator'
+    }
+  },
+  {
     path: '/administrator/communications',
     name: 'Communications Management',
     component: AdminCommunicationsView,
+    meta: {
+      module: ModuleName.Administrator,
+      requiresAuth: true,
+      requiresRole: 'Administrator'
+    }
+  },
+  {
+    path: '/administrator/communications/categories',
+    name: 'Communication Categories',
+    component: AdminCommunicationCategoriesView,
+    meta: {
+      module: ModuleName.Administrator,
+      requiresAuth: true,
+      requiresRole: 'Administrator'
+    }
+  },
+  {
+    path: '/administrator/communications/purposes',
+    name: 'Communication Purposes',
+    component: AdminCommunicationPurposesView,
+    meta: {
+      module: ModuleName.Administrator,
+      requiresAuth: true,
+      requiresRole: 'Administrator'
+    }
+  },
+  {
+    path: '/administrator/communications/statuses',
+    name: 'Communication Statuses',
+    component: AdminCommunicationStatusesView,
     meta: {
       module: ModuleName.Administrator,
       requiresAuth: true,

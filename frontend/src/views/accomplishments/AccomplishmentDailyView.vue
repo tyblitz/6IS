@@ -50,7 +50,7 @@
           <div class="filter-item">
             <label>Category</label>
             <select v-model.number="filterCategoryId" @change="loadData">
-              <option :value="0">All Categories</option>
+              <option :value="0">-Select-</option>
               <option v-for="cat in options.categories" :key="cat.id" :value="cat.id">
                 {{ cat.category_code || cat.category_name }}
               </option>
@@ -61,7 +61,7 @@
           <div class="filter-item">
             <label>Office</label>
             <select v-model.number="filterOfficeId" @change="loadData">
-              <option :value="0">All Offices</option>
+              <option :value="0">-Select-</option>
               <option v-for="off in options.offices" :key="off.id" :value="off.id">
                 {{ off.office_name }} ({{ off.office_code }})
               </option>

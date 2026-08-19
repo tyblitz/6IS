@@ -13,7 +13,16 @@ import type {
   CommunicationOverviewSummary
 } from '../types/communication'
 
-const API_BASE_URL = 'http://localhost/6IS/backend/api/communications/index.php'
+function resolveApiUrl(): string {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname || 'localhost'
+    const protocol = window.location.protocol || 'http:'
+    return `${protocol}//${host}/6IS/backend/api/communications/index.php`
+  }
+  return 'http://localhost/6IS/backend/api/communications/index.php'
+}
+
+const API_BASE_URL = resolveApiUrl()
 
 const FALLBACK_CATEGORIES: CommunicationCategory[] = [
   { id: 1, name: 'Disposition Form', code: 'DF', is_active: 1 },

@@ -15,21 +15,28 @@
         </button>
       </div>
 
-      <!-- Search Bar Controls -->
-      <div class="search-card">
-        <div class="search-input-wrapper">
-          <ion-icon :icon="searchOutline" class="search-icon" />
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Search category name or category code..."
-            class="input-search"
-          />
+      <!-- Filter & Search Controls Bar -->
+      <div class="filter-controls-card">
+        <div class="filter-group search-group">
+          <label for="searchFilter">Search</label>
+          <div class="search-input-wrapper">
+            <ion-icon :icon="searchOutline" class="search-icon" />
+            <input
+              id="searchFilter"
+              v-model="searchQuery"
+              type="text"
+              placeholder="Search category name or category code..."
+              class="input-search"
+            />
+          </div>
         </div>
-        <button v-if="searchQuery" class="clear-search-btn" @click="searchQuery = ''" title="Clear Search">
-          <ion-icon :icon="closeCircleOutline" />
-          <span>Clear</span>
-        </button>
+
+        <div v-if="searchQuery" class="filter-actions">
+          <button class="reset-filter-btn" @click="searchQuery = ''">
+            <ion-icon :icon="closeCircleOutline" />
+            <span>Reset</span>
+          </button>
+        </div>
       </div>
 
       <!-- Categories Data Table Card -->
@@ -70,13 +77,11 @@
                 <td><span class="code-badge">{{ cat.category_code || 'N/A' }}</span></td>
                 <td class="text-center">
                   <div class="action-buttons">
-                    <button class="action-btn edit-btn" @click="openEditModal(cat)" title="Edit Category">
+                    <button class="icon-btn edit-btn" @click="openEditModal(cat)" title="Edit Category">
                       <ion-icon :icon="createOutline" />
-                      <span>Edit</span>
                     </button>
-                    <button class="action-btn delete-btn" @click="handleDeleteCategory(cat)" title="Delete Category">
+                    <button class="icon-btn delete-btn" @click="handleDeleteCategory(cat)" title="Delete Category">
                       <ion-icon :icon="trashOutline" />
-                      <span>Delete</span>
                     </button>
                   </div>
                 </td>
@@ -364,24 +369,43 @@ onMounted(() => {
 }
 
 /* Search Bar Card */
-.search-card {
+.filter-controls-card {
   background: #ffffff;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
-  padding: 14px 20px;
+  padding: 18px 24px;
   margin-bottom: 24px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: flex-end;
   gap: 16px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.search-group {
+  flex: 1;
+  min-width: 260px;
+}
+
+.filter-group label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .search-input-wrapper {
   position: relative;
   display: flex;
   align-items: center;
-  flex: 1;
+  width: 100%;
 }
 
 .search-icon {
@@ -406,11 +430,16 @@ onMounted(() => {
   border-color: #2563eb;
 }
 
-.clear-search-btn {
+.filter-actions {
+  display: flex;
+  align-items: center;
+}
+
+.reset-filter-btn {
   background: #f1f5f9;
   color: #475569;
   border: 1px solid #cbd5e1;
-  padding: 8px 14px;
+  padding: 9px 14px;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
@@ -421,7 +450,7 @@ onMounted(() => {
   transition: all 0.15s ease;
 }
 
-.clear-search-btn:hover {
+.reset-filter-btn:hover {
   background: #e2e8f0;
   color: #0f172a;
 }
@@ -524,17 +553,9 @@ onMounted(() => {
   justify-content: center;
 }
 
-.action-btn {
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid transparent;
-  transition: all 0.15s ease;
+.icon-btn {
+  width: 32px; height: 32px; border-radius: 6px; border: 1px solid #cbd5e1; background: #ffffff;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s ease; font-size: 16px;
 }
 
 .edit-btn { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
