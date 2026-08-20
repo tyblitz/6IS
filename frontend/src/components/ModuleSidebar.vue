@@ -50,7 +50,7 @@ Reusable sidebar navigation for application modules with sequential accordion co
       <router-link
         v-else
         :to="item.route"
-        class="sidebar-item"
+        :class="['sidebar-item', isSingleItemActive(item.route) ? 'item-active router-link-active' : '']"
       >
         <ion-icon v-if="item.icon" :icon="item.icon" class="sidebar-icon" />
         <span>{{ item.label }}</span>
@@ -101,6 +101,26 @@ function isSubActive(subRoute: string): boolean {
   return route.path === subRoute
 }
 
+function isSingleItemActive(itemRoute: string): boolean {
+  if (route.path === itemRoute) return true
+
+  if (route.path.startsWith('/communications/detail/')) {
+    const isOutgoing = (route.meta.commType || '').toString().toLowerCase() === 'outgoing'
+    if (isOutgoing && itemRoute === '/communications/outgoing') return true
+    if (!isOutgoing && itemRoute === '/communications/incoming') return true
+  }
+
+  if (route.path.startsWith('/inventory/equipment/detail/')) {
+    if (itemRoute === '/inventory/equipment/ict') return true
+  }
+
+  if (route.path.startsWith('/accomplishments/detail/')) {
+    if (itemRoute === '/accomplishments/daily') return true
+  }
+
+  return false
+}
+
 function isExpanded(group: SidebarItem): boolean {
   if (group.label in collapsedState.value) {
     return collapsedState.value[group.label]
@@ -118,7 +138,12 @@ async function handleGroupClick(group: SidebarItem) {
     }
   } else {
     await openGroupSequentially(group.label)
-    if (route.path !== group.route) {
+    if (group.children && group.children.length > 0) {
+      const isChildActive = group.children.some(child => route.path === child.route)
+      if (!isChildActive) {
+        router.push(group.children[0].route)
+      }
+    } else if (route.path !== group.route) {
       router.push(group.route)
     }
   }

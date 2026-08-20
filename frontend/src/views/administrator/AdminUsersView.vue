@@ -69,16 +69,41 @@
           <table class="data-table">
             <thead>
               <tr>
-                <th>Username</th>
-                <th>Full Name</th>
-                <th class="text-center">Role</th>
-                <th class="text-center">Status</th>
-                <th>Created Date</th>
+                <th class="sortable-th" @click="toggleSort('username')">
+                  <div class="th-content">
+                    <span>Username</span>
+                    <ion-icon :icon="getSortIcon('username')" :class="['sort-icon', sortKey === 'username' ? 'active-sort' : '']" />
+                  </div>
+                </th>
+                <th class="sortable-th" @click="toggleSort('full_name')">
+                  <div class="th-content">
+                    <span>Full Name</span>
+                    <ion-icon :icon="getSortIcon('full_name')" :class="['sort-icon', sortKey === 'full_name' ? 'active-sort' : '']" />
+                  </div>
+                </th>
+                <th class="text-center sortable-th" @click="toggleSort('role')">
+                  <div class="th-content justify-center">
+                    <span>Role</span>
+                    <ion-icon :icon="getSortIcon('role')" :class="['sort-icon', sortKey === 'role' ? 'active-sort' : '']" />
+                  </div>
+                </th>
+                <th class="text-center sortable-th" @click="toggleSort('is_active')">
+                  <div class="th-content justify-center">
+                    <span>Status</span>
+                    <ion-icon :icon="getSortIcon('is_active')" :class="['sort-icon', sortKey === 'is_active' ? 'active-sort' : '']" />
+                  </div>
+                </th>
+                <th class="sortable-th" @click="toggleSort('created_at')">
+                  <div class="th-content">
+                    <span>Created Date</span>
+                    <ion-icon :icon="getSortIcon('created_at')" :class="['sort-icon', sortKey === 'created_at' ? 'active-sort' : '']" />
+                  </div>
+                </th>
                 <th class="text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="user in filteredUsers" :key="user.id">
+              <tr v-for="user in paginatedItems" :key="user.id">
                 <td class="font-bold code-text">{{ user.username }}</td>
                 <td>{{ user.full_name || 'N/A' }}</td>
                 <td class="text-center">
@@ -99,10 +124,10 @@
                     </button>
 
                     <button
+                      v-if="user.id !== activeUser?.id"
                       :class="['icon-btn', user.is_active === 1 ? 'deactivate-btn' : 'activate-btn']"
                       @click="handleToggleActive(user)"
-                      :disabled="user.id === currentSessionUserId"
-                      :title="user.id === currentSessionUserId ? 'Cannot deactivate your active session' : (user.is_active === 1 ? 'Deactivate account' : 'Activate account')"
+                      :title="user.is_active === 1 ? 'Deactivate User' : 'Activate User'"
                     >
                       <ion-icon :icon="user.is_active === 1 ? banOutline : checkmarkCircleOutline" />
                     </button>
@@ -111,6 +136,16 @@
               </tr>
             </tbody>
           </table>
+
+          <!-- 10-Item Limit Pagination -->
+          <TablePagination
+            :current-page="currentPage"
+            :total-pages="totalPages"
+            :total-items="totalItems"
+            :start-index="startIndex"
+            :end-index="endIndex"
+            @change-page="setPage"
+          />
         </div>
       </div>
 
@@ -195,11 +230,16 @@ import {
   createOutline,
   banOutline,
   checkmarkCircleOutline,
-  searchOutline
+  searchOutline,
+  swapVerticalOutline,
+  chevronUpOutline,
+  chevronDownOutline
 } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
 import { activeUser } from '../../services/authService'
+import { useTablePagination } from '../../composables/useTablePagination'
+import TablePagination from '../../components/common/TablePagination.vue'
 import {
   fetchUsers,
   createUser,
@@ -232,11 +272,27 @@ const filteredUsers = computed(() => {
 
     // Status Filter
     if (filterStatus.value === 'active' && u.is_active !== 1) return false
-    if (filterStatus.value === 'inactive' && u.is_active !== 0) return false
-
     return true
   })
 })
+
+const {
+  currentPage,
+  totalItems,
+  totalPages,
+  startIndex,
+  endIndex,
+  sortKey,
+  sortOrder,
+  paginatedItems,
+  toggleSort,
+  setPage
+} = useTablePagination(filteredUsers, { pageSize: 10, defaultSortKey: 'username', defaultSortOrder: 'asc' })
+
+function getSortIcon(key: string) {
+  if (sortKey.value !== key) return swapVerticalOutline
+  return sortOrder.value === 'asc' ? chevronUpOutline : chevronDownOutline
+}
 
 const showModal = ref(false)
 const isEditMode = ref(false)

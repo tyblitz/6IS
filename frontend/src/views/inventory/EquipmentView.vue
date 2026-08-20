@@ -1,12 +1,12 @@
 <template>
-  <MainLayout title="Inventory Equipment">
+  <MainLayout :title="pageTitle">
     <div class="equipment-container">
       
       <!-- Top Header & Action Bar -->
       <div class="header-action-bar">
         <div>
-          <h2>Equipment Registry</h2>
-          <p class="subtitle">Complete equipment inventory listings for all offices.</p>
+          <h2>{{ pageTitle }}</h2>
+          <p class="subtitle">{{ pageSubtitle }}</p>
         </div>
 
         <div class="header-right">
@@ -54,10 +54,38 @@
         <span>{{ feedbackMessage }}</span>
       </div>
 
+      <!-- Search & Filter Controls Bar -->
+      <div class="table-filter-toolbar">
+        <div class="search-box-input">
+          <ion-icon :icon="searchOutline" />
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search description, serial number, equipment type, office..."
+          />
+        </div>
+
+        <div class="filters-group-row">
+          <select v-model.number="filterOfficeId" class="filter-select">
+            <option :value="0">-Select Office-</option>
+            <option v-for="off in officeList" :key="off.id" :value="off.id">
+              {{ off.office_name ? `${off.office_abbv} (${off.office_name})` : off.office_abbv }}
+            </option>
+          </select>
+
+          <select v-model.number="filterStatusId" class="filter-select">
+            <option :value="0">-Select Status-</option>
+            <option v-for="st in equipmentStatuses" :key="st.id" :value="st.id">
+              {{ st.name }}
+            </option>
+          </select>
+        </div>
+      </div>
+
       <!-- Equipment Table Card -->
       <div class="table-card">
         <div class="table-card-header">
-          <h3>Equipment Records ({{ equipmentList.length }} items)</h3>
+          <h3>Equipment Records ({{ totalItems }} items)</h3>
         </div>
 
         <div v-if="loading" class="loading-state">
@@ -65,7 +93,7 @@
           <p>Loading equipment records...</p>
         </div>
 
-        <div v-else-if="equipmentList.length === 0" class="empty-state">
+        <div v-else-if="totalItems === 0" class="empty-state">
           <p>No equipment records found for this period.</p>
         </div>
 
@@ -73,22 +101,57 @@
           <table class="data-table">
             <thead>
               <tr>
-                <th>Office</th>
-                <th>Equipment Type</th>
-                <th>Equipment Subtype</th>
-                <th>Description</th>
-                <th>Serial Number</th>
-                <th>Date Acquired</th>
-                <th class="text-center">Status</th>
+                <th class="sortable-th" @click="toggleSort('office_abbv')">
+                  <div class="th-content">
+                    <span>Office</span>
+                    <ion-icon :icon="getSortIcon('office_abbv')" :class="['sort-icon', sortKey === 'office_abbv' ? 'active-sort' : '']" />
+                  </div>
+                </th>
+                <th v-if="categoryScope === 'All'" class="sortable-th" @click="toggleSort('equipment_type_name')">
+                  <div class="th-content">
+                    <span>Equipment Type</span>
+                    <ion-icon :icon="getSortIcon('equipment_type_name')" :class="['sort-icon', sortKey === 'equipment_type_name' ? 'active-sort' : '']" />
+                  </div>
+                </th>
+                <th class="sortable-th" @click="toggleSort('equipment_subtype_name')">
+                  <div class="th-content">
+                    <span>Equipment Subtype</span>
+                    <ion-icon :icon="getSortIcon('equipment_subtype_name')" :class="['sort-icon', sortKey === 'equipment_subtype_name' ? 'active-sort' : '']" />
+                  </div>
+                </th>
+                <th class="sortable-th" @click="toggleSort('description')">
+                  <div class="th-content">
+                    <span>Description</span>
+                    <ion-icon :icon="getSortIcon('description')" :class="['sort-icon', sortKey === 'description' ? 'active-sort' : '']" />
+                  </div>
+                </th>
+                <th class="sortable-th" @click="toggleSort('serial_number')">
+                  <div class="th-content">
+                    <span>Serial Number</span>
+                    <ion-icon :icon="getSortIcon('serial_number')" :class="['sort-icon', sortKey === 'serial_number' ? 'active-sort' : '']" />
+                  </div>
+                </th>
+                <th class="sortable-th" @click="toggleSort('date_acquired')">
+                  <div class="th-content">
+                    <span>Date Acquired</span>
+                    <ion-icon :icon="getSortIcon('date_acquired')" :class="['sort-icon', sortKey === 'date_acquired' ? 'active-sort' : '']" />
+                  </div>
+                </th>
+                <th class="text-center sortable-th" @click="toggleSort('status_name')">
+                  <div class="th-content justify-center">
+                    <span>Status</span>
+                    <ion-icon :icon="getSortIcon('status_name')" :class="['sort-icon', sortKey === 'status_name' ? 'active-sort' : '']" />
+                  </div>
+                </th>
                 <th class="text-center" style="width: 120px;">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in equipmentList" :key="item.id" class="clickable-row" @click="openDetailModal(item)">
+              <tr v-for="item in paginatedItems" :key="item.id" class="clickable-row" @click="navigateToEquipmentDetail(item)">
                 <td>
                   <span class="office-tag" :title="item.office_name">{{ item.office_abbv }}</span>
                 </td>
-                <td class="font-semibold">{{ item.equipment_type_name || item.equipment_type }}</td>
+                <td v-if="categoryScope === 'All'" class="font-semibold">{{ item.equipment_type_name || item.equipment_type }}</td>
                 <td class="font-bold text-primary">{{ item.equipment_subtype_name || item.equipment_subtype }}</td>
                 <td>{{ item.description || '-' }}</td>
                 <td class="code-text">{{ item.serial_number || 'N/A' }}</td>
@@ -100,10 +163,10 @@
                 </td>
                 <td class="text-center" @click.stop>
                   <div class="action-buttons">
-                    <button class="icon-btn view-btn" title="View Equipment Details" @click="openDetailModal(item)">
+                    <button class="icon-btn view-btn" title="View Equipment Details" @click="navigateToEquipmentDetail(item)">
                       <ion-icon :icon="eyeOutline" />
                     </button>
-                    <button v-if="periodInfo?.is_current" class="icon-btn edit-btn" title="Edit Equipment" @click="openEditModal(item)">
+                    <button v-if="periodInfo?.is_current" class="icon-btn edit-btn" title="Edit Equipment" @click="navigateToEquipmentDetail(item)">
                       <ion-icon :icon="createOutline" />
                     </button>
                     <button v-if="periodInfo?.is_current" class="icon-btn delete-btn" title="Delete Equipment" @click="openDeleteModal(item)">
@@ -114,6 +177,16 @@
               </tr>
             </tbody>
           </table>
+
+          <!-- 10-Item Limit Pagination -->
+          <TablePagination
+            :current-page="currentPage"
+            :total-pages="totalPages"
+            :total-items="totalItems"
+            :start-index="startIndex"
+            :end-index="endIndex"
+            @change-page="setPage"
+          />
         </div>
       </div>
 
@@ -410,6 +483,7 @@
 </template>
 
 <script setup lang="ts">
+import { useRoute, useRouter } from 'vue-router'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { IonIcon } from '@ionic/vue'
 import {
@@ -418,10 +492,16 @@ import {
   addOutline,
   eyeOutline,
   createOutline,
-  trashOutline
+  trashOutline,
+  searchOutline,
+  swapVerticalOutline,
+  chevronUpOutline,
+  chevronDownOutline
 } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
+import { useTablePagination } from '../../composables/useTablePagination'
+import TablePagination from '../../components/common/TablePagination.vue'
 import {
   fetchReportingPeriods,
   fetchEquipmentList,
@@ -445,6 +525,31 @@ import type {
   EquipmentFormPayload
 } from '../../types/inventory'
 
+const route = useRoute()
+const router = useRouter()
+
+function navigateToEquipmentDetail(item: EquipmentItem) {
+  router.push(`/inventory/equipment/detail/${item.id}`)
+}
+
+const categoryScope = computed(() => {
+  if (route.path.endsWith('/ict')) return 'ICT'
+  if (route.path.endsWith('/communications')) return 'Communications'
+  return 'All'
+})
+
+const pageTitle = computed(() => {
+  if (categoryScope.value === 'ICT') return 'ICT Equipment Registry'
+  if (categoryScope.value === 'Communications') return 'Communications Equipment Registry'
+  return 'Equipment Registry'
+})
+
+const pageSubtitle = computed(() => {
+  if (categoryScope.value === 'ICT') return 'Complete ICT equipment inventory listings for all offices.'
+  if (categoryScope.value === 'Communications') return 'Complete communications equipment inventory listings for all offices.'
+  return 'Complete equipment inventory listings for all offices.'
+})
+
 const periods = ref<ReportingPeriod[]>([])
 const selectedPeriod = ref('')
 const equipmentList = ref<EquipmentItem[]>([])
@@ -452,6 +557,54 @@ const officeList = ref<OfficeItem[]>([])
 const equipmentTypes = ref<EquipmentType[]>([])
 const equipmentSubtypes = ref<EquipmentSubtype[]>([])
 const equipmentStatuses = ref<EquipmentStatusOption[]>([])
+
+const searchQuery = ref('')
+const filterOfficeId = ref(0)
+const filterStatusId = ref(0)
+
+const filteredEquipment = computed(() => {
+  return equipmentList.value.filter(item => {
+    // Route Subpage Filtering (ICT vs Communications)
+    if (categoryScope.value === 'ICT') {
+      const typeStr = (item.equipment_type_name || item.equipment_type || '').toUpperCase()
+      if (item.equipment_type_id !== 1 && !typeStr.includes('ICT')) return false
+    } else if (categoryScope.value === 'Communications') {
+      const typeStr = (item.equipment_type_name || item.equipment_type || '').toUpperCase()
+      if (item.equipment_type_id !== 2 && !typeStr.includes('COMM')) return false
+    }
+
+    if (filterOfficeId.value > 0 && item.office_id !== filterOfficeId.value) return false
+    if (filterStatusId.value > 0 && item.status_id !== filterStatusId.value) return false
+    if (searchQuery.value.trim()) {
+      const q = searchQuery.value.toLowerCase()
+      const matchDesc = (item.description || '').toLowerCase().includes(q)
+      const matchSerial = (item.serial_number || '').toLowerCase().includes(q)
+      const matchType = (item.equipment_type_name || item.equipment_type || '').toLowerCase().includes(q)
+      const matchSubtype = (item.equipment_subtype_name || item.equipment_subtype || '').toLowerCase().includes(q)
+      const matchOffice = (item.office_abbv || item.office_name || '').toLowerCase().includes(q)
+      if (!matchDesc && !matchSerial && !matchType && !matchSubtype && !matchOffice) return false
+    }
+    return true
+  })
+})
+
+const {
+  currentPage,
+  totalItems,
+  totalPages,
+  startIndex,
+  endIndex,
+  sortKey,
+  sortOrder,
+  paginatedItems,
+  toggleSort,
+  setPage
+} = useTablePagination(filteredEquipment, { pageSize: 10, defaultSortKey: 'office_abbv', defaultSortOrder: 'asc' })
+
+function getSortIcon(key: string) {
+  if (sortKey.value !== key) return swapVerticalOutline
+  return sortOrder.value === 'asc' ? chevronUpOutline : chevronDownOutline
+}
 
 const periodInfo = ref<{ period_label: string; is_current: boolean } | null>(null)
 const loading = ref(true)

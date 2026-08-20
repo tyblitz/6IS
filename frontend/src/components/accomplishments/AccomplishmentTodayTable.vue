@@ -5,6 +5,12 @@
         <h3>Today's Accomplishments</h3>
         <p class="subtitle">Summary of activities for {{ currentDateFormatted }}</p>
       </div>
+
+      <!-- Search Bar -->
+      <div v-if="records.length > 0" class="table-search-input">
+        <ion-icon :icon="searchOutline" />
+        <input v-model="searchQuery" type="text" placeholder="Search description, office, remarks..." />
+      </div>
     </div>
 
     <!-- Table content -->
@@ -13,7 +19,7 @@
       <span>Loading today's accomplishments...</span>
     </div>
 
-    <div v-else-if="records.length === 0" class="state-container empty-box">
+    <div v-else-if="totalItems === 0" class="state-container empty-box">
       <ion-icon :icon="clipboardOutline" class="empty-icon"></ion-icon>
       <p>No accomplishments recorded for today yet.</p>
       <button class="btn-first-add" type="button" @click="$emit('add-first')">
@@ -25,48 +31,106 @@
       <table class="overview-table">
         <thead>
           <tr>
-            <th>Office</th>
-            <th>Description</th>
-            <th>Remarks</th>
+            <th class="sortable-th" @click="toggleSort('office_code')">
+              <div class="th-content">
+                <span>Office</span>
+                <ion-icon :icon="getSortIcon('office_code')" :class="['sort-icon', sortKey === 'office_code' ? 'active-sort' : '']" />
+              </div>
+            </th>
+            <th class="sortable-th" @click="toggleSort('description')">
+              <div class="th-content">
+                <span>Description</span>
+                <ion-icon :icon="getSortIcon('description')" :class="['sort-icon', sortKey === 'description' ? 'active-sort' : '']" />
+              </div>
+            </th>
+            <th class="sortable-th" @click="toggleSort('remarks')">
+              <div class="th-content">
+                <span>Remarks</span>
+                <ion-icon :icon="getSortIcon('remarks')" :class="['sort-icon', sortKey === 'remarks' ? 'active-sort' : '']" />
+              </div>
+            </th>
             <th class="text-right">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in records" :key="item.id">
+          <tr v-for="item in paginatedItems" :key="item.id" class="clickable-row" @click="navigateToAccDetail(item)">
             <td class="whitespace-nowrap">
               <span class="office-tag">{{ item.office_code || item.office_name }}</span>
             </td>
             <td class="desc-cell">{{ item.description }}</td>
             <td class="remarks-cell">{{ item.remarks || '-' }}</td>
-            <td class="text-right actions-cell">
-              <button class="btn-view" type="button" @click="$emit('select', item)">
+            <td class="text-right actions-cell" @click.stop>
+              <button class="btn-view" type="button" @click="navigateToAccDetail(item)">
                 View
               </button>
             </td>
           </tr>
         </tbody>
       </table>
+
+      <!-- 10-Item Limit Pagination -->
+      <TablePagination
+        :current-page="currentPage"
+        :total-pages="totalPages"
+        :total-items="totalItems"
+        :start-index="startIndex"
+        :end-index="endIndex"
+        @change-page="setPage"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, toRef } from 'vue'
+import { useRouter } from 'vue-router'
 import { IonSpinner, IonIcon } from '@ionic/vue'
-import { clipboardOutline } from 'ionicons/icons'
+import {
+  clipboardOutline,
+  searchOutline,
+  swapVerticalOutline,
+  chevronUpOutline,
+  chevronDownOutline
+} from 'ionicons/icons'
 import type { AccomplishmentItem } from '../../types/accomplishment'
+import { useTablePagination } from '../../composables/useTablePagination'
+import TablePagination from '../common/TablePagination.vue'
 
-defineProps<{
-  records: AccomplishmentItem[];
-  loading: boolean;
+const router = useRouter()
+
+function navigateToAccDetail(item: AccomplishmentItem) {
+  router.push(`/accomplishments/detail/${item.id}`)
+}
+
+const props = defineProps<{
+  records: AccomplishmentItem[]
+  loading: boolean
 }>()
 
 defineEmits<{
-  (e: 'select', item: AccomplishmentItem): void;
-  (e: 'add-first'): void;
+  (e: 'select', item: AccomplishmentItem): void
+  (e: 'add-first'): void
 }>()
 
-import { formatDate } from '../../utils/dateUtils'
+const recordsRef = toRef(props, 'records')
+const {
+  searchQuery,
+  currentPage,
+  totalItems,
+  totalPages,
+  startIndex,
+  endIndex,
+  sortKey,
+  sortOrder,
+  paginatedItems,
+  toggleSort,
+  setPage
+} = useTablePagination(recordsRef, { pageSize: 10 })
+
+function getSortIcon(key: string) {
+  if (sortKey.value !== key) return swapVerticalOutline
+  return sortOrder.value === 'asc' ? chevronUpOutline : chevronDownOutline
+}
 
 const currentDateFormatted = computed(() => {
   const now = new Date()
@@ -89,6 +153,11 @@ const currentDateFormatted = computed(() => {
 
 .table-header {
   margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
 .table-header h3 {
@@ -99,110 +168,108 @@ const currentDateFormatted = computed(() => {
 }
 
 .subtitle {
+  margin: 0;
   font-size: 13px;
   color: #64748b;
-  margin: 0;
+}
+
+.table-search-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 240px;
+}
+
+.table-search-input ion-icon {
+  position: absolute;
+  left: 10px;
+  font-size: 16px;
+  color: #94a3b8;
+}
+
+.table-search-input input {
+  padding: 6px 12px 6px 32px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #1e293b;
+  outline: none;
+  width: 100%;
+}
+
+.table-search-input input:focus {
+  border-color: #2563eb;
 }
 
 .state-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
-  color: #64748b;
-  gap: 12px;
+  padding: 30px;
   text-align: center;
+  color: #64748b;
 }
 
-.empty-icon {
-  font-size: 40px;
-  color: #cbd5e1;
+.empty-box .empty-icon {
+  font-size: 32px;
+  color: #94a3b8;
+  margin-bottom: 8px;
 }
 
 .btn-first-add {
-  background: #eff6ff;
-  color: #2563eb;
-  border: 1px solid #bfdbfe;
+  margin-top: 12px;
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
   padding: 8px 16px;
   border-radius: 8px;
-  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  margin-top: 4px;
 }
 
-.btn-first-add:hover { background: #dbeafe; }
-
 .table-responsive {
-  width: 100%;
   overflow-x: auto;
 }
 
 .overview-table {
   width: 100%;
   border-collapse: collapse;
+  font-size: 13px;
 }
 
 .overview-table th {
+  background: #f8fafc;
+  padding: 12px 16px;
   text-align: left;
-  font-size: 12px;
   font-weight: 700;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 12px;
+  color: #475569;
   border-bottom: 1px solid #e2e8f0;
 }
 
 .overview-table td {
-  padding: 14px 12px;
-  font-size: 14px;
-  color: #334155;
+  padding: 12px 16px;
   border-bottom: 1px solid #f1f5f9;
-  vertical-align: top;
 }
-
-.whitespace-nowrap { white-space: nowrap; }
-
-.date-cell { font-weight: 600; color: #0f172a; }
 
 .office-tag {
   background: #eff6ff;
-  color: #2563eb;
-  font-size: 12px;
+  color: #1d4ed8;
   font-weight: 700;
-  padding: 3px 8px;
+  padding: 4px 8px;
   border-radius: 6px;
-}
-
-.desc-cell {
-  line-height: 1.5;
-  max-width: 400px;
-}
-
-.remarks-cell {
-  color: #64748b;
-  font-size: 13px;
-  max-width: 250px;
-}
-
-.text-right { text-align: right; }
-
-.actions-cell {
-  white-space: nowrap;
+  font-size: 12px;
 }
 
 .btn-view {
   background: #f1f5f9;
   color: #2563eb;
-  border: none;
-  padding: 6px 14px;
+  border: 1px solid #cbd5e1;
+  padding: 4px 12px;
   border-radius: 6px;
-  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
 
-.btn-view:hover { background: #e2e8f0; }
+.btn-view:hover {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
 </style>

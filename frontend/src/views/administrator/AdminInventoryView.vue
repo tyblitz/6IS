@@ -383,7 +383,7 @@ const sortColumn = ref<'serial_number' | 'office' | 'subtype' | 'date_acquired' 
 const sortDirection = ref<'asc' | 'desc'>('asc')
 
 const currentPage = ref(1)
-const pageSize = ref(20)
+const pageSize = ref(10)
 
 const showEquipmentModal = ref(false)
 const modalError = ref('')

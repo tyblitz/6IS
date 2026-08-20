@@ -63,12 +63,12 @@
         :show-type-column="false"
         :records="records"
         :loading="loading"
-        @select="handleSelect"
-        @edit="openEditModal"
+        @select="navigateToCommDetail"
+        @edit="navigateToCommDetail"
         @delete="handleDelete"
         @add-first="openCreateModal"
       />
-
+      
       <!-- Form Modal -->
       <CommunicationFormModal
         :is-open="isFormOpen"
@@ -93,7 +93,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { IonIcon, onIonViewWillEnter } from '@ionic/vue'
 import { addOutline, searchOutline } from 'ionicons/icons'
 
@@ -115,6 +115,11 @@ import {
 } from '../../services/communicationService'
 
 const route = useRoute()
+const router = useRouter()
+
+function navigateToCommDetail(item: Communication) {
+  router.push(`/communications/detail/${item.id}`)
+}
 const loading = ref(true)
 const records = ref<Communication[]>([])
 

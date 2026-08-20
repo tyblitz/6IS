@@ -72,7 +72,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="cat in filteredAndSortedCategories" :key="cat.id">
+              <tr v-for="cat in paginatedItems" :key="cat.id">
                 <td class="font-bold">{{ cat.category_name }}</td>
                 <td><span class="code-badge">{{ cat.category_code || 'N/A' }}</span></td>
                 <td class="text-center">
@@ -88,6 +88,16 @@
               </tr>
             </tbody>
           </table>
+
+          <!-- 10-Item Limit Pagination -->
+          <TablePagination
+            :current-page="currentPage"
+            :total-pages="totalPages"
+            :total-items="totalItems"
+            :start-index="startIndex"
+            :end-index="endIndex"
+            @change-page="setPage"
+          />
         </div>
       </div>
 
@@ -154,6 +164,8 @@ import {
 } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
+import { useTablePagination } from '../../composables/useTablePagination'
+import TablePagination from '../../components/common/TablePagination.vue'
 
 interface CategoryItem {
   id: number
@@ -216,6 +228,16 @@ const filteredAndSortedCategories = computed(() => {
 
   return result
 })
+
+const {
+  currentPage,
+  totalItems,
+  totalPages,
+  startIndex,
+  endIndex,
+  paginatedItems,
+  setPage
+} = useTablePagination(filteredAndSortedCategories, { pageSize: 10 })
 
 function toggleSort(col: 'category_name' | 'category_code') {
   if (sortColumn.value === col) {

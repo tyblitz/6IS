@@ -55,8 +55,10 @@ if ($method === 'GET') {
     // 1. List Communications
     if ($view === '' || $view === 'communications') {
         $stmt = $pdo->query("
-            SELECT c.id, c.communication_type, c.communication_date, c.subject, c.office_id, o.office_abbv as originating_office,
-                   c.category_id, cat.name as category_name, cat.code as category_code, c.purpose_id, p.name as purpose_name, c.status, c.created_at
+            SELECT c.id, c.communication_type, c.communication_date, c.subject, c.office_id,
+                   o.office_name, o.office_code, o.office_abbv, o.office_abbv as originating_office,
+                   c.category_id, cat.name as category_name, cat.code as category_code,
+                   c.purpose_id, p.name as purpose_name, c.status, c.image_url, c.created_at
             FROM tbl_communications c
             LEFT JOIN tbl_offices o ON c.office_id = o.id
             LEFT JOIN tbl_communication_categories cat ON c.category_id = cat.id
@@ -65,6 +67,24 @@ if ($method === 'GET') {
             ORDER BY c.communication_date DESC, c.id DESC
         ");
         $comms = $stmt->fetchAll();
+
+        // Fetch attachments for all communications
+        $attStmt = $pdo->query("SELECT id, communication_id, image_url FROM tbl_communication_attachments ORDER BY id ASC");
+        $attachmentsMap = [];
+        foreach ($attStmt->fetchAll() as $att) {
+            $attachmentsMap[$att['communication_id']][] = $att;
+        }
+
+        foreach ($comms as &$c) {
+            $atts = $attachmentsMap[$c['id']] ?? [];
+            $urls = array_map(function($a) { return $a['image_url']; }, $atts);
+            if (!empty($c['image_url']) && !in_array($c['image_url'], $urls)) {
+                array_unshift($urls, $c['image_url']);
+            }
+            $c['attachments'] = $atts;
+            $c['image_urls'] = $urls;
+        }
+
         sendJsonResponse(true, 'Communications retrieved.', $comms);
     }
 
@@ -88,6 +108,19 @@ if ($method === 'GET') {
         $statuses = $stmt->fetchAll();
         sendJsonResponse(true, 'Communication statuses retrieved.', $statuses);
     }
+
+    // 5. Combined Options (Categories, Purposes, Offices)
+    if ($view === 'options') {
+        $catStmt = $pdo->query("SELECT id, name as category_name, code, is_active FROM tbl_communication_categories WHERE deleted_at IS NULL AND is_active = 1 ORDER BY name ASC");
+        $purpStmt = $pdo->query("SELECT id, name as purpose_name, is_active FROM tbl_communication_purposes WHERE deleted_at IS NULL AND is_active = 1 ORDER BY name ASC");
+        $offStmt = $pdo->query("SELECT id, office_name, office_code, office_abbv, office_category, is_active FROM tbl_offices WHERE deleted_at IS NULL AND is_active = 1 ORDER BY id ASC");
+
+        sendJsonResponse(true, 'Communication options retrieved.', [
+            'categories' => $catStmt->fetchAll(),
+            'purposes' => $purpStmt->fetchAll(),
+            'offices' => $offStmt->fetchAll()
+        ]);
+    }
 }
 
 // POST Handler (Requires Administrator role for management actions)
@@ -107,6 +140,48 @@ if ($method === 'POST') {
         $categoryId = (int)($input['category_id'] ?? 1);
         $purposeId = (int)($input['purpose_id'] ?? 1);
         $status = trim($input['status'] ?? ($commType === 'Incoming' ? 'Pending' : 'Released'));
+        $imageUrl = trim($input['image_url'] ?? '');
+
+        $newImageUrls = [];
+
+        // Support array of base64 images
+        $base64List = [];
+        if (!empty($input['images_data']) && is_array($input['images_data'])) {
+            $base64List = $input['images_data'];
+        } else if (!empty($input['image_data'])) {
+            $base64List = [$input['image_data']];
+        }
+
+        $uploadDir = __DIR__ . '/../../uploads/communications/';
+        if (!file_exists($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+
+        foreach ($base64List as $b64) {
+            if (strpos($b64, 'data:image/') === 0) {
+                list($type, $data) = explode(';', $b64);
+                list(, $data) = explode(',', $data);
+                $decodedData = base64_decode($data);
+
+                if ($decodedData !== false) {
+                    $ext = 'png';
+                    if (strpos($type, 'jpeg') !== false || strpos($type, 'jpg') !== false) $ext = 'jpg';
+                    else if (strpos($type, 'webp') !== false) $ext = 'webp';
+
+                    $filename = 'comm_screenshot_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
+                    $filepath = $uploadDir . $filename;
+
+                    if (file_put_contents($filepath, $decodedData)) {
+                        $savedUrl = '/6IS/backend/uploads/communications/' . $filename;
+                        $newImageUrls[] = $savedUrl;
+                    }
+                }
+            }
+        }
+
+        if (!empty($newImageUrls)) {
+            $imageUrl = $newImageUrls[0];
+        }
 
         if (empty($subject)) {
             sendJsonResponse(false, 'Subject is required.', null, null, 400);
@@ -116,7 +191,7 @@ if ($method === 'POST') {
             $stmt = $pdo->prepare("
                 UPDATE tbl_communications
                 SET communication_type = :type, office_id = :office_id, category_id = :cat_id, purpose_id = :purpose_id,
-                    subject = :subject, communication_date = :date, status = :status, updated_at = NOW(), modified_by = :modified_by
+                    subject = :subject, communication_date = :date, status = :status, image_url = COALESCE(NULLIF(:image_url, ''), image_url), updated_at = NOW(), modified_by = :modified_by
                 WHERE id = :id AND deleted_at IS NULL
             ");
             $stmt->execute([
@@ -127,14 +202,15 @@ if ($method === 'POST') {
                 ':subject' => $subject,
                 ':date' => $commDate,
                 ':status' => $status,
+                ':image_url' => $imageUrl ?: '',
                 ':modified_by' => $_SESSION['user_id'],
                 ':id' => $id
             ]);
-            sendJsonResponse(true, "Communication record updated successfully.");
+            $commIdToUse = $id;
         } else {
             $stmt = $pdo->prepare("
-                INSERT INTO tbl_communications (communication_type, office_id, category_id, purpose_id, subject, communication_date, status, created_at, updated_at, created_by, modified_by)
-                VALUES (:type, :office_id, :cat_id, :purpose_id, :subject, :date, :status, NOW(), NOW(), :created_by, :modified_by)
+                INSERT INTO tbl_communications (communication_type, office_id, category_id, purpose_id, subject, communication_date, status, image_url, created_at, updated_at, created_by, modified_by)
+                VALUES (:type, :office_id, :cat_id, :purpose_id, :subject, :date, :status, :image_url, NOW(), NOW(), :created_by, :modified_by)
             ");
             $stmt->execute([
                 ':type' => $commType,
@@ -144,11 +220,22 @@ if ($method === 'POST') {
                 ':subject' => $subject,
                 ':date' => $commDate,
                 ':status' => $status,
+                ':image_url' => $imageUrl ?: null,
                 ':created_by' => $_SESSION['user_id'],
                 ':modified_by' => $_SESSION['user_id']
             ]);
-            sendJsonResponse(true, "Communication record created successfully.");
+            $commIdToUse = (int)$pdo->lastInsertId();
         }
+
+        // Save multiple attachment records
+        if (!empty($newImageUrls) && $commIdToUse > 0) {
+            $insAtt = $pdo->prepare("INSERT INTO tbl_communication_attachments (communication_id, image_url) VALUES (:comm_id, :url)");
+            foreach ($newImageUrls as $url) {
+                $insAtt->execute([':comm_id' => $commIdToUse, ':url' => $url]);
+            }
+        }
+
+        sendJsonResponse(true, "Communication record saved successfully.", ['id' => $commIdToUse, 'image_urls' => $newImageUrls]);
     }
 
     // 2. Soft Delete Communication

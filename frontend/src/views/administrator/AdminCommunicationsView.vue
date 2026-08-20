@@ -322,7 +322,7 @@ const sortColumn = ref<'communication_date' | 'subject' | 'originating_office' |
 const sortDirection = ref<'asc' | 'desc'>('desc')
 
 const currentPage = ref(1)
-const pageSize = ref(20)
+const pageSize = ref(10)
 
 const showCommModal = ref(false)
 const isEdit = ref(false)

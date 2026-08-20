@@ -1,0 +1,132 @@
+/* frontend/src/assets/styles/components/tables.css */
+
+.sortable-th {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+
+.sortable-th:hover {
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+
+.th-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sort-icon {
+  font-size: 14px;
+  opacity: 0.5;
+  transition: opacity 0.15s ease;
+}
+
+.sortable-th:hover .sort-icon,
+.sort-icon.active-sort {
+  opacity: 1;
+  color: #2563eb;
+}
+
+/* Global Table Filter & Search Controls Bar */
+.table-filter-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: #ffffff;
+  padding: 14px 20px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.search-box-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 260px;
+  flex: 1;
+}
+
+.search-box-input ion-icon {
+  position: absolute;
+  left: 12px;
+  font-size: 18px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.search-box-input input {
+  width: 100%;
+  padding: 8px 12px 8px 38px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #1e293b;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-box-input input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.filters-group-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.filter-select,
+.input-select,
+.toolbar-grid select,
+.filter-controls select,
+.filter-item select,
+.filter-group select {
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #1e293b;
+  background: #ffffff;
+  outline: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.filter-select:focus,
+.input-select:focus,
+.toolbar-grid select:focus,
+.filter-controls select:focus,
+.filter-item select:focus,
+.filter-group select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+/* Lighter placeholder text color for filter select elements matching search bar placeholder */
+select:has(option[value="0"]:checked),
+select:has(option[value=""]:checked),
+select:has(option[value="all"]:checked) {
+  color: #94a3b8 !important;
+  font-weight: 400;
+}
+
+/* Default placeholder options inside dropdown list */
+select option[value="0"],
+select option[value=""],
+select option[value="all"],
+select option:disabled {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+select option {
+  color: #1e293b;
+  font-weight: 500;
+}

@@ -74,11 +74,36 @@
           <table class="data-table">
             <thead>
               <tr>
-                <th style="width: 120px;">Date</th>
-                <th>Category</th>
-                <th>Description</th>
-                <th style="width: 90px;">Office</th>
-                <th>Remarks</th>
+                <th style="width: 120px;" class="sortable-th" @click="toggleSort('date')">
+                  <div class="th-content">
+                    <span>Date</span>
+                    <ion-icon :icon="getSortIcon('date')" :class="['sort-icon', sortKey === 'date' ? 'active-sort' : '']" />
+                  </div>
+                </th>
+                <th class="sortable-th" @click="toggleSort('category_code')">
+                  <div class="th-content">
+                    <span>Category</span>
+                    <ion-icon :icon="getSortIcon('category_code')" :class="['sort-icon', sortKey === 'category_code' ? 'active-sort' : '']" />
+                  </div>
+                </th>
+                <th class="sortable-th" @click="toggleSort('description')">
+                  <div class="th-content">
+                    <span>Description</span>
+                    <ion-icon :icon="getSortIcon('description')" :class="['sort-icon', sortKey === 'description' ? 'active-sort' : '']" />
+                  </div>
+                </th>
+                <th style="width: 90px;" class="sortable-th" @click="toggleSort('office_code')">
+                  <div class="th-content">
+                    <span>Office</span>
+                    <ion-icon :icon="getSortIcon('office_code')" :class="['sort-icon', sortKey === 'office_code' ? 'active-sort' : '']" />
+                  </div>
+                </th>
+                <th class="sortable-th" @click="toggleSort('remarks')">
+                  <div class="th-content">
+                    <span>Remarks</span>
+                    <ion-icon :icon="getSortIcon('remarks')" :class="['sort-icon', sortKey === 'remarks' ? 'active-sort' : '']" />
+                  </div>
+                </th>
                 <th class="text-center" style="width: 90px;">Actions</th>
               </tr>
             </thead>
@@ -104,28 +129,14 @@
           </table>
 
           <!-- Pagination Bar -->
-          <div v-if="accomplishments.length > 0" class="pagination-footer">
-            <div class="pagination-info">
-              Showing <strong>{{ showingStart }}</strong> to <strong>{{ showingEnd }}</strong> of <strong>{{ accomplishments.length }}</strong> items
-            </div>
-            <div class="pagination-controls">
-              <button class="page-btn" :disabled="currentPage === 1" @click="goToPage(currentPage - 1)">
-                Previous
-              </button>
-              <button
-                v-for="p in totalPages"
-                :key="p"
-                :class="['page-number-btn', currentPage === p ? 'active-page' : '']"
-                @click="goToPage(p)"
-              >
-                {{ p }}
-              </button>
-              <button class="page-btn" :disabled="currentPage === totalPages" @click="goToPage(currentPage + 1)">
-                Next
-              </button>
-            </div>
-          </div>
-
+          <TablePagination
+            :current-page="currentPage"
+            :total-pages="totalPages"
+            :total-items="accomplishments.length"
+            :start-index="showingStart"
+            :end-index="showingEnd"
+            @change-page="goToPage"
+          />
         </div>
       </div>
 
@@ -195,10 +206,14 @@ import {
   searchOutline,
   closeCircleOutline,
   createOutline,
-  trashOutline
+  trashOutline,
+  swapVerticalOutline,
+  chevronUpOutline,
+  chevronDownOutline
 } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
+import TablePagination from '../../components/common/TablePagination.vue'
 
 function resolveApiUrl(): string {
   if (typeof window !== 'undefined') {
@@ -221,24 +236,58 @@ const filterSearch = ref('')
 const filterCategoryId = ref(0)
 const filterOfficeId = ref(0)
 
+const sortKey = ref('date')
+const sortOrder = ref<'asc' | 'desc'>('desc')
+
+function toggleSort(key: string) {
+  if (sortKey.value === key) {
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortOrder.value = 'asc'
+  }
+  currentPage.value = 1
+}
+
+function getSortIcon(key: string) {
+  if (sortKey.value !== key) return swapVerticalOutline
+  return sortOrder.value === 'asc' ? chevronUpOutline : chevronDownOutline
+}
+
 // Pagination States
 const currentPage = ref(1)
 const itemsPerPage = 10
 
-const totalPages = computed(() => Math.ceil(accomplishments.value.length / itemsPerPage) || 1)
+const sortedAccomplishments = computed(() => {
+  const list = [...accomplishments.value]
+  if (!sortKey.value) return list
+  const k = sortKey.value
+  const isAsc = sortOrder.value === 'asc'
+  return list.sort((a, b) => {
+    let valA = a[k] ?? ''
+    let valB = b[k] ?? ''
+    const strA = String(valA).toLowerCase()
+    const strB = String(valB).toLowerCase()
+    if (strA < strB) return isAsc ? -1 : 1
+    if (strA > strB) return isAsc ? 1 : -1
+    return 0
+  })
+})
+
+const totalPages = computed(() => Math.ceil(sortedAccomplishments.value.length / itemsPerPage) || 1)
 
 const paginatedAccomplishments = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage
-  return accomplishments.value.slice(start, start + itemsPerPage)
+  return sortedAccomplishments.value.slice(start, start + itemsPerPage)
 })
 
 const showingStart = computed(() => {
-  if (accomplishments.value.length === 0) return 0
+  if (sortedAccomplishments.value.length === 0) return 0
   return (currentPage.value - 1) * itemsPerPage + 1
 })
 
 const showingEnd = computed(() => {
-  return Math.min(currentPage.value * itemsPerPage, accomplishments.value.length)
+  return Math.min(currentPage.value * itemsPerPage, sortedAccomplishments.value.length)
 })
 
 function goToPage(p: number) {

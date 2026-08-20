@@ -1,7 +1,8 @@
 import {
   gridOutline,
   desktopOutline,
-  clipboardOutline
+  clipboardOutline,
+  radioOutline
 } from 'ionicons/icons'
 
 import type { SidebarItem } from '../types/SidebarItem'
@@ -15,11 +16,35 @@ export const inventoryMenu: SidebarItem[] = [
   {
     label: 'Inventory',
     icon: desktopOutline,
-    route: '/inventory/equipment'
+    route: '/inventory/equipment',
+    children: [
+      {
+        label: 'ICT Equipment',
+        icon: desktopOutline,
+        route: '/inventory/equipment/ict'
+      },
+      {
+        label: 'Communications',
+        icon: radioOutline,
+        route: '/inventory/equipment/communications'
+      }
+    ]
   },
   {
     label: 'JRRS',
     icon: clipboardOutline,
-    route: '/inventory/jrrs'
+    route: '/inventory/jrrs',
+    children: [
+      {
+        label: 'ICT Readiness',
+        icon: desktopOutline,
+        route: '/inventory/jrrs/ict'
+      },
+      {
+        label: 'Communications',
+        icon: radioOutline,
+        route: '/inventory/jrrs/communications'
+      }
+    ]
   }
 ]

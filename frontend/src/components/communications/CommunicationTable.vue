@@ -2,7 +2,7 @@
   <div class="table-card">
     <div class="table-header-bar">
       <h3>Communication Records</h3>
-      <span class="record-count" v-if="!loading">{{ records.length }} records</span>
+      <span class="record-count" v-if="!loading">{{ totalItems }} records</span>
     </div>
 
     <!-- Loading State -->
@@ -11,7 +11,7 @@
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="records.length === 0" class="state-container empty-state">
+    <div v-else-if="totalItems === 0" class="state-container empty-state">
       <div class="empty-icon">
         <ion-icon :icon="documentTextOutline" />
       </div>
@@ -27,17 +27,47 @@
       <table class="comms-table">
         <thead>
           <tr>
-            <th v-if="showTypeColumn" class="col-type">Type</th>
-            <th class="col-office">Office</th>
-            <th class="col-subject">Subject & Category</th>
-            <th class="col-date">Date</th>
-            <th class="col-status">Status</th>
-            <th class="col-age text-center">Age (Days)</th>
+            <th v-if="showTypeColumn" class="col-type sortable-th" @click="toggleSort('communication_type')">
+              <div class="th-content">
+                <span>Type</span>
+                <ion-icon :icon="getSortIcon('communication_type')" :class="['sort-icon', sortKey === 'communication_type' ? 'active-sort' : '']" />
+              </div>
+            </th>
+            <th class="col-office sortable-th" @click="toggleSort('office_abbv')">
+              <div class="th-content">
+                <span>Office</span>
+                <ion-icon :icon="getSortIcon('office_abbv')" :class="['sort-icon', sortKey === 'office_abbv' ? 'active-sort' : '']" />
+              </div>
+            </th>
+            <th class="col-subject sortable-th" @click="toggleSort('subject')">
+              <div class="th-content">
+                <span>Subject & Category</span>
+                <ion-icon :icon="getSortIcon('subject')" :class="['sort-icon', sortKey === 'subject' ? 'active-sort' : '']" />
+              </div>
+            </th>
+            <th class="col-date sortable-th" @click="toggleSort('communication_date')">
+              <div class="th-content">
+                <span>Date</span>
+                <ion-icon :icon="getSortIcon('communication_date')" :class="['sort-icon', sortKey === 'communication_date' ? 'active-sort' : '']" />
+              </div>
+            </th>
+            <th class="col-status sortable-th" @click="toggleSort('status')">
+              <div class="th-content">
+                <span>Status</span>
+                <ion-icon :icon="getSortIcon('status')" :class="['sort-icon', sortKey === 'status' ? 'active-sort' : '']" />
+              </div>
+            </th>
+            <th class="col-age text-center sortable-th" @click="toggleSort('age_days')">
+              <div class="th-content justify-center">
+                <span>Age (Days)</span>
+                <ion-icon :icon="getSortIcon('age_days')" :class="['sort-icon', sortKey === 'age_days' ? 'active-sort' : '']" />
+              </div>
+            </th>
             <th class="col-actions text-right">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in records" :key="item.id" @click="$emit('select', item)">
+          <tr v-for="item in paginatedItems" :key="item.id" @click="$emit('select', item)">
             <!-- Type / Direction Badge -->
             <td v-if="showTypeColumn" class="col-type">
               <span
@@ -118,35 +148,70 @@
         </tbody>
       </table>
     </div>
+
+    <!-- 10-Item Pagination Controls -->
+    <TablePagination
+      :current-page="currentPage"
+      :total-pages="totalPages"
+      :total-items="totalItems"
+      :start-index="startIndex"
+      :end-index="endIndex"
+      @change-page="setPage"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
+import { toRef } from 'vue'
 import { IonIcon } from '@ionic/vue'
 import {
   documentTextOutline,
   eyeOutline,
   createOutline,
-  trashOutline
+  trashOutline,
+  swapVerticalOutline,
+  chevronUpOutline,
+  chevronDownOutline
 } from 'ionicons/icons'
 import type { Communication } from '../../types/communication'
+import { useTablePagination } from '../../composables/useTablePagination'
+import TablePagination from '../common/TablePagination.vue'
 
 interface Props {
-  records: Communication[];
-  loading: boolean;
-  showTypeColumn?: boolean;
+  records: Communication[]
+  loading: boolean
+  showTypeColumn?: boolean
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   showTypeColumn: true
 })
 
 defineEmits<{
-  (e: 'select', item: Communication): void;
-  (e: 'edit', item: Communication): void;
-  (e: 'delete', item: Communication): void;
-  (e: 'add-first'): void;
+  (e: 'select', item: Communication): void
+  (e: 'edit', item: Communication): void
+  (e: 'delete', item: Communication): void
+  (e: 'add-first'): void
 }>()
+
+const recordsRef = toRef(props, 'records')
+const {
+  currentPage,
+  totalItems,
+  totalPages,
+  startIndex,
+  endIndex,
+  sortKey,
+  sortOrder,
+  paginatedItems,
+  toggleSort,
+  setPage
+} = useTablePagination(recordsRef, { pageSize: 10, defaultSortKey: 'communication_date', defaultSortOrder: 'desc' })
+
+function getSortIcon(key: string) {
+  if (sortKey.value !== key) return swapVerticalOutline
+  return sortOrder.value === 'asc' ? chevronUpOutline : chevronDownOutline
+}
 
 function formatDate(dateStr?: string | null): string {
   if (!dateStr) return 'N/A'
@@ -200,29 +265,21 @@ function getStatusClass(status?: string): string {
 }
 
 .state-container {
-  padding: 48px 24px;
+  padding: 40px;
   text-align: center;
   color: #64748b;
 }
 
-.empty-state h4 {
-  font-size: 18px;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 12px 0 6px 0;
+.empty-state .empty-icon {
+  font-size: 36px;
+  color: #94a3b8;
+  margin-bottom: 8px;
 }
 
-.empty-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: #f1f5f9;
-  color: #64748b;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto;
-  font-size: 28px;
+.empty-state h4 {
+  margin: 0 0 4px 0;
+  color: #1e293b;
+  font-size: 16px;
 }
 
 .create-first-btn {
@@ -230,145 +287,93 @@ function getStatusClass(status?: string): string {
   background: #2563eb;
   color: #ffffff;
   border: none;
-  padding: 9px 18px;
+  padding: 8px 16px;
   border-radius: 8px;
-  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .table-responsive {
-  width: 100%;
   overflow-x: auto;
 }
 
 .comms-table {
   width: 100%;
   border-collapse: collapse;
-  text-align: left;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .comms-table th {
   background: #f8fafc;
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 700;
   color: #475569;
-  font-weight: 600;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 14px 16px;
   border-bottom: 1px solid #e2e8f0;
-  vertical-align: middle;
 }
 
 .comms-table td {
-  padding: 14px 16px;
+  padding: 12px 16px;
   border-bottom: 1px solid #f1f5f9;
   vertical-align: middle;
 }
 
 .comms-table tbody tr {
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: background 0.15s ease;
 }
 
 .comms-table tbody tr:hover {
-  background-color: #f8fafc;
+  background: #f8fafc;
 }
 
-/* Explicit Column Width & Alignments */
-.col-type {
-  width: 110px;
-  text-align: left;
-}
-
-.col-office {
-  width: 110px;
-  text-align: left;
-}
-
-.col-subject {
-  min-width: 280px;
-  text-align: left;
-}
-
-.col-date {
-  width: 140px;
-  text-align: left;
-  white-space: nowrap;
-}
-
-.col-status {
-  width: 130px;
-  text-align: left;
-}
-
-.col-age {
-  width: 110px;
-  text-align: center !important;
-}
-
-.col-actions {
-  width: 130px;
-  text-align: right !important;
-}
-
-.text-center {
-  text-align: center !important;
-}
-
-.text-right {
-  text-align: right !important;
+.justify-center {
+  justify-content: center;
 }
 
 .type-badge {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 9999px;
-  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
   font-weight: 700;
 }
 
 .badge-incoming {
-  background: #eff6ff;
-  color: #2563eb;
+  background: #dbeafe;
+  color: #1d4ed8;
 }
 
 .badge-outgoing {
-  background: #f0fdf4;
-  color: #16a34a;
+  background: #fef3c7;
+  color: #b45309;
 }
 
 .office-abbv-text {
   font-weight: 700;
-  color: #0f172a;
-  font-size: 14px;
+  color: #1e293b;
 }
 
 .subject-cell {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-width: 480px;
 }
 
 .subject-text {
   font-weight: 600;
-  color: #1e293b;
-  line-height: 1.4;
+  color: #0f172a;
 }
 
 .tags-row {
   display: flex;
   gap: 6px;
-  flex-wrap: wrap;
 }
 
 .tag-badge {
-  font-size: 11px;
   padding: 2px 6px;
   border-radius: 4px;
-  font-weight: 500;
+  font-size: 10px;
+  font-weight: 600;
 }
 
 .category-tag {

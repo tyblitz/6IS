@@ -1,12 +1,12 @@
 <template>
-  <MainLayout title="JRRS Equipment Rating">
+  <MainLayout :title="pageTitle">
     <div class="jrrs-container">
       
       <!-- Top Action Bar with Period Selector -->
       <div class="header-action-bar">
         <div>
-          <h2>JRRS Table of Equipment Comparison</h2>
-          <p class="subtitle">Approved targets vs actual equipment readiness metrics by subtype.</p>
+          <h2>{{ pageTitle }}</h2>
+          <p class="subtitle">{{ pageSubtitle }}</p>
         </div>
 
         <div class="period-selector-wrapper">
@@ -43,10 +43,22 @@
         <span>Administrator Mode — You are authorized to modify approved JRRS target quantities.</span>
       </div>
 
+      <!-- Search & Filter Controls Bar -->
+      <div class="table-filter-toolbar">
+        <div class="search-box-input">
+          <ion-icon :icon="searchOutline" />
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search category, equipment subtype..."
+          />
+        </div>
+      </div>
+
       <!-- JRRS Data Table -->
       <div class="table-card">
         <div class="table-card-header">
-          <h3>Approved Equipment Subtype Targets & Readiness</h3>
+          <h3>Approved Equipment Subtype Targets & Readiness ({{ totalItems }} items)</h3>
         </div>
 
         <div v-if="loading" class="loading-state">
@@ -54,22 +66,56 @@
           <p>Loading JRRS target records...</p>
         </div>
 
+        <div v-else-if="totalItems === 0" class="empty-state">
+          <p>No JRRS readiness records found for this period.</p>
+        </div>
+
         <div v-else class="table-responsive">
           <table class="data-table">
             <thead>
               <tr>
-                <th>Category</th>
-                <th>Equipment Subtype</th>
-                <th class="text-center">Target Quantity</th>
-                <th class="text-center">Current Quantity</th>
-                <th class="text-center">Shortage</th>
-                <th class="text-center">Readiness %</th>
+                <th v-if="categoryScope === 'All'" class="sortable-th" @click="toggleSort('equipment_type')">
+                  <div class="th-content">
+                    <span>Category</span>
+                    <ion-icon :icon="getSortIcon('equipment_type')" :class="['sort-icon', sortKey === 'equipment_type' ? 'active-sort' : '']" />
+                  </div>
+                </th>
+                <th class="sortable-th" @click="toggleSort('equipment_subtype')">
+                  <div class="th-content">
+                    <span>Equipment Subtype</span>
+                    <ion-icon :icon="getSortIcon('equipment_subtype')" :class="['sort-icon', sortKey === 'equipment_subtype' ? 'active-sort' : '']" />
+                  </div>
+                </th>
+                <th class="text-center sortable-th" @click="toggleSort('target_quantity')">
+                  <div class="th-content justify-center">
+                    <span>Target Quantity</span>
+                    <ion-icon :icon="getSortIcon('target_quantity')" :class="['sort-icon', sortKey === 'target_quantity' ? 'active-sort' : '']" />
+                  </div>
+                </th>
+                <th class="text-center sortable-th" @click="toggleSort('current_quantity')">
+                  <div class="th-content justify-center">
+                    <span>Current Quantity</span>
+                    <ion-icon :icon="getSortIcon('current_quantity')" :class="['sort-icon', sortKey === 'current_quantity' ? 'active-sort' : '']" />
+                  </div>
+                </th>
+                <th class="text-center sortable-th" @click="toggleSort('shortage')">
+                  <div class="th-content justify-center">
+                    <span>Shortage</span>
+                    <ion-icon :icon="getSortIcon('shortage')" :class="['sort-icon', sortKey === 'shortage' ? 'active-sort' : '']" />
+                  </div>
+                </th>
+                <th class="text-center sortable-th" @click="toggleSort('readiness_pct')">
+                  <div class="th-content justify-center">
+                    <span>Readiness %</span>
+                    <ion-icon :icon="getSortIcon('readiness_pct')" :class="['sort-icon', sortKey === 'readiness_pct' ? 'active-sort' : '']" />
+                  </div>
+                </th>
                 <th v-if="activeUser?.role === 'Administrator'" class="text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in jrrsList" :key="item.id">
-                <td><span class="category-tag">{{ item.equipment_type }}</span></td>
+              <tr v-for="item in paginatedItems" :key="item.id">
+                <td v-if="categoryScope === 'All'"><span class="category-tag">{{ item.equipment_type }}</span></td>
                 <td class="font-semibold text-primary">{{ item.equipment_subtype }}</td>
                 <td class="text-center font-bold">{{ item.target_quantity }}</td>
                 <td class="text-center">{{ item.current_quantity }}</td>
@@ -95,6 +141,16 @@
               </tr>
             </tbody>
           </table>
+
+          <!-- 10-Item Limit Pagination -->
+          <TablePagination
+            :current-page="currentPage"
+            :total-pages="totalPages"
+            :total-items="totalItems"
+            :start-index="startIndex"
+            :end-index="endIndex"
+            @change-page="setPage"
+          />
         </div>
       </div>
 
@@ -143,17 +199,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
 import { IonIcon } from '@ionic/vue'
 import {
   calendarOutline,
   timeOutline,
   shieldCheckmarkOutline,
-  createOutline
+  createOutline,
+  searchOutline,
+  swapVerticalOutline,
+  chevronUpOutline,
+  chevronDownOutline
 } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
 import { activeUser } from '../../services/authService'
+import { useTablePagination } from '../../composables/useTablePagination'
+import TablePagination from '../../components/common/TablePagination.vue'
 import {
   fetchReportingPeriods,
   fetchJrrsList,
@@ -161,11 +224,63 @@ import {
 } from '../../services/inventoryService'
 import type { ReportingPeriod, JrrsItem } from '../../types/inventory'
 
+const route = useRoute()
+
+const categoryScope = computed(() => {
+  if (route.path.endsWith('/ict')) return 'ICT'
+  if (route.path.endsWith('/communications')) return 'Communications'
+  return 'All'
+})
+
+const pageTitle = computed(() => {
+  if (categoryScope.value === 'ICT') return 'JRRS ICT Equipment Readiness'
+  if (categoryScope.value === 'Communications') return 'JRRS Communications Equipment Readiness'
+  return 'JRRS Table of Equipment Comparison'
+})
+
+const pageSubtitle = computed(() => {
+  if (categoryScope.value === 'ICT') return 'Approved ICT targets vs actual equipment readiness metrics.'
+  if (categoryScope.value === 'Communications') return 'Approved communications targets vs actual equipment readiness metrics.'
+  return 'Approved targets vs actual equipment readiness metrics by subtype.'
+})
+
 const periods = ref<ReportingPeriod[]>([])
 const selectedPeriod = ref('')
 const jrrsList = ref<JrrsItem[]>([])
 const periodInfo = ref<{ period_label: string; is_current: boolean } | null>(null)
 const loading = ref(true)
+
+const filteredJrrsList = computed(() => {
+  return jrrsList.value.filter(item => {
+    if (categoryScope.value === 'ICT') {
+      const typeStr = (item.equipment_type || '').toUpperCase()
+      if (!typeStr.includes('ICT')) return false
+    } else if (categoryScope.value === 'Communications') {
+      const typeStr = (item.equipment_type || '').toUpperCase()
+      if (!typeStr.includes('COMM')) return false
+    }
+    return true
+  })
+})
+
+const {
+  searchQuery,
+  currentPage,
+  totalItems,
+  totalPages,
+  startIndex,
+  endIndex,
+  sortKey,
+  sortOrder,
+  paginatedItems,
+  toggleSort,
+  setPage
+} = useTablePagination(filteredJrrsList, { pageSize: 10, defaultSortKey: 'equipment_type', defaultSortOrder: 'asc' })
+
+function getSortIcon(key: string) {
+  if (sortKey.value !== key) return swapVerticalOutline
+  return sortOrder.value === 'asc' ? chevronUpOutline : chevronDownOutline
+}
 
 // Admin Modal State
 const showModal = ref(false)

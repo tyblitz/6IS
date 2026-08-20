@@ -25,11 +25,15 @@ import CommunicationsView from '../views/communications/CommunicationsView.vue'
 import IncomingCommunicationsView from '../views/communications/IncomingCommunicationsView.vue'
 import OutgoingCommunicationsView from '../views/communications/OutgoingCommunicationsView.vue'
 import CommunicationReportsView from '../views/communications/CommunicationReportsView.vue'
+import CommunicationDetailView from '../views/communications/CommunicationDetailView.vue'
+import CommunicationEditView from '../views/communications/CommunicationEditView.vue'
 import InventoryView from '../views/inventory/InventoryView.vue'
 import EquipmentView from '../views/inventory/EquipmentView.vue'
+import EquipmentDetailView from '../views/inventory/EquipmentDetailView.vue'
 import JRRSView from '../views/inventory/JRRS.vue'
 import AccomplishmentView from '../views/accomplishments/AccomplishmentView.vue'
 import AccomplishmentDailyView from '../views/accomplishments/AccomplishmentDailyView.vue'
+import AccomplishmentDetailView from '../views/accomplishments/AccomplishmentDetailView.vue'
 import AccomplishmentMonthlyView from '../views/accomplishments/AccomplishmentMonthlyView.vue'
 import AccomplishmentQuarterlyView from '../views/accomplishments/AccomplishmentQuarterlyView.vue'
 import AccomplishmentAnnualView from '../views/accomplishments/AccomplishmentAnnualView.vue'
@@ -238,6 +242,24 @@ const routes: Array<RouteRecordRaw> = [
     },
   },
   {
+    path: '/communications/detail/:id',
+    name: 'Communication Detail',
+    component: CommunicationDetailView,
+    meta: {
+      module: ModuleName.Communications,
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/communications/detail/:id/edit',
+    name: 'Edit Communication',
+    component: CommunicationEditView,
+    meta: {
+      module: ModuleName.Communications,
+      requiresAuth: true
+    }
+  },
+  {
     path: '/inventory',
     name: 'Inventory',
     component: InventoryView,
@@ -248,7 +270,29 @@ const routes: Array<RouteRecordRaw> = [
   },
   {
     path: '/inventory/equipment',
-    name: 'Equipment',
+    redirect: '/inventory/equipment/ict'
+  },
+  {
+    path: '/inventory/equipment/detail/:id',
+    name: 'User Equipment Detail',
+    component: EquipmentDetailView,
+    meta: {
+      module: ModuleName.Equipment,
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/inventory/equipment/ict',
+    name: 'ICT Equipment',
+    component: EquipmentView,
+    meta: {
+      module: ModuleName.Equipment,
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/inventory/equipment/communications',
+    name: 'Communications Equipment',
     component: EquipmentView,
     meta: {
       module: ModuleName.Equipment,
@@ -257,10 +301,23 @@ const routes: Array<RouteRecordRaw> = [
   },
   {
     path: '/inventory/jrrs',
-    name: 'JRRS',
+    redirect: '/inventory/jrrs/ict'
+  },
+  {
+    path: '/inventory/jrrs/ict',
+    name: 'ICT JRRS Readiness',
     component: JRRSView,
     meta: {
-      module: ModuleName.JRRS,
+      module: ModuleName.Equipment,
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/inventory/jrrs/communications',
+    name: 'Communications JRRS Readiness',
+    component: JRRSView,
+    meta: {
+      module: ModuleName.Equipment,
       requiresAuth: true
     }
   },
@@ -277,6 +334,15 @@ const routes: Array<RouteRecordRaw> = [
     path: '/accomplishments/daily',
     name: 'Daily Report',
     component: AccomplishmentDailyView,
+    meta: {
+      module: ModuleName.Accomplishments,
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/accomplishments/detail/:id',
+    name: 'Accomplishment Detail',
+    component: AccomplishmentDetailView,
     meta: {
       module: ModuleName.Accomplishments,
       requiresAuth: true

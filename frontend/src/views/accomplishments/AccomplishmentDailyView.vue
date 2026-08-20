@@ -63,7 +63,7 @@
             <select v-model.number="filterOfficeId" @change="loadData">
               <option :value="0">-Select-</option>
               <option v-for="off in options.offices" :key="off.id" :value="off.id">
-                {{ off.office_name }} ({{ off.office_code }})
+                {{ off.office_code ? `${off.office_name} (${off.office_code})` : off.office_name }}
               </option>
             </select>
           </div>
@@ -104,15 +104,35 @@
           <table class="report-table">
             <thead>
               <tr>
-                <th style="width: 160px;">Office</th>
-                <th style="width: 180px;">Category</th>
-                <th>Description</th>
-                <th>Remarks</th>
+                <th style="width: 160px;" class="sortable-th" @click="toggleSort('office_code')">
+                  <div class="th-content">
+                    <span>Office</span>
+                    <ion-icon :icon="getSortIcon('office_code')" :class="['sort-icon', sortKey === 'office_code' ? 'active-sort' : '']" />
+                  </div>
+                </th>
+                <th style="width: 180px;" class="sortable-th" @click="toggleSort('category_code')">
+                  <div class="th-content">
+                    <span>Category</span>
+                    <ion-icon :icon="getSortIcon('category_code')" :class="['sort-icon', sortKey === 'category_code' ? 'active-sort' : '']" />
+                  </div>
+                </th>
+                <th class="sortable-th" @click="toggleSort('description')">
+                  <div class="th-content">
+                    <span>Description</span>
+                    <ion-icon :icon="getSortIcon('description')" :class="['sort-icon', sortKey === 'description' ? 'active-sort' : '']" />
+                  </div>
+                </th>
+                <th class="sortable-th" @click="toggleSort('remarks')">
+                  <div class="th-content">
+                    <span>Remarks</span>
+                    <ion-icon :icon="getSortIcon('remarks')" :class="['sort-icon', sortKey === 'remarks' ? 'active-sort' : '']" />
+                  </div>
+                </th>
                 <th class="text-right print-hide" style="width: 140px;">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in records" :key="item.id">
+              <tr v-for="item in paginatedItems" :key="item.id" class="clickable-row" @click="navigateToAccDetail(item)">
                 <td class="whitespace-nowrap">
                   <span class="office-tag">{{ item.office_code || item.office_name }}</span>
                 </td>
@@ -121,11 +141,11 @@
                 </td>
                 <td class="desc-cell">{{ item.description }}</td>
                 <td class="remarks-cell">{{ item.remarks || '-' }}</td>
-                <td class="text-right actions-cell print-hide">
-                  <button class="icon-action-btn view-btn" title="View Details" @click="handleView(item)">
+                <td class="text-right actions-cell print-hide" @click.stop>
+                  <button class="icon-action-btn view-btn" title="View Details" @click="navigateToAccDetail(item)">
                     <ion-icon :icon="eyeOutline"></ion-icon>
                   </button>
-                  <button class="icon-action-btn edit-btn" title="Edit Record" @click="handleEdit(item)">
+                  <button class="icon-action-btn edit-btn" title="Edit Record" @click="navigateToAccDetail(item)">
                     <ion-icon :icon="createOutline"></ion-icon>
                   </button>
                   <button class="icon-action-btn delete-btn" title="Soft Delete" @click="handleDeletePrompt(item)">
@@ -135,6 +155,16 @@
               </tr>
             </tbody>
           </table>
+
+          <!-- 10-Item Limit Pagination -->
+          <TablePagination
+            :current-page="currentPage"
+            :total-pages="totalPages"
+            :total-items="totalItems"
+            :start-index="startIndex"
+            :end-index="endIndex"
+            @change-page="setPage"
+          />
         </div>
       </div>
 
@@ -161,7 +191,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { IonSpinner, IonIcon, onIonViewWillEnter } from '@ionic/vue'
 import {
   addOutline,
@@ -169,10 +199,15 @@ import {
   eyeOutline,
   createOutline,
   trashOutline,
-  calendarOutline
+  calendarOutline,
+  swapVerticalOutline,
+  chevronUpOutline,
+  chevronDownOutline
 } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
+import { useTablePagination } from '../../composables/useTablePagination'
+import TablePagination from '../../components/common/TablePagination.vue'
 import AccomplishmentFormModal from '../../components/accomplishments/AccomplishmentFormModal.vue'
 import AccomplishmentDetailModal from '../../components/accomplishments/AccomplishmentDetailModal.vue'
 
@@ -185,8 +220,14 @@ import {
   fetchAccomplishmentOptions,
   deleteAccomplishment
 } from '../../services/accomplishmentService'
+import { formatDate } from '../../utils/dateUtils'
 
 const route = useRoute()
+const router = useRouter()
+
+function navigateToAccDetail(item: AccomplishmentItem) {
+  router.push(`/accomplishments/detail/${item.id}`)
+}
 
 const loading = ref(true)
 const records = ref<AccomplishmentItem[]>([])
@@ -196,6 +237,24 @@ const filterDate = ref(new Date().toISOString().split('T')[0])
 const filterCategoryId = ref(0)
 const filterOfficeId = ref(0)
 const searchQuery = ref('')
+
+const {
+  currentPage,
+  totalItems,
+  totalPages,
+  startIndex,
+  endIndex,
+  sortKey,
+  sortOrder,
+  paginatedItems,
+  toggleSort,
+  setPage
+} = useTablePagination(records, { pageSize: 10, defaultSortKey: 'office_code', defaultSortOrder: 'asc' })
+
+function getSortIcon(key: string) {
+  if (sortKey.value !== key) return swapVerticalOutline
+  return sortOrder.value === 'asc' ? chevronUpOutline : chevronDownOutline
+}
 
 function openDatePicker() {
   if (dateInputRef.value) {
@@ -208,7 +267,7 @@ function openDatePicker() {
   }
 }
 
-import { formatDate } from '../../utils/dateUtils'
+
 
 const isFormOpen = ref(false)
 const isDetailOpen = ref(false)

@@ -57,6 +57,9 @@ export interface Communication {
   subject: string;
   communication_date: string;
   status: string;
+  image_url?: string | null;
+  image_urls?: string[];
+  attachments?: { id: number; image_url: string }[];
   created_at?: string;
   updated_at?: string;
   created_by?: number;
@@ -82,6 +85,9 @@ export interface CommunicationFormPayload {
   subject: string;
   communication_date: string;
   status: string;
+  image_url?: string | null;
+  image_data?: string | null;
+  images_data?: string[];
 }
 
 export interface CommunicationActivityPayload {

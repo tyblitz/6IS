@@ -14,12 +14,12 @@ export const communicationsMenu: SidebarItem[] = [
     route: '/communications'
   },
   {
-    label: 'Incoming Communications',
+    label: 'Incoming',
     icon: mailUnreadOutline,
     route: '/communications/incoming'
   },
   {
-    label: 'Outgoing Communications',
+    label: 'Outgoing',
     icon: paperPlaneOutline,
     route: '/communications/outgoing'
   },

@@ -286,7 +286,7 @@ const sortColumn = ref<'id' | 'equipment_subtype_name' | 'attribute_name' | 'att
 const sortDirection = ref<'asc' | 'desc'>('asc')
 
 const currentPage = ref(1)
-const pageSize = ref(20)
+const pageSize = ref(10)
 
 const showModal = ref(false)
 const isEdit = ref(false)

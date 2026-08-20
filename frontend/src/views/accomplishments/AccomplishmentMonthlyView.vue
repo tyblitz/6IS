@@ -2,22 +2,11 @@
   <MainLayout title="Monthly Summary" username="Admin">
     <div class="report-page-container">
 
-      <!-- Header & Action Buttons -->
+      <!-- Header -->
       <div class="module-header-bar print-hide">
         <div>
           <h2>Monthly Accomplishment Summary</h2>
           <p class="subtitle">Breakdown of accomplishments and outgoing communications for the month.</p>
-        </div>
-        <div class="action-btn-group">
-          <button class="btn-export-doc" type="button" :disabled="isGeneratingDocx" @click="handleExportDocx">
-            <ion-spinner v-if="isGeneratingDocx" name="crescent" style="width: 18px; height: 18px; color: #ffffff;"></ion-spinner>
-            <ion-icon v-else :icon="documentTextOutline"></ion-icon>
-            <span>{{ isGeneratingDocx ? 'Generating report...' : 'Export DOCX Report' }}</span>
-          </button>
-          <button class="btn-print" type="button" @click="handlePrint">
-            <ion-icon :icon="printOutline"></ion-icon>
-            <span>Print Report</span>
-          </button>
         </div>
       </div>
 

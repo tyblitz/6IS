@@ -66,8 +66,34 @@ const breadcrumbs = computed<BreadcrumbItem[]>(() => {
     } else if (path === '/inventory/jrrs') {
       items.push({ label: 'JRRS' })
     }
-  } else if (path === '/communications') {
-    items.push({ label: 'Communications' })
+  } else if (path.startsWith('/communications')) {
+    if (path === '/communications') {
+      items.push({ label: 'Communications' })
+    } else if (path === '/communications/incoming') {
+      items.push({ label: 'Incoming' })
+    } else if (path === '/communications/outgoing') {
+      items.push({ label: 'Outgoing' })
+    } else if (path === '/communications/reports') {
+      items.push({ label: 'Communications', path: '/communications' })
+      items.push({ label: 'Reports' })
+    } else if (path.startsWith('/communications/detail/')) {
+      const isOutgoing = (route.meta.commType || '').toString().toLowerCase() === 'outgoing'
+      const typeLabel = isOutgoing ? 'Outgoing' : 'Incoming'
+      const typePath = isOutgoing ? '/communications/outgoing' : '/communications/incoming'
+      
+      items.push({ label: typeLabel, path: typePath })
+
+      const subject = (route.meta.subject as string) || 'Communication Detail'
+      const isEdit = path.endsWith('/edit')
+
+      if (isEdit) {
+        const detailPath = path.replace('/edit', '')
+        items.push({ label: subject, path: detailPath })
+        items.push({ label: 'Edit Details' })
+      } else {
+        items.push({ label: subject })
+      }
+    }
   } else {
     items.push({ label: route.name?.toString() || 'Page' })
   }

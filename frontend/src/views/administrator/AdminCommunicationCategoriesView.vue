@@ -218,7 +218,7 @@ const sortColumn = ref<'id' | 'category_name' | 'code' | 'is_active' | null>('ca
 const sortDirection = ref<'asc' | 'desc'>('asc')
 
 const currentPage = ref(1)
-const pageSize = ref(20)
+const pageSize = ref(10)
 
 const showModal = ref(false)
 const isEdit = ref(false)
