@@ -135,3 +135,20 @@ CREATE TABLE IF NOT EXISTS tbl_communication_activities (
     INDEX idx_communication_id (communication_id),
     INDEX idx_activity_date (activity_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tbl_calendar_events (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NULL,
+    event_date DATE NOT NULL,
+    event_time TIME NULL,
+    event_type VARCHAR(50) NOT NULL DEFAULT 'other',
+    priority VARCHAR(20) NOT NULL DEFAULT 'normal',
+    created_by INT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at DATETIME NULL,
+    INDEX idx_event_date (event_date),
+    INDEX idx_event_type (event_type),
+    INDEX idx_deleted_at (deleted_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

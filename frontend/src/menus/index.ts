@@ -4,6 +4,7 @@ import type { SidebarItem } from '../types/SidebarItem'
 import { inventoryMenu } from './inventoryMenu'
 import { communicationsMenu } from './communicationsMenu'
 import { accomplishmentsMenu } from './accomplishmentsMenu'
+import { calendarMenu } from './calendarMenu'
 import { administratorMenu } from './administratorMenu'
 
 export const moduleMenus: Record<ModuleName, SidebarItem[]> = {
@@ -11,6 +12,7 @@ export const moduleMenus: Record<ModuleName, SidebarItem[]> = {
   [ModuleName.Inventory]: inventoryMenu,
   [ModuleName.Communications]: communicationsMenu,
   [ModuleName.Accomplishments]: accomplishmentsMenu,
+  [ModuleName.Calendar]: calendarMenu,
   [ModuleName.Administrator]: administratorMenu,
 
   // Mappings for subpages

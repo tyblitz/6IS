@@ -27,7 +27,8 @@ try {
         __DIR__ . '/migrations/create_communications_tables.sql',
         __DIR__ . '/migrations/create_auth_tables.sql',
         __DIR__ . '/migrations/create_inventory_tables.sql',
-        __DIR__ . '/migrations/alter_inventory_to_extensible_equipment.sql'
+        __DIR__ . '/migrations/alter_inventory_to_extensible_equipment.sql',
+        __DIR__ . '/migrations/create_calendar_tables.sql'
     ];
 
     echo "4. Executing SQL migration scripts...\n";
