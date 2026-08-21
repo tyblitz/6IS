@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS tbl_communications (
     subject VARCHAR(255) NULL,
     communication_date DATE NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'Pending',
+    image_url VARCHAR(500) NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     created_by INT NOT NULL DEFAULT 1,
@@ -113,6 +114,15 @@ CREATE TABLE IF NOT EXISTS tbl_communications (
     INDEX idx_deleted_at (deleted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS tbl_communication_attachments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    communication_id INT NOT NULL,
+    image_url VARCHAR(500) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (communication_id) REFERENCES tbl_communications(id) ON DELETE CASCADE,
+    INDEX idx_communication_id (communication_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS tbl_communication_activities (
     id INT AUTO_INCREMENT PRIMARY KEY,
     communication_id INT NOT NULL,
@@ -121,7 +131,7 @@ CREATE TABLE IF NOT EXISTS tbl_communication_activities (
     remarks TEXT NULL,
     created_at DATETIME NOT NULL,
     created_by INT NOT NULL DEFAULT 1,
-    FOREIGN KEY (communication_id) REFERENCES tbl_communications(id),
+    FOREIGN KEY (communication_id) REFERENCES tbl_communications(id) ON DELETE CASCADE,
     INDEX idx_communication_id (communication_id),
     INDEX idx_activity_date (activity_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

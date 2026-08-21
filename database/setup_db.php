@@ -56,12 +56,28 @@ try {
         }
     } catch (Exception $e) {}
 
-    // Ensure tbl_communications has communication_type column
+    // Ensure tbl_communications has communication_type and image_url columns
     try {
         $commCols = $pdo->query("SHOW COLUMNS FROM `tbl_communications`")->fetchAll(PDO::FETCH_COLUMN);
         if (!in_array('communication_type', $commCols)) {
             $pdo->exec("ALTER TABLE `tbl_communications` ADD COLUMN `communication_type` ENUM('Incoming', 'Outgoing') NOT NULL DEFAULT 'Incoming' AFTER `id`;");
         }
+        if (!in_array('image_url', $commCols)) {
+            $pdo->exec("ALTER TABLE `tbl_communications` ADD COLUMN `image_url` VARCHAR(500) NULL AFTER `status`;");
+        }
+    } catch (Exception $e) {}
+
+    // Ensure tbl_communication_attachments table exists
+    try {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS `tbl_communication_attachments` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `communication_id` INT NOT NULL,
+                `image_url` VARCHAR(500) NOT NULL,
+                `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                INDEX (`communication_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ");
     } catch (Exception $e) {}
 
     // Ensure tbl_users has necessary columns (is_active, role ENUM)

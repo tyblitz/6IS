@@ -1,33 +1,27 @@
 # Changelog
 
-## v0.1.0
+## Version 0.1 (v0.1.0) - Initial Release
 
-Initial project setup
+### Core Features & Architecture
+- **Unified Layout & Navigation**: Built reusable `MainLayout`, `AppHeader`, `AppBreadcrumb`, and `ModuleSidebar` components with active route highlighting for subpages and dynamic breadcrumb hierarchies.
+- **Role-Based Security & Auth**: Configured PHP session security with role checks (`Administrator`, `User`) and secure password hashing.
 
-- Created Ionic Vue project
-- Configured Vue Router
-- Created Dashboard
-- Added Main Layout
-- Added Inventory navigation
-- Added Communications navigation
+### Inventory Module
+- **Extensible Equipment Architecture**: Created equipment types (`ICT`, `Communications`), subtypes, status lookups, and flexible attribute definition value mappings.
+- **Dynamic Subpages**: Added dedicated ICT and Communications subpages for both Inventory and Joint Repair & Replacement System (JRRS).
+- **Client & Admin Views**: Created dedicated read-only and edit view pages (`AdminInventoryView.vue`) for item management.
 
+### Communications Module
+- **Incoming & Outgoing Tracking**: Full CRUD management for communications with category codes, office origin assignments, dates, status tracking, and dynamic age calculations.
+- **Dedicated Read-Only & Edit Views**: Route-based detail pages (`CommunicationDetailView.vue`, `CommunicationEditView.vue`) formatted with `(Category Abbv) - (Subject)` headers and single-row detail summary cards.
+- **Multiple Image Attachments**: Added multi-file image upload, database attachment table (`tbl_communication_attachments`), and interactive full-screen Lightbox Gallery.
 
-## Unreleased
+### Accomplishment Module
+- **Operational Activity Tracking**: Added today, annual, and custom period accomplishment logging with priority and status breakdown metrics.
 
-- Created reusable AppLayout.
-- Added shared header, footer, sidebar placeholder, and breadcrumb placeholder.
-- Refactored Inventory module to use the shared layout.
-- Created reusable ModuleSidebar component.
-- Added support for dynamic sidebar navigation using TypeScript interfaces.
-- Implemented menu rendering using Vue props and `v-for`.
-- Added route-based navigation using Vue Router.
-- Implemented full CRUD operations (Create, Read details, Update, Soft Delete) for Communications module in PHP REST API (`backend/api/communications/index.php`).
-- Added explicit `communication_type` (`Incoming` / `Outgoing`) column to `tbl_communications`.
-- Implemented process activity history tracking with controlled logging rules (`Logged` on creation, status change logging, and explicit user process updates).
-- Implemented dynamic communication age calculation from the latest `activity_date`.
-- Created reusable Vue 3 frontend components: `CommunicationTable.vue`, `CommunicationFormModal.vue`, and `CommunicationDetailModal.vue`.
-- Updated Communications Overview, Incoming, Outgoing, and Reports views with full interactive management and search/filtering.
-- Populated database with realistic, multi-stage sample data for Incoming and Outgoing communications without destroying existing 6IS tables.
+### Automated Setup & Installation
+- **1-Click Master Installer**: Created self-elevating `Setup_Everything_1Click.bat`, `Install_6IS.bat`, and `database/setup_db.php` script for automatic XAMPP deployment, database migration execution, and initial account seeding.
+- **Inno Setup Script**: Configured Windows setup compiler script (`installer/6IS_Setup_Script.iss`) for output `6IS_Setup_v0.1.exe`.
 
 
 

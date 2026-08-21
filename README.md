@@ -1,4 +1,4 @@
-# 6IS (Integrated Information System) v1.2
+# 6IS (Integrated Information System) v0.1
 
 ## Overview
 
