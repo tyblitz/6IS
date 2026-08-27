@@ -22,12 +22,21 @@ try {
     echo "3. Connecting to database '{$dbName}'...\n";
     $pdo->exec("USE `{$dbName}`;");
 
+    function columnExists(PDO $pdo, string $table, string $column): bool {
+        try {
+            $stmt = $pdo->query("SHOW COLUMNS FROM `{$table}` LIKE '{$column}'");
+            return (bool)$stmt->fetch();
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
     $migrationFiles = [
         __DIR__ . '/migrations/create_accomplishments_tables.sql',
         __DIR__ . '/migrations/create_communications_tables.sql',
         __DIR__ . '/migrations/create_auth_tables.sql',
         __DIR__ . '/migrations/create_inventory_tables.sql',
-        __DIR__ . '/migrations/alter_inventory_to_extensible_equipment.sql'
+        __DIR__ . '/migrations/create_calendar_tables.sql'
     ];
 
     echo "4. Executing SQL migration scripts...\n";
@@ -37,226 +46,140 @@ try {
             continue;
         }
         $sql = file_get_contents($file);
-        $pdo->exec($sql);
-        echo "SUCCESS: Executed migration script: " . basename($file) . "\n";
+        try {
+            $pdo->exec($sql);
+            echo "SUCCESS: Executed migration script: " . basename($file) . "\n";
+        } catch (Exception $e) {
+            echo "NOTE on " . basename($file) . ": " . $e->getMessage() . "\n";
+        }
     }
 
-    // Ensure tbl_offices has necessary columns
-    try {
-        $cols = $pdo->query("SHOW COLUMNS FROM `tbl_offices`")->fetchAll(PDO::FETCH_COLUMN);
-        if (!in_array('office_abbv', $cols)) {
-            $pdo->exec("ALTER TABLE `tbl_offices` ADD COLUMN `office_abbv` VARCHAR(20) NULL AFTER `office_code`;");
-            $pdo->exec("UPDATE `tbl_offices` SET `office_abbv` = `office_code` WHERE `office_abbv` IS NULL;");
-        }
-        if (!in_array('office_category', $cols)) {
-            $pdo->exec("ALTER TABLE `tbl_offices` ADD COLUMN `office_category` ENUM('Staff', 'Special Staff', 'Group', 'Others') NOT NULL DEFAULT 'Others' AFTER `office_abbv`;");
-        }
-        if (!in_array('is_active', $cols)) {
-            $pdo->exec("ALTER TABLE `tbl_offices` ADD COLUMN `is_active` TINYINT(1) NOT NULL DEFAULT 1 AFTER `office_category`;");
-        }
-    } catch (Exception $e) {}
-
-    // Ensure tbl_communications has communication_type and image_url columns
-    try {
-        $commCols = $pdo->query("SHOW COLUMNS FROM `tbl_communications`")->fetchAll(PDO::FETCH_COLUMN);
-        if (!in_array('communication_type', $commCols)) {
-            $pdo->exec("ALTER TABLE `tbl_communications` ADD COLUMN `communication_type` ENUM('Incoming', 'Outgoing') NOT NULL DEFAULT 'Incoming' AFTER `id`;");
-        }
-        if (!in_array('image_url', $commCols)) {
-            $pdo->exec("ALTER TABLE `tbl_communications` ADD COLUMN `image_url` VARCHAR(500) NULL AFTER `status`;");
-        }
-    } catch (Exception $e) {}
-
-    // Ensure tbl_communication_attachments table exists
+    // Ensure tbl_calendar_event_types table exists & is seeded
     try {
         $pdo->exec("
-            CREATE TABLE IF NOT EXISTS `tbl_communication_attachments` (
-                `id` INT AUTO_INCREMENT PRIMARY KEY,
-                `communication_id` INT NOT NULL,
-                `image_url` VARCHAR(500) NOT NULL,
-                `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-                INDEX (`communication_id`)
+            CREATE TABLE IF NOT EXISTS `tbl_calendar_event_types` (
+              `id` INT AUTO_INCREMENT PRIMARY KEY,
+              `type_name` VARCHAR(100) NOT NULL,
+              `type_code` VARCHAR(20) NOT NULL,
+              `color` VARCHAR(20) NULL DEFAULT '#2563EB',
+              `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              `deleted_at` DATETIME NULL,
+              UNIQUE KEY `uk_type_code` (`type_code`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         ");
-    } catch (Exception $e) {}
-
-    // Ensure tbl_users has necessary columns (is_active, role ENUM)
-    try {
-        $cols = $pdo->query("SHOW COLUMNS FROM `tbl_users`")->fetchAll(PDO::FETCH_COLUMN);
-        if (!in_array('is_active', $cols)) {
-            $pdo->exec("ALTER TABLE `tbl_users` ADD COLUMN `is_active` TINYINT(1) NOT NULL DEFAULT 1 AFTER `role`;");
-        }
-        try {
-            $pdo->exec("ALTER TABLE `tbl_users` ADD UNIQUE INDEX `idx_username` (`username`);");
-        } catch (Exception $ex) {}
-    } catch (Exception $e) {}
-
-    // Ensure tbl_inventory_equipment has equipment_type_id, equipment_subtype_id, status_id
-    try {
-        $eqCols = $pdo->query("SHOW COLUMNS FROM `tbl_inventory_equipment`")->fetchAll(PDO::FETCH_COLUMN);
-        if (!in_array('equipment_type_id', $eqCols)) {
-            $pdo->exec("ALTER TABLE `tbl_inventory_equipment` ADD COLUMN `equipment_type_id` INT NULL AFTER `office_id`;");
-        }
-        if (!in_array('equipment_subtype_id', $eqCols)) {
-            $pdo->exec("ALTER TABLE `tbl_inventory_equipment` ADD COLUMN `equipment_subtype_id` INT NULL AFTER `equipment_type_id`;");
-        }
-        if (!in_array('status_id', $eqCols)) {
-            $pdo->exec("ALTER TABLE `tbl_inventory_equipment` ADD COLUMN `status_id` INT NULL AFTER `equipment_subtype_id`;");
-        }
-
-        // Map existing equipment string fields to reference IDs
         $pdo->exec("
-            UPDATE `tbl_inventory_equipment` SET
-                `equipment_type_id` = CASE
-                    WHEN `equipment_type` IN ('Public Address System', 'PAS', 'Mixer', 'Microphone', 'Speaker') THEN 2
-                    ELSE 1
-                END,
-                `equipment_subtype_id` = CASE
-                    WHEN `equipment_type` IN ('Desktop Computer', 'Desktop') THEN 1
-                    WHEN `equipment_type` = 'Printer' THEN 2
-                    WHEN `equipment_type` = 'AVR' THEN 3
-                    WHEN `equipment_type` = 'Projector' THEN 4
-                    WHEN `equipment_type` = 'LED TV' THEN 5
-                    WHEN `equipment_type` = 'Laptop' THEN 6
-                    WHEN `equipment_type` = 'Network Switch' THEN 7
-                    WHEN `equipment_type` = 'Mixer' THEN 8
-                    WHEN `equipment_type` = 'Microphone' THEN 9
-                    WHEN `equipment_type` = 'Speaker' THEN 10
-                    WHEN `equipment_type` IN ('Public Address System', 'PAS') THEN 11
-                    ELSE 1
-                END,
-                `status_id` = CASE
-                    WHEN `status` = 'Serviceable' THEN 1
-                    WHEN `status` = 'For Repair' THEN 2
-                    WHEN `status` IN ('For Turn-In / Unserviceable', 'For Turn-in') THEN 3
-                    ELSE 1
-                END
-            WHERE `equipment_type_id` IS NULL OR `equipment_subtype_id` IS NULL OR `status_id` IS NULL;
+            INSERT INTO `tbl_calendar_event_types` (`id`, `type_name`, `type_code`, `color`, `created_at`, `updated_at`)
+            VALUES 
+              (1, 'Public Address System', 'PAS', '#16A34A', NOW(), NOW()),
+              (2, 'Conference', 'CONF', '#2563EB', NOW(), NOW()),
+              (3, 'Video Teleconference', 'VTC', '#9333EA', NOW(), NOW())
+            ON DUPLICATE KEY UPDATE 
+              `type_name` = VALUES(`type_name`),
+              `color` = VALUES(`color`);
         ");
+        echo "SUCCESS: Created or verified tbl_calendar_event_types table.\n";
     } catch (Exception $e) {
-        echo "Inventory equipment mapping note: " . $e->getMessage() . "\n";
+        echo "tbl_calendar_event_types note: " . $e->getMessage() . "\n";
     }
 
-    // Ensure tbl_inventory_jrrs has equipment_subtype_id column
+    // Safely update tbl_calendar_events columns (drop description, event_type, priority; change location to office_id)
     try {
-        $jrrsCols = $pdo->query("SHOW COLUMNS FROM `tbl_inventory_jrrs`")->fetchAll(PDO::FETCH_COLUMN);
-        if (!in_array('equipment_subtype_id', $jrrsCols)) {
-            $pdo->exec("ALTER TABLE `tbl_inventory_jrrs` ADD COLUMN `equipment_subtype_id` INT NULL AFTER `id`;");
+        if (!columnExists($pdo, 'tbl_calendar_events', 'start_datetime')) {
+            $pdo->exec("ALTER TABLE `tbl_calendar_events` ADD COLUMN `start_datetime` DATETIME NULL AFTER `event_time`;");
         }
-        $pdo->exec("
-            UPDATE `tbl_inventory_jrrs` SET
-                `equipment_subtype_id` = CASE
-                    WHEN `equipment_type` IN ('Desktop Computer', 'Desktop') THEN 1
-                    WHEN `equipment_type` = 'Printer' THEN 2
-                    WHEN `equipment_type` = 'AVR' THEN 3
-                    WHEN `equipment_type` = 'Projector' THEN 4
-                    WHEN `equipment_type` = 'LED TV' THEN 5
-                    WHEN `equipment_type` = 'Laptop' THEN 6
-                    WHEN `equipment_type` = 'Network Switch' THEN 7
-                    WHEN `equipment_type` = 'Mixer' THEN 8
-                    WHEN `equipment_type` = 'Microphone' THEN 9
-                    WHEN `equipment_type` = 'Speaker' THEN 10
-                    WHEN `equipment_type` IN ('Public Address System', 'PAS') THEN 11
-                    ELSE 1
-                END
-            WHERE `equipment_subtype_id` IS NULL;
-        ");
+        if (!columnExists($pdo, 'tbl_calendar_events', 'end_datetime')) {
+            $pdo->exec("ALTER TABLE `tbl_calendar_events` ADD COLUMN `end_datetime` DATETIME NULL AFTER `start_datetime`;");
+        }
+        if (!columnExists($pdo, 'tbl_calendar_events', 'all_day')) {
+            $pdo->exec("ALTER TABLE `tbl_calendar_events` ADD COLUMN `all_day` TINYINT(1) NOT NULL DEFAULT 0 AFTER `end_datetime`;");
+        }
+        if (!columnExists($pdo, 'tbl_calendar_events', 'office_id')) {
+            $pdo->exec("ALTER TABLE `tbl_calendar_events` ADD COLUMN `office_id` INT NULL AFTER `all_day`;");
+        }
+        if (!columnExists($pdo, 'tbl_calendar_events', 'event_type_id')) {
+            $pdo->exec("ALTER TABLE `tbl_calendar_events` ADD COLUMN `event_type_id` INT NULL AFTER `office_id`;");
+        }
+        if (!columnExists($pdo, 'tbl_calendar_events', 'status')) {
+            $pdo->exec("ALTER TABLE `tbl_calendar_events` ADD COLUMN `status` VARCHAR(50) NOT NULL DEFAULT 'Scheduled';");
+        }
 
-        $defaultTargets = [
-            1 => 25, 2 => 10, 3 => 5, 4 => 5, 5 => 5,
-            6 => 15, 7 => 8, 8 => 3, 9 => 10, 10 => 6, 11 => 5
-        ];
-        foreach ($defaultTargets as $stId => $target) {
-            $pdo->exec("
-                INSERT INTO `tbl_inventory_jrrs` (`equipment_subtype_id`, `target_quantity`, `equipment_type`, `created_at`, `updated_at`)
-                VALUES ({$stId}, {$target}, (SELECT `name` FROM `tbl_inventory_equipment_subtypes` WHERE `id` = {$stId}), NOW(), NOW())
-                ON DUPLICATE KEY UPDATE `equipment_subtype_id` = VALUES(`equipment_subtype_id`);
-            ");
+        // Drop unneeded columns if present
+        if (columnExists($pdo, 'tbl_calendar_events', 'description')) {
+            $pdo->exec("ALTER TABLE `tbl_calendar_events` DROP COLUMN `description`;");
         }
+        if (columnExists($pdo, 'tbl_calendar_events', 'event_type')) {
+            $pdo->exec("ALTER TABLE `tbl_calendar_events` DROP COLUMN `event_type`;");
+        }
+        if (columnExists($pdo, 'tbl_calendar_events', 'priority')) {
+            $pdo->exec("ALTER TABLE `tbl_calendar_events` DROP COLUMN `priority`;");
+        }
+        if (columnExists($pdo, 'tbl_calendar_events', 'location')) {
+            $pdo->exec("ALTER TABLE `tbl_calendar_events` DROP COLUMN `location`;");
+        }
+
+        $pdo->exec("UPDATE `tbl_calendar_events` SET `start_datetime` = CONCAT(`event_date`, ' ', COALESCE(`event_time`, '09:00:00')) WHERE `start_datetime` IS NULL");
+        $pdo->exec("UPDATE `tbl_calendar_events` SET `office_id` = 1 WHERE `office_id` IS NULL");
+        $pdo->exec("UPDATE `tbl_calendar_events` SET `event_type_id` = 2 WHERE `event_type_id` IS NULL");
+        echo "SUCCESS: Updated tbl_calendar_events schema (office_id, event_type_id, status).\n";
     } catch (Exception $e) {
-        echo "JRRS subtype mapping note: " . $e->getMessage() . "\n";
+        echo "tbl_calendar_events alter note: " . $e->getMessage() . "\n";
     }
 
-    // Ensure tbl_inventory_history has equipment_type_id, equipment_subtype_id, status_id, attributes_json
+    // Ensure tbl_calendar_event_reschedules table exists
     try {
-        $histCols = $pdo->query("SHOW COLUMNS FROM `tbl_inventory_history`")->fetchAll(PDO::FETCH_COLUMN);
-        if (!in_array('equipment_type_id', $histCols)) {
-            $pdo->exec("ALTER TABLE `tbl_inventory_history` ADD COLUMN `equipment_type_id` INT NULL AFTER `office_id`;");
-        }
-        if (!in_array('equipment_subtype_id', $histCols)) {
-            $pdo->exec("ALTER TABLE `tbl_inventory_history` ADD COLUMN `equipment_subtype_id` INT NULL AFTER `equipment_type_id`;");
-        }
-        if (!in_array('status_id', $histCols)) {
-            $pdo->exec("ALTER TABLE `tbl_inventory_history` ADD COLUMN `status_id` INT NULL AFTER `equipment_subtype_id`;");
-        }
-        if (!in_array('attributes_json', $histCols)) {
-            $pdo->exec("ALTER TABLE `tbl_inventory_history` ADD COLUMN `attributes_json` JSON NULL AFTER `status`;");
-        }
-
         $pdo->exec("
-            UPDATE `tbl_inventory_history` SET
-                `equipment_type_id` = CASE
-                    WHEN `equipment_type` IN ('Public Address System', 'PAS', 'Mixer', 'Microphone', 'Speaker') THEN 2
-                    ELSE 1
-                END,
-                `equipment_subtype_id` = CASE
-                    WHEN `equipment_type` IN ('Desktop Computer', 'Desktop') THEN 1
-                    WHEN `equipment_type` = 'Printer' THEN 2
-                    WHEN `equipment_type` = 'AVR' THEN 3
-                    WHEN `equipment_type` = 'Projector' THEN 4
-                    WHEN `equipment_type` = 'LED TV' THEN 5
-                    WHEN `equipment_type` = 'Laptop' THEN 6
-                    WHEN `equipment_type` = 'Network Switch' THEN 7
-                    WHEN `equipment_type` = 'Mixer' THEN 8
-                    WHEN `equipment_type` = 'Microphone' THEN 9
-                    WHEN `equipment_type` = 'Speaker' THEN 10
-                    WHEN `equipment_type` IN ('Public Address System', 'PAS') THEN 11
-                    ELSE 1
-                END,
-                `status_id` = CASE
-                    WHEN `status` = 'Serviceable' THEN 1
-                    WHEN `status` = 'For Repair' THEN 2
-                    WHEN `status` IN ('For Turn-In / Unserviceable', 'For Turn-in') THEN 3
-                    ELSE 1
-                END
-            WHERE `equipment_type_id` IS NULL OR `equipment_subtype_id` IS NULL OR `status_id` IS NULL;
+            CREATE TABLE IF NOT EXISTS `tbl_calendar_event_reschedules` (
+              `id` INT AUTO_INCREMENT PRIMARY KEY,
+              `calendar_event_id` INT NOT NULL,
+              `previous_start_datetime` DATETIME NULL,
+              `previous_end_datetime` DATETIME NULL,
+              `new_start_datetime` DATETIME NOT NULL,
+              `new_end_datetime` DATETIME NOT NULL,
+              `reason` TEXT NULL,
+              `changed_by` INT NOT NULL DEFAULT 1,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (`calendar_event_id`) REFERENCES `tbl_calendar_events` (`id`) ON DELETE CASCADE,
+              INDEX `idx_reschedule_event` (`calendar_event_id`),
+              INDEX `idx_reschedule_created` (`created_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         ");
+        echo "SUCCESS: Created or verified tbl_calendar_event_reschedules table.\n";
     } catch (Exception $e) {
-        echo "Inventory history mapping note: " . $e->getMessage() . "\n";
+        echo "tbl_calendar_event_reschedules note: " . $e->getMessage() . "\n";
     }
 
-    // Seed sample attribute values for initial sample desktops & printers
+    // Ensure tbl_calendar_event_status_history table exists
     try {
-        $desktopSamples = [
-            1 => ['Processor' => 'Intel Core i7-9700', 'RAM' => '16 GB', 'Storage' => '512 GB SSD', 'OS' => 'Windows 11 Pro'],
-            2 => ['Processor' => 'Intel Core i5-10500', 'RAM' => '8 GB', 'Storage' => '256 GB SSD', 'OS' => 'Windows 10 Pro'],
-            7 => ['Processor' => 'Intel Core i5-11500', 'RAM' => '16 GB', 'Storage' => '512 GB SSD', 'OS' => 'Windows 11 Pro'],
-            10 => ['Processor' => 'Intel Core i5-10400', 'RAM' => '8 GB', 'Storage' => '512 GB SSD', 'OS' => 'Windows 10 Pro'],
-            14 => ['Processor' => 'Intel Core i5-11400T', 'RAM' => '16 GB', 'Storage' => '512 GB SSD', 'OS' => 'Windows 11 Pro'],
-            17 => ['Processor' => 'Intel Core i3-10100', 'RAM' => '8 GB', 'Storage' => '1 TB HDD', 'OS' => 'Windows 10 Pro']
-        ];
-
-        foreach ($desktopSamples as $eqId => $vals) {
-            $pdo->exec("INSERT INTO `tbl_inventory_equipment_attribute_values` (`equipment_id`, `attribute_definition_id`, `value_text`, `created_at`, `updated_at`) VALUES ({$eqId}, 1, '{$vals['Processor']}', NOW(), NOW()) ON DUPLICATE KEY UPDATE `value_text` = VALUES(`value_text`);");
-            $pdo->exec("INSERT INTO `tbl_inventory_equipment_attribute_values` (`equipment_id`, `attribute_definition_id`, `value_text`, `created_at`, `updated_at`) VALUES ({$eqId}, 2, '{$vals['RAM']}', NOW(), NOW()) ON DUPLICATE KEY UPDATE `value_text` = VALUES(`value_text`);");
-            $pdo->exec("INSERT INTO `tbl_inventory_equipment_attribute_values` (`equipment_id`, `attribute_definition_id`, `value_text`, `created_at`, `updated_at`) VALUES ({$eqId}, 3, '{$vals['Storage']}', NOW(), NOW()) ON DUPLICATE KEY UPDATE `value_text` = VALUES(`value_text`);");
-            $pdo->exec("INSERT INTO `tbl_inventory_equipment_attribute_values` (`equipment_id`, `attribute_definition_id`, `value_text`, `created_at`, `updated_at`) VALUES ({$eqId}, 4, '{$vals['OS']}', NOW(), NOW()) ON DUPLICATE KEY UPDATE `value_text` = VALUES(`value_text`);");
-        }
-
-        $printerSamples = [
-            4 => ['Tech' => 'Laser', 'Color' => 'Monochrome', 'Net' => 1],
-            8 => ['Tech' => 'Inkjet', 'Color' => 'Color', 'Net' => 1],
-            13 => ['Tech' => 'Laser', 'Color' => 'Monochrome', 'Net' => 1],
-            19 => ['Tech' => 'Laser', 'Color' => 'Monochrome', 'Net' => 1]
-        ];
-
-        foreach ($printerSamples as $eqId => $vals) {
-            $pdo->exec("INSERT INTO `tbl_inventory_equipment_attribute_values` (`equipment_id`, `attribute_definition_id`, `value_text`, `created_at`, `updated_at`) VALUES ({$eqId}, 5, '{$vals['Tech']}', NOW(), NOW()) ON DUPLICATE KEY UPDATE `value_text` = VALUES(`value_text`);");
-            $pdo->exec("INSERT INTO `tbl_inventory_equipment_attribute_values` (`equipment_id`, `attribute_definition_id`, `value_text`, `created_at`, `updated_at`) VALUES ({$eqId}, 6, '{$vals['Color']}', NOW(), NOW()) ON DUPLICATE KEY UPDATE `value_text` = VALUES(`value_text`);");
-            $pdo->exec("INSERT INTO `tbl_inventory_equipment_attribute_values` (`equipment_id`, `attribute_definition_id`, `value_boolean`, `created_at`, `updated_at`) VALUES ({$eqId}, 7, {$vals['Net']}, NOW(), NOW()) ON DUPLICATE KEY UPDATE `value_boolean` = VALUES(`value_boolean`);");
-        }
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS `tbl_calendar_event_status_history` (
+              `id` INT AUTO_INCREMENT PRIMARY KEY,
+              `calendar_event_id` INT NOT NULL,
+              `previous_status` VARCHAR(50) NULL,
+              `new_status` VARCHAR(50) NOT NULL,
+              `reason` TEXT NULL,
+              `changed_by` INT NOT NULL DEFAULT 1,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (`calendar_event_id`) REFERENCES `tbl_calendar_events` (`id`) ON DELETE CASCADE,
+              INDEX `idx_status_history_event` (`calendar_event_id`),
+              INDEX `idx_status_history_created` (`created_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ");
+        echo "SUCCESS: Created or verified tbl_calendar_event_status_history table.\n";
     } catch (Exception $e) {
-        echo "Sample attribute values note: " . $e->getMessage() . "\n";
+        echo "tbl_calendar_event_status_history note: " . $e->getMessage() . "\n";
+    }
+
+    // Ensure tbl_accomplishments has calendar_event_id column
+    try {
+        if (!columnExists($pdo, 'tbl_accomplishments', 'calendar_event_id')) {
+            $pdo->exec("ALTER TABLE `tbl_accomplishments` ADD COLUMN `calendar_event_id` INT NULL AFTER `office_id`;");
+            $pdo->exec("ALTER TABLE `tbl_accomplishments` ADD INDEX `idx_calendar_event_id` (`calendar_event_id`);");
+        }
+        echo "SUCCESS: Verified tbl_accomplishments calendar_event_id column.\n";
+    } catch (Exception $e) {
+        echo "tbl_accomplishments calendar_event_id note: " . $e->getMessage() . "\n";
     }
 
     // Seed Development Authentication Accounts securely with BCRYPT hashes

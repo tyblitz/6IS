@@ -39,6 +39,10 @@ import AccomplishmentQuarterlyView from '../views/accomplishments/Accomplishment
 import AccomplishmentAnnualView from '../views/accomplishments/AccomplishmentAnnualView.vue'
 import AccomplishmentCustomView from '../views/accomplishments/AccomplishmentCustomView.vue'
 
+// Calendar Module Views
+import CalendarView from '../views/calendar/CalendarView.vue'
+import CalendarDayView from '../views/calendar/CalendarDayView.vue'
+
 import { ModuleName } from '../types/module'
 import { fetchCurrentUser } from '../services/authService'
 
@@ -381,6 +385,26 @@ const routes: Array<RouteRecordRaw> = [
     component: AccomplishmentCustomView,
     meta: {
       module: ModuleName.Accomplishments,
+      requiresAuth: true
+    }
+  },
+
+  // CALENDAR MODULE ROUTES
+  {
+    path: '/calendar',
+    name: 'Calendar',
+    component: CalendarView,
+    meta: {
+      module: ModuleName.Calendar,
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/calendar/day/:date',
+    name: 'Calendar Day',
+    component: CalendarDayView,
+    meta: {
+      module: ModuleName.Calendar,
       requiresAuth: true
     }
   }

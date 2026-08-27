@@ -53,11 +53,11 @@ To launch 6IS at any time:
 
 ## 📦 Inno Setup Installer Compilation (Optional)
 
-To compile a single executable setup file (`6IS_Setup_v1.2.exe`):
+To compile a single executable setup file (`6IS_Setup_v0.1.exe`):
 1. Download & install [Inno Setup Compiler](https://jrsoftware.org/isdl.php).
 2. Open `installer/6IS_Setup_Script.iss`.
 3. Click **Compile** (`Ctrl + F9`).
-4. Output setup installer will be generated in `Output/6IS_Setup_v1.2.exe`.
+4. Output setup installer will be generated in `Output/6IS_Setup_v0.1.exe`.
 
 ---
 

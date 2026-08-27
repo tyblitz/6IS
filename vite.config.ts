@@ -10,6 +10,14 @@ export default defineConfig({
     vue(),
     legacy()
   ],
+  server: {
+    proxy: {
+      '/6IS/backend': {
+        target: 'http://localhost',
+        changeOrigin: true
+      }
+    }
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './frontend/src'),

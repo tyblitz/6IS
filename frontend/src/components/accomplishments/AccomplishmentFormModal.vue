@@ -4,8 +4,14 @@
       
       <!-- Header -->
       <div class="modal-header">
-        <h3>{{ isEdit ? 'Edit Daily Accomplishment' : 'Add Daily Accomplishment' }}</h3>
+        <h3>{{ isEdit ? 'Edit Daily Accomplishment' : (calendarPrefillData ? 'Create Accomplishment from Calendar Event' : 'Add Daily Accomplishment') }}</h3>
         <button class="close-btn" type="button" @click="close">&times;</button>
+      </div>
+
+      <!-- Calendar Event Banner -->
+      <div v-if="calendarPrefillData" class="calendar-banner">
+        <span class="banner-tag">Linked Calendar Event #{{ calendarPrefillData.calendar_event_id }}</span>
+        <strong>{{ calendarPrefillData.title }}</strong>
       </div>
 
       <!-- Form -->
@@ -91,11 +97,20 @@ import {
   createAccomplishment,
   updateAccomplishment
 } from '../../services/accomplishmentService'
+import { createAccomplishmentFromEvent } from '../../services/calendarService'
 
 const props = defineProps<{
   isOpen: boolean;
   options: AccomplishmentOptions;
   editData?: AccomplishmentItem | null;
+  calendarPrefillData?: {
+    calendar_event_id: number;
+    title: string;
+    description?: string;
+    date: string;
+    location?: string;
+    priority?: string;
+  } | null;
 }>()
 
 const emit = defineEmits<{
@@ -108,11 +123,12 @@ const errors = reactive<Record<string, string>>({})
 
 const isEdit = computed(() => !!props.editData?.id)
 
-const form = reactive<AccomplishmentFormPayload>({
+const form = reactive<AccomplishmentFormPayload & { calendar_event_id?: number }>({
   office_id: 0,
   date: new Date().toISOString().split('T')[0],
   description: '',
-  remarks: ''
+  remarks: '',
+  calendar_event_id: undefined
 })
 
 watch(() => props.isOpen, (newVal) => {
@@ -124,12 +140,21 @@ watch(() => props.isOpen, (newVal) => {
       form.date = props.editData.date
       form.description = props.editData.description
       form.remarks = props.editData.remarks || ''
+      form.calendar_event_id = undefined
+    } else if (props.calendarPrefillData) {
+      form.id = undefined
+      form.office_id = props.options.offices.length > 0 ? props.options.offices[0].id : 1
+      form.date = props.calendarPrefillData.date || new Date().toISOString().split('T')[0]
+      form.description = props.calendarPrefillData.title + (props.calendarPrefillData.description ? ' - ' + props.calendarPrefillData.description : '')
+      form.remarks = props.calendarPrefillData.location ? `Location: ${props.calendarPrefillData.location}` : ''
+      form.calendar_event_id = props.calendarPrefillData.calendar_event_id
     } else {
       form.id = undefined
       form.office_id = props.options.offices.length > 0 ? props.options.offices[0].id : 0
       form.date = new Date().toISOString().split('T')[0]
       form.description = ''
       form.remarks = ''
+      form.calendar_event_id = undefined
     }
   }
 })
@@ -164,23 +189,39 @@ async function submitForm() {
   if (!validate()) return
 
   submitting.value = true
-  let res
+  let success = false
+  let errorMsg = 'Operation failed.'
 
   if (isEdit.value && form.id) {
-    res = await updateAccomplishment(form.id, form)
+    const res = await updateAccomplishment(form.id, form)
+    success = res.success
+    if (res.errors) Object.assign(errors, res.errors)
+    if (res.message) errorMsg = res.message
+  } else if (form.calendar_event_id) {
+    const res = await createAccomplishmentFromEvent({
+      calendar_event_id: form.calendar_event_id,
+      office_id: form.office_id,
+      category_id: 1,
+      date: form.date,
+      description: form.description,
+      remarks: form.remarks || ''
+    })
+    success = res.success
+    if (res.message) errorMsg = res.message
   } else {
-    res = await createAccomplishment(form)
+    const res = await createAccomplishment(form)
+    success = res.success
+    if (res.errors) Object.assign(errors, res.errors)
+    if (res.message) errorMsg = res.message
   }
 
   submitting.value = false
 
-  if (res.success) {
+  if (success) {
     emit('saved')
     emit('close')
-  } else if (res.errors) {
-    Object.assign(errors, res.errors)
   } else {
-    alert(res.message || 'Operation failed.')
+    alert(errorMsg)
   }
 }
 
@@ -200,7 +241,7 @@ function close() {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 999;
+  z-index: 9999;
   padding: 16px;
 }
 
@@ -234,6 +275,20 @@ function close() {
   font-size: 24px;
   color: #64748b;
   cursor: pointer;
+}
+
+.calendar-banner {
+  background: #f0fdf4;
+  border-left: 4px solid #16a34a;
+  padding: 12px 24px;
+}
+
+.banner-tag {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #15803d;
+  text-transform: uppercase;
 }
 
 .modal-body {
