@@ -32,3 +32,17 @@
 - **Context**: Multiple modules (Accomplishments, Communications) require office organizational data.
 - **Decision**: The system maintains a single authoritative office reference table (`tbl_offices`) rather than creating duplicate per-module office tables.
 - **Rationale**: Reusing `tbl_offices` preserves data integrity and prevents domain duplication across 6IS modules.
+
+---
+
+## Decision 6: Dynamic Accomplishment Report Consolidation without Summary Tables
+- **Context**: Consolidated reports (Monthly, Quarterly, Annual, Custom Period) are needed to aggregate daily office accomplishments and communication activity counts.
+- **Decision**: Accomplishment summaries are generated dynamically on-the-fly directly from `tbl_accomplishments` and `tbl_communications` records. No pre-aggregated summary or report cache tables are created in the database.
+- **Rationale**: Eliminates synchronization lag, prevents stale data rollups, simplifies database migrations, and guarantees strict soft-deletion exclusion across all views.
+
+---
+
+## Decision 7: Extensible Entity-Attribute-Value (EAV) Model for Equipment Inventory
+- **Context**: Different equipment items (e.g., Desktops vs. Printers vs. Mixers) require distinct technical attributes without altering core table schemas.
+- **Decision**: Equipment specifications utilize an Extensible EAV schema (`tbl_inventory_attribute_definitions` and `tbl_inventory_equipment_attribute_values`) linked to equipment subtypes.
+- **Rationale**: Allows administrators to define dynamic custom technical attributes per subtype without requiring ALTER TABLE database schema migrations for new equipment specifications.
