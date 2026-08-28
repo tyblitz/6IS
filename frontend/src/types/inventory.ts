@@ -128,6 +128,9 @@ export interface ReferenceOptions {
   equipment_types: EquipmentType[]
   equipment_subtypes: EquipmentSubtype[]
   statuses: EquipmentStatusOption[]
+  types?: EquipmentType[]
+  subtypes?: EquipmentSubtype[]
+  offices?: OfficeItem[]
 }
 
 export interface ApiResponse<T = any> {

@@ -36,6 +36,7 @@ try {
         __DIR__ . '/migrations/create_communications_tables.sql',
         __DIR__ . '/migrations/create_auth_tables.sql',
         __DIR__ . '/migrations/create_inventory_tables.sql',
+        __DIR__ . '/migrations/alter_inventory_to_extensible_equipment.sql',
         __DIR__ . '/migrations/create_calendar_tables.sql'
     ];
 
@@ -180,6 +181,53 @@ try {
         echo "SUCCESS: Verified tbl_accomplishments calendar_event_id column.\n";
     } catch (Exception $e) {
         echo "tbl_accomplishments calendar_event_id note: " . $e->getMessage() . "\n";
+    }
+
+    // Ensure tbl_inventory_equipment has equipment_type_id, equipment_subtype_id, status_id columns
+    try {
+        if (!columnExists($pdo, 'tbl_inventory_equipment', 'equipment_type_id')) {
+            $pdo->exec("ALTER TABLE `tbl_inventory_equipment` ADD COLUMN `equipment_type_id` INT NULL AFTER `office_id`;");
+        }
+        if (!columnExists($pdo, 'tbl_inventory_equipment', 'equipment_subtype_id')) {
+            $pdo->exec("ALTER TABLE `tbl_inventory_equipment` ADD COLUMN `equipment_subtype_id` INT NULL AFTER `equipment_type_id`;");
+        }
+        if (!columnExists($pdo, 'tbl_inventory_equipment', 'status_id')) {
+            $pdo->exec("ALTER TABLE `tbl_inventory_equipment` ADD COLUMN `status_id` INT NULL AFTER `equipment_subtype_id`;");
+        }
+        $pdo->exec("
+            UPDATE tbl_inventory_equipment e
+            JOIN tbl_inventory_equipment_subtypes st ON (
+                LOWER(e.equipment_type) = LOWER(st.name) 
+                OR (e.equipment_type LIKE '%Desktop%' AND st.name = 'Desktop')
+                OR (e.equipment_type LIKE '%PA%' AND st.name = 'Public Address System')
+                OR (e.equipment_type LIKE '%Public Address%' AND st.name = 'Public Address System')
+            )
+            SET e.equipment_subtype_id = st.id,
+                e.equipment_type_id = st.equipment_type_id;
+        ");
+        $pdo->exec("UPDATE `tbl_inventory_equipment` SET `equipment_type_id` = 1 WHERE `equipment_type_id` IS NULL;");
+        $pdo->exec("UPDATE `tbl_inventory_equipment` SET `equipment_subtype_id` = 1 WHERE `equipment_subtype_id` IS NULL;");
+        $pdo->exec("
+            UPDATE tbl_inventory_equipment e
+            JOIN tbl_inventory_equipment_statuses s ON LOWER(e.status) = LOWER(s.name)
+            SET e.status_id = s.id;
+        ");
+        $pdo->exec("UPDATE `tbl_inventory_equipment` SET `status_id` = 1 WHERE `status_id` IS NULL;");
+        echo "SUCCESS: Verified tbl_inventory_equipment extensible architecture columns.\n";
+    } catch (Exception $e) {
+        echo "tbl_inventory_equipment columns note: " . $e->getMessage() . "\n";
+    }
+
+    // Ensure tbl_inventory_jrrs has equipment_subtype_id column
+    try {
+        if (!columnExists($pdo, 'tbl_inventory_jrrs', 'equipment_subtype_id')) {
+            $pdo->exec("ALTER TABLE `tbl_inventory_jrrs` ADD COLUMN `equipment_subtype_id` INT NULL AFTER `id`;");
+            $pdo->exec("UPDATE `tbl_inventory_jrrs` j JOIN `tbl_inventory_equipment_subtypes` st ON LOWER(j.equipment_type) = LOWER(st.name) SET j.equipment_subtype_id = st.id;");
+            $pdo->exec("UPDATE `tbl_inventory_jrrs` SET `equipment_subtype_id` = 1 WHERE `equipment_subtype_id` IS NULL;");
+        }
+        echo "SUCCESS: Verified tbl_inventory_jrrs equipment_subtype_id column.\n";
+    } catch (Exception $e) {
+        echo "tbl_inventory_jrrs columns note: " . $e->getMessage() . "\n";
     }
 
     // Seed Development Authentication Accounts securely with BCRYPT hashes

@@ -252,12 +252,14 @@ const loading = ref(true)
 
 const filteredJrrsList = computed(() => {
   return jrrsList.value.filter(item => {
+    const typeStr = (item.equipment_type || '').toUpperCase()
+    const subTypeStr = (item.equipment_subtype || '').toUpperCase()
+    const isComm = typeStr.includes('COMM') || ['MIXER', 'MICROPHONE', 'SPEAKER', 'PUBLIC ADDRESS SYSTEM', 'PAS'].some(k => subTypeStr.includes(k) || typeStr.includes(k))
+
     if (categoryScope.value === 'ICT') {
-      const typeStr = (item.equipment_type || '').toUpperCase()
-      if (!typeStr.includes('ICT')) return false
+      if (isComm) return false
     } else if (categoryScope.value === 'Communications') {
-      const typeStr = (item.equipment_type || '').toUpperCase()
-      if (!typeStr.includes('COMM')) return false
+      if (!isComm) return false
     }
     return true
   })
@@ -301,11 +303,11 @@ async function loadData() {
 
   if (selectedPeriod.value) {
     const listRes = await fetchJrrsList(selectedPeriod.value)
-    if (listRes.success) {
-      jrrsList.value = listRes.data.items
+    if (listRes.success && listRes.data) {
+      jrrsList.value = Array.isArray(listRes.data.items) ? listRes.data.items : (Array.isArray(listRes.data) ? listRes.data : [])
       periodInfo.value = {
-        period_label: listRes.data.period_label,
-        is_current: listRes.data.is_current
+        period_label: listRes.data.period_label || selectedPeriod.value,
+        is_current: listRes.data.is_current ?? true
       }
     }
   }
@@ -315,11 +317,11 @@ async function loadData() {
 async function handlePeriodChange() {
   loading.value = true
   const listRes = await fetchJrrsList(selectedPeriod.value)
-  if (listRes.success) {
-    jrrsList.value = listRes.data.items
+  if (listRes.success && listRes.data) {
+    jrrsList.value = Array.isArray(listRes.data.items) ? listRes.data.items : (Array.isArray(listRes.data) ? listRes.data : [])
     periodInfo.value = {
-      period_label: listRes.data.period_label,
-      is_current: listRes.data.is_current
+      period_label: listRes.data.period_label || selectedPeriod.value,
+      is_current: listRes.data.is_current ?? true
     }
   }
   loading.value = false

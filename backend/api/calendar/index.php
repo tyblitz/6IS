@@ -121,12 +121,11 @@ if ($method === 'GET') {
             }
         } elseif ($view === 'week') {
             $dt = new DateTime($targetDate);
-            $dayOfWeek = (int)$dt->format('w');
-            $mondayOffset = ($dayOfWeek === 0) ? -6 : (1 - dayOfWeek);
-            $monday = (clone $dt)->modify("{$mondayOffset} days");
-            $sunday = (clone $monday)->modify('+6 days');
-            $startDate = $monday->format('Y-m-d');
-            $endDate = $sunday->format('Y-m-d');
+            $dayOfWeek = (int)$dt->format('w'); // 0 = Sunday, 6 = Saturday
+            $sunday = (clone $dt)->modify("-{$dayOfWeek} days");
+            $saturday = (clone $sunday)->modify('+6 days');
+            $startDate = $sunday->format('Y-m-d');
+            $endDate = $saturday->format('Y-m-d');
         } elseif ($view === 'day') {
             $startDate = $targetDate;
             $endDate = $targetDate;
@@ -242,6 +241,8 @@ if ($method === 'GET') {
         'count' => count($activities),
         'start_date' => $startDate,
         'end_date' => $endDate,
+        'week_start' => $startDate,
+        'week_end' => $endDate,
         'data' => $activities
     ]);
 }

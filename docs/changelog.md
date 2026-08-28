@@ -1,5 +1,14 @@
 # Changelog
 
+## Version 0.1.1 (v0.1.1) - August 28, 2026
+
+### Inventory Module & System Fixes
+- **Relational Mapping Fix**: Corrected equipment type, subtype, and status column updates in `tbl_inventory_equipment` to preserve subpage filtering for Communications items (e.g., Public Address Systems).
+- **Backend API Structure Alignment**: Refactored `backend/api/inventory/index.php` `view=equipment` and `view=jrrs` to return standardized `{ period, period_label, is_current, items: [...] }` objects.
+- **Single Equipment Detail API**: Implemented single item lookup (`view=equipment&id=X`) with dynamic custom attribute values.
+- **Defensive Frontend Normalization**: Updated `inventoryService.ts` and inventory views (`EquipmentView.vue`, `JRRS.vue`) with data parsing fallbacks.
+- **Full Backend API Coverage**: Implemented missing POST endpoints for equipment CRUD, target updates, historical snapshots, equipment types, subtypes, statuses, and custom attribute definitions.
+
 ## Version 0.1 (v0.1.0) - Initial Release
 
 ### Core Features & Architecture

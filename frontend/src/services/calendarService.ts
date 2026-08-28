@@ -165,7 +165,9 @@ export async function fetchWeekEvents(date: string): Promise<{ events: CalendarA
     const res = await fetch(`${API_BASE}?view=week&date=${date}`);
     const json: WeekEventsResponse = await res.json();
     if (json.success) {
-      return { events: json.data, weekStart: json.week_start || '', weekEnd: json.week_end || '' };
+      const wStart = json.week_start || json.start_date || '';
+      const wEnd = json.week_end || json.end_date || '';
+      return { events: json.data || [], weekStart: wStart, weekEnd: wEnd };
     }
     return { events: [], weekStart: '', weekEnd: '' };
   } catch (err) {

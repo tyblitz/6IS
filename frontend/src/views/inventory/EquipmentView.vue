@@ -565,12 +565,16 @@ const filterStatusId = ref(0)
 const filteredEquipment = computed(() => {
   return equipmentList.value.filter(item => {
     // Route Subpage Filtering (ICT vs Communications)
+    const typeId = Number(item.equipment_type_id)
+    const typeStr = (item.equipment_type_name || item.equipment_type || '').toUpperCase()
+    const subTypeStr = (item.equipment_subtype_name || item.equipment_subtype || item.description || '').toUpperCase()
+
+    const isCommItem = typeId === 2 || typeStr.includes('COMM') || ['MIXER', 'MICROPHONE', 'SPEAKER', 'PUBLIC ADDRESS SYSTEM', 'PAS'].some(k => subTypeStr.includes(k) || typeStr.includes(k))
+
     if (categoryScope.value === 'ICT') {
-      const typeStr = (item.equipment_type_name || item.equipment_type || '').toUpperCase()
-      if (item.equipment_type_id !== 1 && !typeStr.includes('ICT')) return false
+      if (isCommItem) return false
     } else if (categoryScope.value === 'Communications') {
-      const typeStr = (item.equipment_type_name || item.equipment_type || '').toUpperCase()
-      if (item.equipment_type_id !== 2 && !typeStr.includes('COMM')) return false
+      if (!isCommItem) return false
     }
 
     if (filterOfficeId.value > 0 && item.office_id !== filterOfficeId.value) return false
@@ -667,27 +671,27 @@ async function loadData() {
   // Load equipment records for period
   if (selectedPeriod.value) {
     const listRes = await fetchEquipmentList(selectedPeriod.value)
-    if (listRes.success) {
-      equipmentList.value = listRes.data.items
+    if (listRes.success && listRes.data) {
+      equipmentList.value = Array.isArray(listRes.data.items) ? listRes.data.items : (Array.isArray(listRes.data) ? listRes.data : [])
       periodInfo.value = {
-        period_label: listRes.data.period_label,
-        is_current: listRes.data.is_current
+        period_label: listRes.data.period_label || selectedPeriod.value,
+        is_current: listRes.data.is_current ?? true
       }
     }
   }
 
   // Load reference options (Types, Subtypes, Statuses)
   const refRes = await fetchReferenceOptions()
-  if (refRes.success) {
-    equipmentTypes.value = refRes.data.equipment_types
-    equipmentSubtypes.value = refRes.data.equipment_subtypes
-    equipmentStatuses.value = refRes.data.statuses
+  if (refRes.success && refRes.data) {
+    equipmentTypes.value = refRes.data.equipment_types || refRes.data.types || []
+    equipmentSubtypes.value = refRes.data.equipment_subtypes || refRes.data.subtypes || []
+    equipmentStatuses.value = refRes.data.statuses || []
   }
 
   // Load offices
   const officeRes = await fetchOffices()
-  if (officeRes.success) {
-    officeList.value = officeRes.data
+  if (officeRes.success && officeRes.data) {
+    officeList.value = Array.isArray(officeRes.data) ? officeRes.data : []
   }
 
   loading.value = false
@@ -696,11 +700,11 @@ async function loadData() {
 async function handlePeriodChange() {
   loading.value = true
   const listRes = await fetchEquipmentList(selectedPeriod.value)
-  if (listRes.success) {
-    equipmentList.value = listRes.data.items
+  if (listRes.success && listRes.data) {
+    equipmentList.value = Array.isArray(listRes.data.items) ? listRes.data.items : (Array.isArray(listRes.data) ? listRes.data : [])
     periodInfo.value = {
-      period_label: listRes.data.period_label,
-      is_current: listRes.data.is_current
+      period_label: listRes.data.period_label || selectedPeriod.value,
+      is_current: listRes.data.is_current ?? true
     }
   }
   loading.value = false
