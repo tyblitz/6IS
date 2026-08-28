@@ -134,8 +134,10 @@ export interface CalendarSummaryMetrics {
 export interface WeekEventsResponse {
   success: boolean;
   data: CalendarActivity[];
-  week_start: string;
-  week_end: string;
+  start_date?: string;
+  end_date?: string;
+  week_start?: string;
+  week_end?: string;
 }
 
 export interface MonthEventsResponse {

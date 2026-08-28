@@ -3,6 +3,15 @@
 
 SET FOREIGN_KEY_CHECKS = 0;
 
+-- 0. Alter tbl_inventory_equipment Table Columns
+ALTER TABLE `tbl_inventory_equipment` ADD COLUMN `equipment_type_id` INT NULL AFTER `office_id`;
+ALTER TABLE `tbl_inventory_equipment` ADD COLUMN `equipment_subtype_id` INT NULL AFTER `equipment_type_id`;
+ALTER TABLE `tbl_inventory_equipment` ADD COLUMN `status_id` INT NULL AFTER `equipment_subtype_id`;
+
+UPDATE `tbl_inventory_equipment` SET `equipment_type_id` = 1 WHERE `equipment_type_id` IS NULL;
+UPDATE `tbl_inventory_equipment` SET `equipment_subtype_id` = 1 WHERE `equipment_subtype_id` IS NULL;
+UPDATE `tbl_inventory_equipment` SET `status_id` = 1 WHERE `status_id` IS NULL;
+
 -- 1. Create Equipment Types Table
 CREATE TABLE IF NOT EXISTS `tbl_inventory_equipment_types` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,

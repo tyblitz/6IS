@@ -137,7 +137,16 @@ export async function fetchReferenceOptions(): Promise<ApiResponse<ReferenceOpti
       method: 'GET',
       credentials: 'include'
     })
-    return await res.json()
+    const json = await res.json()
+    if (json.success && json.data) {
+      json.data = {
+        equipment_types: json.data.equipment_types || json.data.types || [],
+        equipment_subtypes: json.data.equipment_subtypes || json.data.subtypes || [],
+        statuses: json.data.statuses || [],
+        offices: json.data.offices || []
+      }
+    }
+    return json
   } catch (err: any) {
     return {
       success: false,
@@ -188,7 +197,25 @@ export async function fetchEquipmentList(period: string): Promise<ApiResponse<{ 
       method: 'GET',
       credentials: 'include'
     })
-    return await res.json()
+    const json = await res.json()
+    if (json.success) {
+      if (Array.isArray(json.data)) {
+        json.data = {
+          period,
+          period_label: period,
+          is_current: true,
+          items: json.data
+        }
+      } else if (!json.data || !Array.isArray(json.data.items)) {
+        json.data = {
+          period,
+          period_label: period,
+          is_current: true,
+          items: json.data?.items || []
+        }
+      }
+    }
+    return json
   } catch (err: any) {
     return {
       success: false,
@@ -314,7 +341,25 @@ export async function fetchJrrsList(period: string): Promise<ApiResponse<{ perio
       method: 'GET',
       credentials: 'include'
     })
-    return await res.json()
+    const json = await res.json()
+    if (json.success) {
+      if (Array.isArray(json.data)) {
+        json.data = {
+          period,
+          period_label: period,
+          is_current: true,
+          items: json.data
+        }
+      } else if (!json.data || !Array.isArray(json.data.items)) {
+        json.data = {
+          period,
+          period_label: period,
+          is_current: true,
+          items: json.data?.items || []
+        }
+      }
+    }
+    return json
   } catch (err: any) {
     return {
       success: false,
