@@ -92,6 +92,9 @@ if ($method === 'PATCH' || ($method === 'POST' && isset($_GET['_method']) && str
     requireRole('Administrator');
 
     $rawInput = file_get_contents('php://input');
+    if (empty($rawInput) && !empty($GLOBALS['HTTP_RAW_POST_DATA'])) {
+        $rawInput = $GLOBALS['HTTP_RAW_POST_DATA'];
+    }
     $input = json_decode($rawInput, true);
 
     if (!is_array($input)) {

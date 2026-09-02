@@ -1,6 +1,6 @@
-describe('My First Test', () => {
-  it('Visits the app root url', () => {
+describe('6IS Application Root & Auth Check', () => {
+  it('Visits the app root url and redirects to login', () => {
     cy.visit('/')
-    cy.contains('#container', 'Ready to create an app?')
+    cy.url().should('include', '/login')
   })
 })

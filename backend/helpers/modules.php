@@ -8,6 +8,7 @@
  * 
  * @param PDO|null $pdo Existing database connection
  * @return PDO
+ * @throws RuntimeException If configuration missing or connection fails
  */
 function getModuleDbConnection(?PDO $pdo = null): PDO {
     if ($pdo instanceof PDO) {
@@ -37,36 +38,39 @@ function getModuleDbConnection(?PDO $pdo = null): PDO {
 /**
  * Checks whether a module is registered and active in tbl_modules.
  * 
+ * Preferred behavior:
+ * - module exists + active   -> true
+ * - module exists + inactive -> false
+ * - module missing           -> false
+ * - database/query failure   -> throws exception to caller (propagates error)
+ * 
  * @param string $moduleKey Stable module key ('inventory', 'calendar', etc.)
  * @param PDO|null $pdo Optional existing PDO connection
  * @return bool True if module exists and is active, false otherwise
+ * @throws Throwable On database connection or query execution failure
  */
 function isModuleActive(string $moduleKey, ?PDO $pdo = null): bool {
-    try {
-        $db = getModuleDbConnection($pdo);
-        $stmt = $db->prepare("
-            SELECT is_active 
-            FROM tbl_modules 
-            WHERE LOWER(module_key) = LOWER(:module_key) 
-            LIMIT 1
-        ");
-        $stmt->execute([':module_key' => trim($moduleKey)]);
-        $row = $stmt->fetch();
+    $db = getModuleDbConnection($pdo);
+    $stmt = $db->prepare("
+        SELECT is_active 
+        FROM tbl_modules 
+        WHERE LOWER(module_key) = LOWER(:module_key) 
+        LIMIT 1
+    ");
+    $stmt->execute([':module_key' => trim($moduleKey)]);
+    $row = $stmt->fetch();
 
-        if ($row && (int)$row['is_active'] === 1) {
-            return true;
-        }
-
-        return false;
-    } catch (Exception $e) {
-        // Fallback safely to false on query failure
-        return false;
+    if ($row && (int)$row['is_active'] === 1) {
+        return true;
     }
+
+    return false;
 }
 
 /**
  * Enforces that a module is active before allowing an API request to proceed.
  * If the module is inactive or missing, rejects with HTTP 403 Forbidden.
+ * If a database error occurs, propagates HTTP 500 Internal Server Error.
  * 
  * IMPORTANT: Call requireAuth() BEFORE calling requireModuleActive()!
  * 
@@ -74,7 +78,20 @@ function isModuleActive(string $moduleKey, ?PDO $pdo = null): bool {
  * @param PDO|null $pdo Optional existing PDO connection
  */
 function requireModuleActive(string $moduleKey, ?PDO $pdo = null): void {
-    if (!isModuleActive($moduleKey, $pdo)) {
+    try {
+        $active = isModuleActive($moduleKey, $pdo);
+    } catch (Throwable $e) {
+        http_response_code(500);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'success' => false,
+            'message' => 'Internal server error verifying module activation state.',
+            'error' => $e->getMessage()
+        ], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+
+    if (!$active) {
         http_response_code(403);
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode([
