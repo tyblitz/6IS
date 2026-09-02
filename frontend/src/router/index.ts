@@ -41,7 +41,6 @@ import AccomplishmentCustomView from '../views/accomplishments/AccomplishmentCus
 
 // Calendar Module Views
 import CalendarView from '../views/calendar/CalendarView.vue'
-import CalendarDayView from '../views/calendar/CalendarDayView.vue'
 
 import { ModuleName } from '../types/module'
 import { fetchCurrentUser } from '../services/authService'
@@ -401,12 +400,10 @@ const routes: Array<RouteRecordRaw> = [
   },
   {
     path: '/calendar/day/:date',
-    name: 'Calendar Day',
-    component: CalendarDayView,
-    meta: {
-      module: ModuleName.Calendar,
-      requiresAuth: true
-    }
+    redirect: to => ({
+      path: '/calendar',
+      query: { view: 'day', date: to.params.date }
+    })
   }
 ]
 

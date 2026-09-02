@@ -1,0 +1,129 @@
+/* frontend/src/assets/styles/components/buttons.css */
+/* Standardized Button System matching 6IS Design System Specification */
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: var(--color-primary-light, #2563EB);
+  color: #FFFFFF;
+  border: 1px solid var(--color-primary-light, #2563EB);
+  padding: 8px 16px;
+  border-radius: var(--radius-sm, 6px);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--transition-fast, 0.2s ease), transform 0.1s ease, box-shadow 0.15s ease;
+  line-height: 1.2;
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary, #1E3A8A);
+  border-color: var(--color-primary, #1E3A8A);
+}
+
+.btn-primary:active {
+  transform: translateY(1px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: #FFFFFF;
+  color: #334155;
+  border: 1px solid var(--color-border, #CBD5E1);
+  padding: 8px 16px;
+  border-radius: var(--radius-sm, 6px);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.2;
+}
+
+.btn-secondary:hover {
+  background-color: #F8FAFC;
+  border-color: #94A3B8;
+  color: #1E293B;
+}
+
+.btn-secondary:active {
+  transform: translateY(1px);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: var(--color-danger-bg, #FEF2F2);
+  color: var(--color-danger, #DC2626);
+  border: 1px solid var(--color-danger-border, #FECACA);
+  padding: 8px 16px;
+  border-radius: var(--radius-sm, 6px);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.2;
+}
+
+.btn-danger:hover {
+  background-color: #FEE2E2;
+  border-color: #F87171;
+  color: #B91C1C;
+}
+
+.btn-danger:active {
+  transform: translateY(1px);
+}
+
+.btn-danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Compact button size for tables, action bars & toolbars */
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm, 6px);
+}
+
+/* Icon-only action button */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid var(--color-border, #CBD5E1);
+  background: #FFFFFF;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-icon:hover {
+  background: #F8FAFC;
+  border-color: var(--color-primary-light, #2563EB);
+  color: var(--color-primary-light, #2563EB);
+}

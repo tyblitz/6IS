@@ -106,6 +106,7 @@ import { IonIcon } from '@ionic/vue'
 import { closeOutline } from 'ionicons/icons'
 import type { CalendarActivity } from '../../types/calendar'
 import { rescheduleEvent } from '../../services/calendarService'
+import { formatDate } from '../../utils/dateUtils'
 
 const props = defineProps<{
   isOpen: boolean;
@@ -138,16 +139,7 @@ const militaryTimeOptions = Array.from({ length: 48 }, (_, i) => {
 })
 
 function formatDateMilitary(ymdStr: string): string {
-  if (!ymdStr) return ''
-  try {
-    const dt = new Date(ymdStr + 'T00:00:00')
-    const day = dt.getDate()
-    const month = dt.toLocaleDateString('en-US', { month: 'short' })
-    const year = dt.getFullYear()
-    return `${day} ${month} ${year}`
-  } catch (e) {
-    return ymdStr
-  }
+  return formatDate(ymdStr)
 }
 
 const currentScheduleDisplay = computed(() => {

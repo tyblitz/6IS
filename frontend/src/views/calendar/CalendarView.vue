@@ -108,6 +108,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { IonSpinner } from '@ionic/vue'
 import MainLayout from '../../layouts/MainLayout.vue'
 import CalendarHeader from '../../components/calendar/CalendarHeader.vue'
@@ -144,6 +145,10 @@ import {
 } from '../../services/calendarService'
 
 import { fetchAccomplishmentOptions } from '../../services/accomplishmentService'
+
+// Router
+const route = useRoute()
+const router = useRouter()
 
 // State
 const currentDate = ref(new Date())
@@ -319,6 +324,18 @@ async function loadData() {
   }
 }
 
+function applyRouteQuery() {
+  if (route.query.view && ['month', 'week', 'day'].includes(route.query.view as string)) {
+    currentView.value = route.query.view as CalendarViewMode
+  }
+  if (route.query.date && typeof route.query.date === 'string') {
+    const parsed = new Date(route.query.date + 'T00:00:00')
+    if (!isNaN(parsed.getTime())) {
+      currentDate.value = parsed
+    }
+  }
+}
+
 watch(
   () => [searchQuery.value, selectedTypeId.value],
   () => {
@@ -326,7 +343,15 @@ watch(
   }
 )
 
+watch(
+  () => [route.query.view, route.query.date],
+  () => {
+    applyRouteQuery()
+  }
+)
+
 onMounted(() => {
+  applyRouteQuery()
   loadData()
 })
 
@@ -357,6 +382,7 @@ function handleNextPeriod() {
 
 function handleGoToToday() {
   currentDate.value = new Date()
+  currentView.value = 'day'
 }
 
 function handleChangeView(view: CalendarViewMode) {

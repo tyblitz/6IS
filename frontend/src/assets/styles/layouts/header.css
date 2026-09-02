@@ -47,10 +47,18 @@
 .header-title h1{
     margin:0;
     line-height:1;
+    color: #FFFFFF !important;
+    font-size: 1.55rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
 }
 
 .header-title p{
     margin-top:4px;
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-size: 0.825rem;
+    font-weight: 500;
+    line-height: 1.2;
 }
 
 .menu-button,

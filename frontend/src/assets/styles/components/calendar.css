@@ -335,6 +335,7 @@
   border-bottom: 1px solid #CBD5E1;
   min-height: 56px;
   height: auto;
+  flex-shrink: 0;
   width: 100%;
   align-items: stretch;
 }
@@ -374,6 +375,94 @@
 .time-slot-cell:hover {
   background: #F8FAFC;
 }
+
+/* Day View Specific Expanding Time Grid Styles */
+.day-time-grid {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 600px;
+  overflow-y: auto;
+  border-top: 1px solid #CBD5E1;
+}
+
+.day-time-grid::-webkit-scrollbar {
+  width: 8px;
+}
+.day-time-grid::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+
+.day-time-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: stretch !important;
+  border-bottom: 1px solid #CBD5E1 !important;
+  min-height: 60px !important;
+  height: auto !important;
+  flex-shrink: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.day-time-row:nth-child(even) .day-time-slot {
+  background-color: #F8FAFC;
+}
+
+.day-time-label {
+  width: 80px !important;
+  min-width: 80px !important;
+  max-width: 80px !important;
+  flex-shrink: 0 !important;
+  padding: 10px !important;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  text-align: center;
+  border-right: 1px solid #CBD5E1;
+  background: #F8FAFC;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.day-time-slot {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  padding: 8px 14px !important;
+  min-height: 60px !important;
+  height: auto !important;
+  justify-content: center;
+  box-sizing: border-box !important;
+  background: #FFFFFF;
+  border-right: 1px solid #CBD5E1;
+}
+
+.day-activity-card {
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 0 !important;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  border: 1px solid #CBD5E1;
+  border-left-width: 4px;
+  width: 100% !important;
+  min-height: 38px !important;
+  height: auto !important;
+  flex-shrink: 0 !important;
+}
+
+.day-activity-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.06);
+}
+
 
 /* ==========================
    SLIDE-OVER DAY DRAWER

@@ -176,6 +176,7 @@ import {
 import type { Communication } from '../../types/communication'
 import { useTablePagination } from '../../composables/useTablePagination'
 import TablePagination from '../common/TablePagination.vue'
+import { formatDate } from '../../utils/dateUtils'
 
 interface Props {
   records: Communication[]
@@ -211,17 +212,6 @@ const {
 function getSortIcon(key: string) {
   if (sortKey.value !== key) return swapVerticalOutline
   return sortOrder.value === 'asc' ? chevronUpOutline : chevronDownOutline
-}
-
-function formatDate(dateStr?: string | null): string {
-  if (!dateStr) return 'N/A'
-  const date = new Date(dateStr)
-  if (isNaN(date.getTime())) return dateStr
-  const day = date.getDate().toString().padStart(2, '0')
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-  const month = months[date.getMonth()]
-  const year = date.getFullYear()
-  return `${day} ${month} ${year}`
 }
 
 function getStatusClass(status?: string): string {

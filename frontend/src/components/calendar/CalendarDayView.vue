@@ -72,15 +72,23 @@ const allDayList = computed(() => {
 function getActivitiesForHour(hour: number): CalendarActivity[] {
   return dayActivities.value.filter(a => {
     if (a.all_day) return false
-    if (!a.start_datetime) return hour === 9
-    try {
-      const formatted = a.start_datetime.replace(' ', 'T')
-      const dt = new Date(formatted)
-      const h = !isNaN(dt.getTime()) ? dt.getHours() : 9
-      return h === hour
-    } catch (e) {
-      return false
+    if (a.time) {
+      const parts = a.time.split(':')
+      if (parts.length >= 1) {
+        const h = parseInt(parts[0], 10)
+        if (!isNaN(h)) return h === hour
+      }
     }
+    if (a.start_datetime) {
+      try {
+        const formatted = a.start_datetime.replace(' ', 'T')
+        const dt = new Date(formatted)
+        if (!isNaN(dt.getTime())) {
+          return dt.getHours() === hour
+        }
+      } catch (e) {}
+    }
+    return hour === 9
   })
 }
 
@@ -101,19 +109,26 @@ function badgeTypeClass(act: CalendarActivity): string {
   return `badge-type-${getTypeCode(act)}`
 }
 
-// Clean title format: 1000H - Weekly Staff Meeting (No duplicate type code)
+// Clean military time format: 0900H - Reschedule Test Event
 function formatDisplayTitle(act: CalendarActivity): string {
   let timeStr = ''
-  if (!act.all_day && act.start_datetime) {
-    try {
-      const formatted = act.start_datetime.replace(' ', 'T')
-      const dt = new Date(formatted)
-      if (!isNaN(dt.getTime())) {
-        const h = String(dt.getHours()).padStart(2, '0')
-        const m = String(dt.getMinutes()).padStart(2, '0')
-        timeStr = `${h}${m}H - `
+  if (!act.all_day) {
+    if (act.time) {
+      const parts = act.time.split(':')
+      if (parts.length >= 2) {
+        timeStr = `${parts[0].padStart(2, '0')}${parts[1].padStart(2, '0')}H - `
       }
-    } catch (e) {}
+    } else if (act.start_datetime) {
+      try {
+        const formatted = act.start_datetime.replace(' ', 'T')
+        const dt = new Date(formatted)
+        if (!isNaN(dt.getTime())) {
+          const h = String(dt.getHours()).padStart(2, '0')
+          const m = String(dt.getMinutes()).padStart(2, '0')
+          timeStr = `${h}${m}H - `
+        }
+      } catch (e) {}
+    }
   }
   const titleStr = act.title || 'Operational Activity'
   return `${timeStr}${titleStr}`
@@ -157,12 +172,22 @@ function formatDisplayTitle(act: CalendarActivity): string {
   border-top: 1px solid #cbd5e1;
 }
 
+.day-time-grid::-webkit-scrollbar {
+  width: 8px;
+}
+.day-time-grid::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
 .day-time-row {
-  display: grid !important;
-  grid-template-columns: 80px 1fr !important;
-  grid-template-rows: auto !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: stretch !important;
   border-bottom: 1px solid #cbd5e1 !important;
   min-height: 60px !important;
+  height: auto !important;
+  flex-shrink: 0 !important;
   width: 100% !important;
   box-sizing: border-box !important;
 }
@@ -172,6 +197,10 @@ function formatDisplayTitle(act: CalendarActivity): string {
 }
 
 .day-time-label {
+  width: 80px !important;
+  min-width: 80px !important;
+  max-width: 80px !important;
+  flex-shrink: 0 !important;
   padding: 10px !important;
   font-size: 0.75rem;
   font-weight: 700;
@@ -186,11 +215,15 @@ function formatDisplayTitle(act: CalendarActivity): string {
 }
 
 .day-time-slot {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
   display: flex !important;
   flex-direction: column !important;
   gap: 8px !important;
   padding: 8px 14px !important;
   min-height: 60px !important;
+  height: auto !important;
+  justify-content: center;
   box-sizing: border-box !important;
   background: #ffffff;
   border-right: 1px solid #cbd5e1;
@@ -207,6 +240,7 @@ function formatDisplayTitle(act: CalendarActivity): string {
   border-left-width: 4px;
   width: 100% !important;
   min-height: 38px !important;
+  height: auto !important;
   flex-shrink: 0 !important;
 }
 
@@ -223,6 +257,7 @@ function formatDisplayTitle(act: CalendarActivity): string {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .type-badge {
@@ -240,5 +275,6 @@ function formatDisplayTitle(act: CalendarActivity): string {
 .card-title-text {
   font-size: 0.875rem;
   color: #0f172a;
+  word-break: break-word;
 }
 </style>
