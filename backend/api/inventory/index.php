@@ -20,9 +20,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// Require authenticated session for all inventory requests
+// Require authenticated session and active module for all inventory requests
 require_once __DIR__ . '/../../helpers/auth.php';
+require_once __DIR__ . '/../../helpers/modules.php';
 requireAuth();
+requireModuleActive('inventory');
 
 function sendJsonResponse($success, $message, $data = null, $errors = null, $statusCode = 200) {
     http_response_code($statusCode);

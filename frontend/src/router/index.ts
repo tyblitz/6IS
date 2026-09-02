@@ -19,6 +19,7 @@ import AdminCommunicationStatusesView from '../views/administrator/AdminCommunic
 import AdminAccomplishmentsView from '../views/administrator/AdminAccomplishmentsView.vue'
 import AdminAccomplishmentCategoriesView from '../views/administrator/AdminAccomplishmentCategoriesView.vue'
 import AdminUsersView from '../views/administrator/AdminUsersView.vue'
+import AdminModulesView from '../views/administrator/AdminModulesView.vue'
 
 // Operational Views
 import CommunicationsView from '../views/communications/CommunicationsView.vue'
@@ -44,6 +45,7 @@ import CalendarView from '../views/calendar/CalendarView.vue'
 
 import { ModuleName } from '../types/module'
 import { fetchCurrentUser } from '../services/authService'
+import { useModules } from '../composables/useModules'
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -209,6 +211,16 @@ const routes: Array<RouteRecordRaw> = [
       requiresRole: 'Administrator'
     }
   },
+  {
+    path: '/administrator/modules',
+    name: 'Module Management',
+    component: AdminModulesView,
+    meta: {
+      module: ModuleName.Administrator,
+      requiresAuth: true,
+      requiresRole: 'Administrator'
+    }
+  },
 
   // OPERATIONAL MODULE ROUTES
   {
@@ -226,6 +238,7 @@ const routes: Array<RouteRecordRaw> = [
     component: IncomingCommunicationsView,
     meta: {
       module: ModuleName.Communications,
+      requiresAuth: true
     },
   },
   {
@@ -234,6 +247,7 @@ const routes: Array<RouteRecordRaw> = [
     component: OutgoingCommunicationsView,
     meta: {
       module: ModuleName.Communications,
+      requiresAuth: true
     },
   },
   {
@@ -242,6 +256,7 @@ const routes: Array<RouteRecordRaw> = [
     component: CommunicationReportsView,
     meta: {
       module: ModuleName.Communications,
+      requiresAuth: true
     },
   },
   {
@@ -412,7 +427,7 @@ const router = createRouter({
   routes
 })
 
-// Centralized Authentication & Authorization Navigation Guard
+// Centralized Authentication, Authorization & Module Activation Navigation Guard
 router.beforeEach(async (to, _from, next) => {
   const isPublicRoute = to.meta.requiresAuth === false
   const requiredRole = to.meta.requiresRole as string | undefined
@@ -421,15 +436,35 @@ router.beforeEach(async (to, _from, next) => {
   if (!isPublicRoute && !user) {
     // Unauthenticated user attempting to access protected route -> redirect to /login
     next({ path: '/login', query: { redirect: to.fullPath } })
-  } else if (to.path === '/login' && user) {
+    return
+  }
+  
+  if (to.path === '/login' && user) {
     // Authenticated user attempting to access login page -> redirect to /home
     next('/home')
-  } else if (requiredRole && user && user.role !== requiredRole) {
+    return
+  }
+  
+  if (requiredRole && user && user.role !== requiredRole) {
     // Authenticated user attempting role-restricted route without permission -> redirect to /home
     next('/home')
-  } else {
-    next()
+    return
   }
+
+  // Check module activation if route specifies a module key
+  if (user) {
+    const { loadModules, isEnabled } = useModules()
+    await loadModules()
+
+    const targetModule = to.meta.module as string | undefined
+    if (targetModule && !isEnabled(targetModule)) {
+      console.warn(`[router] Direct route blocked: Module '${targetModule}' is disabled on this system. Redirecting to /home.`)
+      next('/home')
+      return
+    }
+  }
+
+  next()
 })
 
 export default router

@@ -28,7 +28,7 @@ const API_BASE = resolveApiUrl();
  */
 export async function fetchCalendarEventTypes(): Promise<CalendarEventTypeOption[]> {
   try {
-    const res = await fetch(`${API_BASE}?action=types`);
+    const res = await fetch(`${API_BASE}?action=types`, { credentials: 'include' });
     const json = await res.json();
     return json.success ? json.data : [];
   } catch (err) {
@@ -55,7 +55,7 @@ export async function fetchCalendarActivities(
       status: status,
       search: search
     });
-    const res = await fetch(`${API_BASE}?${params.toString()}`);
+    const res = await fetch(`${API_BASE}?${params.toString()}`, { credentials: 'include' });
     const json: MonthEventsResponse = await res.json();
     return json.success ? json.data : [];
   } catch (err) {
@@ -69,7 +69,7 @@ export async function fetchCalendarActivities(
  */
 export async function fetchCalendarActivityDetail(id: number): Promise<CalendarActivity | null> {
   try {
-    const res = await fetch(`${API_BASE}?id=${id}`);
+    const res = await fetch(`${API_BASE}?id=${id}`, { credentials: 'include' });
     const json = await res.json();
     return json.success ? json.data : null;
   } catch (err) {
@@ -90,6 +90,7 @@ export async function updateEventStatus(
     const res = await fetch(`${API_BASE}?action=status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ id, status, reason })
     });
     return await res.json();
@@ -109,6 +110,7 @@ export async function rescheduleEvent(
     const res = await fetch(`${API_BASE}?action=reschedule`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(payload)
     });
     return await res.json();
@@ -129,6 +131,7 @@ export async function restoreCanceledEvent(
     const res = await fetch(`${API_BASE}?action=restore`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ id, reason })
     });
     return await res.json();
@@ -148,6 +151,7 @@ export async function createAccomplishmentFromEvent(
     const res = await fetch(`${API_BASE}?action=create_accomplishment`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(payload)
     });
     return await res.json();
@@ -162,7 +166,7 @@ export async function createAccomplishmentFromEvent(
  */
 export async function fetchWeekEvents(date: string): Promise<{ events: CalendarActivity[]; weekStart: string; weekEnd: string }> {
   try {
-    const res = await fetch(`${API_BASE}?view=week&date=${date}`);
+    const res = await fetch(`${API_BASE}?view=week&date=${date}`, { credentials: 'include' });
     const json: WeekEventsResponse = await res.json();
     if (json.success) {
       const wStart = json.week_start || json.start_date || '';
@@ -181,7 +185,7 @@ export async function fetchWeekEvents(date: string): Promise<{ events: CalendarA
  */
 export async function fetchMonthEvents(year: number, month: number, typeId: number = 0): Promise<CalendarActivity[]> {
   try {
-    const res = await fetch(`${API_BASE}?view=month&year=${year}&month=${month}&type_id=${typeId}`);
+    const res = await fetch(`${API_BASE}?view=month&year=${year}&month=${month}&type_id=${typeId}`, { credentials: 'include' });
     const json: MonthEventsResponse = await res.json();
     return json.success ? json.data : [];
   } catch (err) {
@@ -196,7 +200,7 @@ export async function fetchMonthEvents(year: number, month: number, typeId: numb
 export async function fetchCalendarSummary(date?: string): Promise<CalendarSummaryMetrics | null> {
   try {
     const targetDate = date || new Date().toISOString().slice(0, 10);
-    const res = await fetch(`${API_BASE}?summary=1&date=${targetDate}`);
+    const res = await fetch(`${API_BASE}?summary=1&date=${targetDate}`, { credentials: 'include' });
     const json = await res.json();
     return json.success ? json.data : null;
   } catch (err) {
@@ -213,6 +217,7 @@ export async function createCalendarEvent(payload: CalendarEventFormPayload): Pr
     const res = await fetch(API_BASE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(payload)
     });
     return await res.json();
@@ -230,6 +235,7 @@ export async function updateCalendarEvent(payload: CalendarEventFormPayload): Pr
     const res = await fetch(API_BASE, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(payload)
     });
     return await res.json();
@@ -245,7 +251,8 @@ export async function updateCalendarEvent(payload: CalendarEventFormPayload): Pr
 export async function deleteCalendarEvent(id: number): Promise<{ success: boolean; message?: string }> {
   try {
     const res = await fetch(`${API_BASE}?id=${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      credentials: 'include'
     });
     return await res.json();
   } catch (err) {

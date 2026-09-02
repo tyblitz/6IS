@@ -152,3 +152,18 @@ CREATE TABLE IF NOT EXISTS tbl_calendar_events (
     INDEX idx_event_type (event_type),
     INDEX idx_deleted_at (deleted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS tbl_modules (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    module_key VARCHAR(100) NOT NULL UNIQUE,
+    name VARCHAR(150) NOT NULL,
+    description TEXT NULL,
+    icon VARCHAR(100) NULL,
+    route VARCHAR(255) NULL,
+    is_core TINYINT(1) NOT NULL DEFAULT 0,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    sort_order INT NOT NULL DEFAULT 0,
+    version VARCHAR(30) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

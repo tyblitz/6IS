@@ -14,9 +14,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// Require authenticated session
+// Require authenticated session and active module
 require_once __DIR__ . '/../../helpers/auth.php';
+require_once __DIR__ . '/../../helpers/modules.php';
 requireAuth();
+requireModuleActive('communications');
 
 function sendJsonResponse($success, $message, $data = null, $errors = null, $statusCode = 200) {
     http_response_code($statusCode);

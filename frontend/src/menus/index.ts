@@ -18,4 +18,8 @@ export const moduleMenus: Record<ModuleName, SidebarItem[]> = {
   // Mappings for subpages
   [ModuleName.Equipment]: inventoryMenu,
   [ModuleName.JRRS]: inventoryMenu,
+
+  // Future modules
+  [ModuleName.Performance]: [],
+  [ModuleName.Finances]: []
 }

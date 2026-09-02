@@ -8,17 +8,25 @@ if (session_status() === PHP_SESSION_NONE) {
 
 /**
  * Ensures a valid authenticated PHP session exists.
- * Sets fallback identity if session is uninitialized in development mode.
+ * Rejects unauthenticated requests with HTTP 401 Unauthorized.
  */
 function requireAuth() {
+    if (session_status() === PHP_SESSION_NONE) {
+        @session_start();
+    }
+
     if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
         if (isset($_SESSION['user']) && isset($_SESSION['user']['id'])) {
             $_SESSION['user_id'] = $_SESSION['user']['id'];
             $_SESSION['role'] = $_SESSION['user']['role'] ?? 'User';
         } else {
-            // Fallback for active session context
-            $_SESSION['user_id'] = 1;
-            $_SESSION['role'] = 'Administrator';
+            http_response_code(401);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'success' => false,
+                'message' => 'Unauthorized. Authentication required.'
+            ], JSON_UNESCAPED_UNICODE);
+            exit();
         }
     }
 }

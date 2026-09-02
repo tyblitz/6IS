@@ -25,7 +25,7 @@
       </div>
 
       <!-- THIS WEEK OPERATIONAL SCHEDULE WIDGET (DENSE EXECUTIVE SCHEDULE) -->
-      <div class="dash-schedule-widget">
+      <div v-if="isEnabled('calendar')" class="dash-schedule-widget">
 
         <!-- Executive Header -->
         <div class="dash-schedule-header">
@@ -119,7 +119,7 @@
       <div v-if="activeUser?.role === 'Administrator'" class="module-cards-grid admin-cards-grid">
         
         <!-- Inventory Management Card -->
-        <ion-card class="module-card inventory-card" @click="goToAdminInventory">
+        <ion-card v-if="isEnabled('inventory')" class="module-card inventory-card" @click="goToAdminInventory">
           <ion-card-header>
             <div class="module-icon-box inventory-icon">
               <ion-icon :icon="cubeOutline"></ion-icon>
@@ -130,7 +130,7 @@
         </ion-card>
 
         <!-- Communications Management Card -->
-        <ion-card class="module-card communications-card" @click="goToAdminCommunications">
+        <ion-card v-if="isEnabled('communications')" class="module-card communications-card" @click="goToAdminCommunications">
           <ion-card-header>
             <div class="module-icon-box communications-icon">
               <ion-icon :icon="chatbubbleEllipsesOutline"></ion-icon>
@@ -141,7 +141,7 @@
         </ion-card>
 
         <!-- Accomplishments Management Card -->
-        <ion-card class="module-card accomplishments-card" @click="goToAdminAccomplishments">
+        <ion-card v-if="isEnabled('accomplishments')" class="module-card accomplishments-card" @click="goToAdminAccomplishments">
           <ion-card-header>
             <div class="module-icon-box accomplishments-icon">
               <ion-icon :icon="clipboardOutline"></ion-icon>
@@ -168,7 +168,7 @@
       <div v-else class="module-cards-grid">
 
         <!-- Inventory Operational Card -->
-        <ion-card class="module-card inventory-card" @click="goToInventory">
+        <ion-card v-if="isEnabled('inventory')" class="module-card inventory-card" @click="goToInventory">
           <ion-card-header>
             <div class="module-icon-box inventory-icon">
               <ion-icon :icon="cubeOutline"></ion-icon>
@@ -179,7 +179,7 @@
         </ion-card>
 
         <!-- Communications Operational Card -->
-        <ion-card class="module-card communications-card" @click="goToCommunications">
+        <ion-card v-if="isEnabled('communications')" class="module-card communications-card" @click="goToCommunications">
           <ion-card-header>
             <div class="module-icon-box communications-icon">
               <ion-icon :icon="chatbubbleEllipsesOutline"></ion-icon>
@@ -190,7 +190,7 @@
         </ion-card>
 
         <!-- Accomplishments Operational Card -->
-        <ion-card class="module-card accomplishments-card" @click="goToAccomplishments">
+        <ion-card v-if="isEnabled('accomplishments')" class="module-card accomplishments-card" @click="goToAccomplishments">
           <ion-card-header>
             <div class="module-icon-box accomplishments-icon">
               <ion-icon :icon="clipboardOutline"></ion-icon>
@@ -201,7 +201,7 @@
         </ion-card>
 
         <!-- Calendar Operational Card -->
-        <ion-card class="module-card calendar-card" @click="goToCalendar">
+        <ion-card v-if="isEnabled('calendar')" class="module-card calendar-card" @click="goToCalendar">
           <ion-card-header>
             <div class="module-icon-box calendar-icon">
               <ion-icon :icon="calendarOutline"></ion-icon>
@@ -252,6 +252,7 @@ import CalendarActivityDetailsModal from '../components/calendar/CalendarActivit
 import { activeUser } from '../services/authService'
 import { fetchWeekEvents, deleteCalendarEvent } from '../services/calendarService'
 import type { CalendarActivity } from '../types/calendar'
+import { useModules } from '../composables/useModules'
 
 import '../assets/styles/pages/dashboard.css'
 import '../assets/styles/components/calendar.css'
@@ -259,6 +260,7 @@ import '../assets/styles/components/calendar.css'
 import { formatDate } from '../utils/dateUtils'
 
 const router = useRouter()
+const { isEnabled } = useModules()
 const currentDate = ref(new Date())
 const weekLoading = ref(true)
 const weekEvents = ref<CalendarActivity[]>([])

@@ -98,5 +98,10 @@ export const administratorMenu: SidebarItem[] = [
     label: 'Users',
     route: '/administrator/users',
     icon: peopleOutline
+  },
+  {
+    label: 'Modules',
+    route: '/administrator/modules',
+    icon: gridOutline
   }
 ]

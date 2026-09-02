@@ -37,7 +37,8 @@ try {
         __DIR__ . '/migrations/create_auth_tables.sql',
         __DIR__ . '/migrations/create_inventory_tables.sql',
         __DIR__ . '/migrations/alter_inventory_to_extensible_equipment.sql',
-        __DIR__ . '/migrations/create_calendar_tables.sql'
+        __DIR__ . '/migrations/create_calendar_tables.sql',
+        __DIR__ . '/migrations/create_modules_table.sql'
     ];
 
     echo "4. Executing SQL migration scripts...\n";
@@ -225,9 +226,16 @@ try {
             $pdo->exec("UPDATE `tbl_inventory_jrrs` j JOIN `tbl_inventory_equipment_subtypes` st ON LOWER(j.equipment_type) = LOWER(st.name) SET j.equipment_subtype_id = st.id;");
             $pdo->exec("UPDATE `tbl_inventory_jrrs` SET `equipment_subtype_id` = 1 WHERE `equipment_subtype_id` IS NULL;");
         }
-        echo "SUCCESS: Verified tbl_inventory_jrrs equipment_subtype_id column.\n";
     } catch (Exception $e) {
         echo "tbl_inventory_jrrs columns note: " . $e->getMessage() . "\n";
+    }
+
+    // Verify Module Registry table exists & is seeded
+    try {
+        $moduleCount = $pdo->query("SELECT COUNT(*) FROM `tbl_modules`")->fetchColumn();
+        echo "SUCCESS: Verified tbl_modules registry ({$moduleCount} official modules registered).\n";
+    } catch (Exception $e) {
+        echo "WARNING: tbl_modules verification note: " . $e->getMessage() . "\n";
     }
 
     // Seed Development Authentication Accounts securely with BCRYPT hashes

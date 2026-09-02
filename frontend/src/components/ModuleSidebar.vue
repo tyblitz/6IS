@@ -72,18 +72,42 @@ import { moduleMenus } from '../menus'
 import { ModuleName } from '../types/module'
 import type { SidebarItem } from '../types/SidebarItem'
 import { useSidebar } from '../composables/useSidebar'
+import { useModules } from '../composables/useModules'
 
 const route = useRoute()
 const router = useRouter()
 const { isSidebarCollapsed } = useSidebar()
+const { isEnabled } = useModules()
 
 // Track explicit toggle states for collapsible groups
 const collapsedState = ref<Record<string, boolean>>({})
 const currentOpenGroupLabel = ref<string | null>(null)
 
+function getModuleKeyForRoute(path: string): string | null {
+  if (path.startsWith('/inventory') || path.startsWith('/administrator/inventory')) return 'inventory'
+  if (path.startsWith('/communications') || path.startsWith('/administrator/communications')) return 'communications'
+  if (path.startsWith('/calendar')) return 'calendar'
+  if (path.startsWith('/accomplishments') || path.startsWith('/administrator/accomplishments')) return 'accomplishments'
+  if (path.startsWith('/performance')) return 'performance'
+  if (path.startsWith('/finances')) return 'finances'
+  return null
+}
+
+function isItemVisible(item: SidebarItem): boolean {
+  const modKey = getModuleKeyForRoute(item.route)
+  if (modKey && !isEnabled(modKey)) {
+    return false
+  }
+  return true
+}
+
 const menuItems = computed(() => {
   const module = route.meta.module as ModuleName
-  return moduleMenus[module] ?? []
+  if (!isEnabled(module)) {
+    return []
+  }
+  const rawItems = moduleMenus[module] ?? []
+  return rawItems.filter(isItemVisible)
 })
 
 function isGroupActive(group: SidebarItem): boolean {

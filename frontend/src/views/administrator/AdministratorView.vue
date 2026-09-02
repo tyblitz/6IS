@@ -106,6 +106,15 @@
             <p>Manage user accounts, roles, active status, and passwords.</p>
           </div>
         </div>
+
+        <!-- Module Management -->
+        <div class="admin-card" @click="goTo('/administrator/modules')">
+          <div class="card-icon indigo-bg"><ion-icon :icon="gridOutline" /></div>
+          <div class="card-info">
+            <h3>Module Management</h3>
+            <p>Manage system modules, activations, core platform protections, and feature availability.</p>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -121,7 +130,8 @@ import {
   chatbubbleEllipsesOutline,
   clipboardOutline,
   peopleOutline,
-  checkmarkCircleOutline
+  checkmarkCircleOutline,
+  gridOutline
 } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
@@ -345,6 +355,7 @@ onMounted(() => {
 .green-bg { background: #f0fdf4; color: #16a34a; }
 .orange-bg { background: #fff7ed; color: #ea580c; }
 .purple-bg { background: #faf5ff; color: #9333ea; }
+.indigo-bg { background: #eef2ff; color: #4f46e5; }
 
 .card-info h3 {
   font-size: 18px;
