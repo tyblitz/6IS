@@ -17,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // Require authenticated session and active module
 require_once __DIR__ . '/../../helpers/auth.php';
 require_once __DIR__ . '/../../helpers/modules.php';
+require_once __DIR__ . '/../../helpers/permissions.php';
 requireAuth();
 requireModuleActive('communications');
 
@@ -54,6 +55,7 @@ $view = $_GET['view'] ?? '';
 
 // GET Handler
 if ($method === 'GET') {
+    requirePermission('communications', 'view', $pdo);
     // 1. List Communications
     if ($view === '' || $view === 'communications') {
         $stmt = $pdo->query("
@@ -125,16 +127,23 @@ if ($method === 'GET') {
     }
 }
 
-// POST Handler (Requires Administrator role for management actions)
+// POST Handler (Granular permissions enforced per action)
 if ($method === 'POST') {
-    requireRole('Administrator'); // Enforce Administrator authorization
-
     $rawInput = file_get_contents('php://input');
+    if (empty($rawInput) && isset($GLOBALS['HTTP_RAW_POST_DATA'])) {
+        $rawInput = $GLOBALS['HTTP_RAW_POST_DATA'];
+    }
     $input = json_decode($rawInput, true);
 
     // 1. Create or Update Communication
     if ($action === 'create_communication' || $action === 'update_communication') {
         $id = (int)($input['id'] ?? 0);
+        if ($id > 0 || $action === 'update_communication') {
+            requirePermission('communications', 'edit', $pdo);
+        } else {
+            requirePermission('communications', 'create', $pdo);
+        }
+
         $commType = trim($input['communication_type'] ?? 'Incoming');
         $commDate = trim($input['communication_date'] ?? date('Y-m-d'));
         $subject = trim($input['subject'] ?? '');
@@ -229,11 +238,11 @@ if ($method === 'POST') {
             $commIdToUse = (int)$pdo->lastInsertId();
         }
 
-        // Save multiple attachment records
-        if (!empty($newImageUrls) && $commIdToUse > 0) {
-            $insAtt = $pdo->prepare("INSERT INTO tbl_communication_attachments (communication_id, image_url) VALUES (:comm_id, :url)");
+        // Save multiple attachments if provided
+        if (!empty($newImageUrls)) {
+            $attStmt = $pdo->prepare("INSERT INTO tbl_communication_attachments (communication_id, file_path, file_type, created_at) VALUES (:cid, :fp, 'image', NOW())");
             foreach ($newImageUrls as $url) {
-                $insAtt->execute([':comm_id' => $commIdToUse, ':url' => $url]);
+                $attStmt->execute([':cid' => $commIdToUse, ':fp' => $url]);
             }
         }
 
@@ -242,6 +251,8 @@ if ($method === 'POST') {
 
     // 2. Soft Delete Communication
     if ($action === 'delete_communication') {
+        requirePermission('communications', 'delete', $pdo);
+
         $id = (int)($input['id'] ?? 0);
         if ($id <= 0) {
             sendJsonResponse(false, 'Valid communication ID is required.', null, null, 400);
@@ -255,6 +266,8 @@ if ($method === 'POST') {
 
     // 3. Save Category (Add / Update)
     if ($action === 'save_category') {
+        requirePermission('communications', 'configure', $pdo);
+
         $id = (int)($input['id'] ?? 0);
         $name = trim($input['category_name'] ?? '');
         $code = trim($input['code'] ?? '');
@@ -277,6 +290,8 @@ if ($method === 'POST') {
 
     // 4. Delete Category
     if ($action === 'delete_category') {
+        requirePermission('communications', 'configure', $pdo);
+
         $id = (int)($input['id'] ?? 0);
         if ($id <= 0) sendJsonResponse(false, 'Valid ID is required.', null, null, 400);
         $stmt = $pdo->prepare("UPDATE tbl_communication_categories SET deleted_at = NOW() WHERE id = :id");
@@ -286,6 +301,8 @@ if ($method === 'POST') {
 
     // 5. Save Purpose (Add / Update)
     if ($action === 'save_purpose') {
+        requirePermission('communications', 'configure', $pdo);
+
         $id = (int)($input['id'] ?? 0);
         $name = trim($input['purpose_name'] ?? '');
         $isActive = isset($input['is_active']) ? ($input['is_active'] ? 1 : 0) : 1;
@@ -307,6 +324,8 @@ if ($method === 'POST') {
 
     // 6. Delete Purpose
     if ($action === 'delete_purpose') {
+        requirePermission('communications', 'configure', $pdo);
+
         $id = (int)($input['id'] ?? 0);
         if ($id <= 0) sendJsonResponse(false, 'Valid ID is required.', null, null, 400);
         $stmt = $pdo->prepare("UPDATE tbl_communication_purposes SET deleted_at = NOW() WHERE id = :id");
@@ -316,6 +335,8 @@ if ($method === 'POST') {
 
     // 7. Save Status (Add / Update)
     if ($action === 'save_status') {
+        requirePermission('communications', 'configure', $pdo);
+
         $id = (int)($input['id'] ?? 0);
         $name = trim($input['status_name'] ?? '');
         $isActive = isset($input['is_active']) ? ($input['is_active'] ? 1 : 0) : 1;
@@ -337,6 +358,8 @@ if ($method === 'POST') {
 
     // 8. Delete Status
     if ($action === 'delete_status') {
+        requirePermission('communications', 'configure', $pdo);
+
         $id = (int)($input['id'] ?? 0);
         if ($id <= 0) sendJsonResponse(false, 'Valid ID is required.', null, null, 400);
         $stmt = $pdo->prepare("UPDATE tbl_communication_statuses SET deleted_at = NOW() WHERE id = :id");

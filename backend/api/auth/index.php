@@ -56,21 +56,36 @@ try {
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 
+require_once __DIR__ . '/../../helpers/permissions.php';
+
 // GET Method - Current User Check
 if ($method === 'GET') {
     if (isset($_SESSION['user_id'])) {
-        // Verify user is still active in database
-        $stmt = $pdo->prepare("SELECT id, username, role, is_active, deleted_at FROM tbl_users WHERE id = :id LIMIT 1");
+        // Verify user is still active in database and resolve active role
+        $stmt = $pdo->prepare("
+            SELECT u.id, u.username, u.role, u.role_id, u.is_active, u.deleted_at, r.name AS role_name
+            FROM tbl_users u
+            LEFT JOIN tbl_roles r ON u.role_id = r.id
+            WHERE u.id = :id
+            LIMIT 1
+        ");
         $stmt->execute([':id' => $_SESSION['user_id']]);
         $user = $stmt->fetch();
 
         if ($user && (int)$user['is_active'] === 1 && empty($user['deleted_at'])) {
+            $effectiveRole = !empty($user['role_name']) ? $user['role_name'] : $user['role'];
+            $permissions = getUserPermissions((int)$user['id'], $pdo);
+
+            http_response_code(200);
             echo json_encode([
+                'success' => true,
                 'authenticated' => true,
                 'user' => [
                     'id' => (int)$user['id'],
                     'username' => $user['username'],
-                    'role' => $user['role']
+                    'role' => $effectiveRole,
+                    'role_id' => $user['role_id'] ? (int)$user['role_id'] : null,
+                    'permissions' => $permissions
                 ]
             ], JSON_UNESCAPED_UNICODE);
             exit();
@@ -81,7 +96,9 @@ if ($method === 'GET') {
         }
     }
 
+    http_response_code(200);
     echo json_encode([
+        'success' => false,
         'authenticated' => false,
         'user' => null
     ], JSON_UNESCAPED_UNICODE);
@@ -99,6 +116,9 @@ if ($method === 'POST') {
 
     // Handle Login
     $rawInput = file_get_contents('php://input');
+    if (empty($rawInput) && isset($GLOBALS['HTTP_RAW_POST_DATA'])) {
+        $rawInput = $GLOBALS['HTTP_RAW_POST_DATA'];
+    }
     $input = json_decode($rawInput, true);
 
     $username = trim($input['username'] ?? '');
@@ -108,11 +128,12 @@ if ($method === 'POST') {
         sendJsonResponse(false, 'Username and password are required.', null, null, 400);
     }
 
-    // Query active user from tbl_users
+    // Query active user from tbl_users and join tbl_roles
     $stmt = $pdo->prepare("
-        SELECT id, username, password, role, is_active, deleted_at
-        FROM tbl_users
-        WHERE LOWER(username) = LOWER(:username) AND deleted_at IS NULL
+        SELECT u.id, u.username, u.password, u.role, u.role_id, u.is_active, u.deleted_at, r.name AS role_name
+        FROM tbl_users u
+        LEFT JOIN tbl_roles r ON u.role_id = r.id
+        WHERE LOWER(u.username) = LOWER(:username) AND u.deleted_at IS NULL
         LIMIT 1
     ");
     $stmt->execute([':username' => $username]);
@@ -123,10 +144,17 @@ if ($method === 'POST') {
         sendJsonResponse(false, 'Invalid username or password.', null, null, 401);
     }
 
+    $effectiveRole = !empty($user['role_name']) ? $user['role_name'] : $user['role'];
+
     // Successful Login - Set Session Data
     $_SESSION['user_id'] = (int)$user['id'];
     $_SESSION['username'] = $user['username'];
-    $_SESSION['role'] = $user['role'];
+    $_SESSION['role'] = $effectiveRole;
+    if (!empty($user['role_id'])) {
+        $_SESSION['role_id'] = (int)$user['role_id'];
+    }
+
+    $permissions = getUserPermissions((int)$user['id'], $pdo);
 
     echo json_encode([
         'success' => true,
@@ -134,7 +162,9 @@ if ($method === 'POST') {
         'user' => [
             'id' => (int)$user['id'],
             'username' => $user['username'],
-            'role' => $user['role']
+            'role' => $effectiveRole,
+            'role_id' => $user['role_id'] ? (int)$user['role_id'] : null,
+            'permissions' => $permissions
         ]
     ], JSON_UNESCAPED_UNICODE);
     exit();

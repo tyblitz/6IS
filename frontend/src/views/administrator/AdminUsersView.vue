@@ -184,9 +184,10 @@
 
             <div class="form-group">
               <label for="role">Role</label>
-              <select id="role" v-model="form.role" class="input-select" required>
-                <option value="User">User (Standard Operational Access)</option>
-                <option value="Administrator">Administrator (Full Administrative Access)</option>
+              <select id="role" v-model="form.role_id" class="input-select" required>
+                <option v-for="r in availableRoles" :key="r.id" :value="r.id">
+                  {{ r.name }} {{ r.is_system ? '(System Role)' : '' }}
+                </option>
               </select>
             </div>
 
@@ -246,9 +247,12 @@ import {
   updateUser,
   toggleUserActive
 } from '../../services/userService'
+import { fetchRoles } from '../../services/roleService'
 import type { UserAccount, UserRole } from '../../types/user'
+import type { Role } from '../../types/permission'
 
 const users = ref<UserAccount[]>([])
+const availableRoles = ref<Role[]>([])
 const loading = ref(true)
 
 const searchQuery = ref('')
@@ -304,28 +308,33 @@ const form = ref({
   username: '',
   full_name: '',
   password: '',
+  role_id: 2,
   role: 'User' as UserRole
 })
 
-const currentSessionUserId = computed(() => activeUser.value?.id || 0)
-
 async function loadUsers() {
   loading.value = true
-  const res = await fetchUsers()
+  const [res, rolesRes] = await Promise.all([
+    fetchUsers(),
+    fetchRoles()
+  ])
   if (res.success) {
     users.value = res.data
   }
+  availableRoles.value = rolesRes.filter(r => r.is_active)
   loading.value = false
 }
 
 function openCreateModal() {
   isEditMode.value = false
   editUserId.value = 0
+  const defaultRole = availableRoles.value.find(r => r.name.toLowerCase() === 'user') || availableRoles.value[0]
   form.value = {
     username: '',
     full_name: '',
     password: '',
-    role: 'User'
+    role_id: defaultRole ? defaultRole.id : 2,
+    role: defaultRole ? defaultRole.name : 'User'
   }
   modalError.value = ''
   showModal.value = true
@@ -334,10 +343,12 @@ function openCreateModal() {
 function openEditModal(user: UserAccount) {
   isEditMode.value = true
   editUserId.value = user.id
+  const matchingRole = availableRoles.value.find(r => r.id === user.role_id || r.name === user.role)
   form.value = {
     username: user.username,
     full_name: user.full_name || '',
     password: '',
+    role_id: matchingRole ? matchingRole.id : (user.role_id || 2),
     role: user.role
   }
   modalError.value = ''
@@ -352,35 +363,41 @@ async function handleSubmit() {
   saving.value = true
   modalError.value = ''
 
+  const chosenRole = availableRoles.value.find(r => r.id === form.value.role_id)
+  const roleName = chosenRole ? chosenRole.name : form.value.role
+
   if (isEditMode.value) {
     const res = await updateUser({
       id: editUserId.value,
       full_name: form.value.full_name,
-      role: form.value.role,
+      role: roleName,
+      role_id: form.value.role_id,
       password: form.value.password || undefined
     })
-    saving.value = false
+
     if (res.success) {
-      closeModal()
-      loadUsers()
+      showModal.value = false
+      await loadUsers()
     } else {
-      modalError.value = res.message || 'Failed to update user.'
+      modalError.value = res.message || 'Failed to update user account.'
     }
   } else {
     const res = await createUser({
       username: form.value.username,
       full_name: form.value.full_name,
       password: form.value.password,
-      role: form.value.role
+      role: roleName,
+      role_id: form.value.role_id
     })
-    saving.value = false
+
     if (res.success) {
-      closeModal()
-      loadUsers()
+      showModal.value = false
+      await loadUsers()
     } else {
-      modalError.value = res.message || 'Failed to create user.'
+      modalError.value = res.message || 'Failed to create user account.'
     }
   }
+  saving.value = false
 }
 
 async function handleToggleActive(user: UserAccount) {

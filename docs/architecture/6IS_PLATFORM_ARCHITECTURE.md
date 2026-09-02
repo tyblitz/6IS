@@ -124,15 +124,69 @@ Deactivating or disabling a module **NEVER** executes `DROP TABLE`, `DELETE`, or
 
 ---
 
-## 6. Evolution Roadmap (Future Phases)
+## 6. Phase 2 Implementation Detail (Core Roles & Permissions / RBAC)
+
+1. **Core Ownership of Authorization**:
+   - Roles and permissions are owned strictly by 6IS Core, not distributed across ad-hoc business modules.
+   - Backend is the authoritative security boundary. Frontend checks are exclusively for UI/UX visibility.
+
+2. **Relational Database Schema**:
+   - `tbl_roles`: System and custom roles (`name`, `description`, `is_system`, `is_active`).
+   - `tbl_permissions`: Granular capabilities catalog (`module_key`, `permission_key`, `name`, `code`, `is_active`).
+   - `tbl_role_permissions`: Relational join table mapping assigned permissions to roles (`role_id`, `permission_id`).
+   - `tbl_users.role_id`: Relational foreign key constraint to `tbl_roles(id)`. Legacy `role` string column is kept synchronized for backwards compatibility.
+
+3. **System Roles & Safety Guardrails**:
+   - `Administrator` and `User` are permanent system roles (`is_system = 1`).
+   - System roles cannot be deleted, renamed, or deactivated.
+   - Administrator cannot be locked out; `roles.configure` is protected from being revoked.
+   - Custom roles assigned to active users cannot be deleted until users are reassigned.
+
+4. **Independent `configure` Permission Rule**:
+   - The `configure` permission governs reference tables, metadata categories, and system settings independently.
+   - Granting `configure` (e.g. `inventory.configure`) does **not** grant `view`, `create`, `edit`, or `delete`.
+
+5. **Module Activation & Permissions Invariant**:
+   - Module activation and permissions are separate concepts:
+     - `requireModuleActive($moduleKey)` answers: *Is this functionality enabled on the system?*
+     - `requirePermission($moduleKey, $permKey)` answers: *Is this user allowed to perform this operation?*
+   - Both must succeed. If a module is inactive, even an Administrator with all permissions receives HTTP 403:
+     ```json
+     {
+       "success": false,
+       "message": "Module 'inventory' is currently disabled on this system."
+     }
+     ```
+
+6. **Core Permission Helper (`backend/helpers/permissions.php`)**:
+   - `getUserPermissions(int $userId, ?PDO $pdo): array`
+   - `hasPermission(string $moduleKey, string $permissionKey, ?PDO $pdo): bool`
+   - `requirePermission(string $moduleKey, string $permissionKey, ?PDO $pdo): void`
+
+7. **Production APIs**:
+   - `backend/api/core/roles/index.php`: Full CRUD, system protection, transactional permission assignment (`?action=permissions`).
+   - `backend/api/core/permissions/index.php`: System catalog of permissions grouped by module with active module indicators.
+   - `backend/api/auth/index.php`: Returns authenticated user with `role_id` and effective `permissions` array.
+   - `backend/api/users/index.php`: Resolves and synchronizes `role_id` and `role` string on create/update.
+   - Business module APIs (`inventory`, `communications`, `calendar`, `accomplishments`, `modules`) enforced with granular `requirePermission()`.
+
+8. **Frontend RBAC Architecture**:
+   - Types (`frontend/src/types/permission.ts`): `Role`, `Permission`, `GroupedModulePermissions`.
+   - Service (`frontend/src/services/roleService.ts`): Native `fetch()` client for roles and permissions.
+   - Composable (`frontend/src/composables/usePermissions.ts`): Reactive helper (`hasPermission`, `can`, `isPermitted`, `isAdmin`) with **fail-closed** behavior for unauthenticated/unresolved state.
+   - Router Navigation Guard (`router.beforeEach`): Enforces `to.meta.permission` and redirects unauthorized users to `/home`. Note: `/home` remains accessible without business permission requirements.
+   - Administrator UI:
+     - `AdminRolesView.vue` at `/administrator/roles`: Role list, KPI pills, create/edit modal, and interactive permission matrix grouped by module with inactive module badges.
+     - `AdministratorView.vue`: Launcher card linking to `/administrator/roles`.
+     - `AdminUsersView.vue`: Dynamic role dropdown bound to `role_id`.
+
+---
+
+## 7. Evolution Roadmap (Future Phases)
 
 ```
-Phase 0 & 1 (COMPLETED)
-Core Stabilization + Database Module Registry
-   │
-   ▼
-Phase 2 (Planned)
-Granular Permissions & Dynamic Role Engine
+Phase 0, 1 & 2 (COMPLETED)
+Core Stabilization + Database Module Registry + Core RBAC
    │
    ▼
 Phase 3 (Planned)
@@ -146,10 +200,6 @@ Declarative Module Manifests (module.json)
 Phase 5 (Planned)
 Modular App Store & Guided Setup Wizard
 ```
-
-### Phase 2: Granular Permissions & Dynamic Role Engine
-- Transition from rigid static roles (`Administrator`, `User`) to permission matrix (`inventory.view`, `inventory.edit`, `calendar.schedule`, etc.).
-- Allow system administrators to create custom roles and bind them to specific active modules.
 
 ### Phase 3: Multi-Tenant Organization & Office Hierarchy
 - Contextualize module activations by organizational branch or unit (e.g. Unit A enables Inventory, Unit B enables Communications).
@@ -165,3 +215,4 @@ Modular App Store & Guided Setup Wizard
 ### Phase 5: Modular App Store & Guided Setup Wizard
 - Interactive graphical installer allowing administrators to enable/disable module packs on initial system setup.
 - Versioned upgrade engine running module-specific database migrations safely.
+

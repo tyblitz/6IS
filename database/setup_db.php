@@ -38,7 +38,10 @@ try {
         __DIR__ . '/migrations/create_inventory_tables.sql',
         __DIR__ . '/migrations/alter_inventory_to_extensible_equipment.sql',
         __DIR__ . '/migrations/create_calendar_tables.sql',
-        __DIR__ . '/migrations/create_modules_table.sql'
+        __DIR__ . '/migrations/create_modules_table.sql',
+        __DIR__ . '/migrations/create_roles_tables.sql',
+        __DIR__ . '/migrations/seed_roles_and_permissions.sql',
+        __DIR__ . '/migrations/add_role_id_to_users.sql'
     ];
 
     echo "4. Executing SQL migration scripts...\n";
@@ -256,27 +259,33 @@ try {
         ]
     ];
 
+    $roleStmt = $pdo->prepare("SELECT id FROM tbl_roles WHERE name = :name LIMIT 1");
+
     $stmt = $pdo->prepare("
-        INSERT INTO tbl_users (username, full_name, password, role, is_active, created_at, updated_at)
-        VALUES (:username, :full_name, :password, :role, 1, NOW(), NOW())
+        INSERT INTO tbl_users (username, full_name, password, role, role_id, is_active, created_at, updated_at)
+        VALUES (:username, :full_name, :password, :role, :role_id, 1, NOW(), NOW())
         ON DUPLICATE KEY UPDATE
             full_name = VALUES(full_name),
             password = VALUES(password),
             role = VALUES(role),
+            role_id = VALUES(role_id),
             is_active = 1,
             deleted_at = NULL,
             updated_at = NOW()
     ");
 
     foreach ($devAccounts as $acc) {
+        $roleStmt->execute([':name' => $acc['role']]);
+        $roleId = $roleStmt->fetchColumn() ?: null;
         $hash = password_hash($acc['password'], PASSWORD_BCRYPT);
         $stmt->execute([
             ':username' => $acc['username'],
             ':full_name' => $acc['full_name'],
             ':password' => $hash,
-            ':role' => $acc['role']
+            ':role' => $acc['role'],
+            ':role_id' => $roleId
         ]);
-        echo " - Seeded user '{$acc['username']}' with role '{$acc['role']}'\n";
+        echo " - Seeded user '{$acc['username']}' with role '{$acc['role']}' (role_id: {$roleId})\n";
     }
 
     echo "\nSummary of tables created in '{$dbName}':\n";

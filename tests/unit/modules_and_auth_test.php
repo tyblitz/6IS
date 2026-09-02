@@ -88,8 +88,8 @@ function invokeApiEndpoint(string $apiRelativePath, string $method = 'GET', arra
     
     $statusCode = 200;
     $bodyOutput = $rawOutput;
-    if (preg_match('/__HTTP_CODE__:(\d+)/', $rawOutput, $matches)) {
-        $statusCode = (int)$matches[1];
+    if (preg_match('/__HTTP_CODE__:(\d*)/', $rawOutput, $matches)) {
+        $statusCode = !empty($matches[1]) ? (int)$matches[1] : 200;
         $bodyOutput = str_replace($matches[0], '', $rawOutput);
     }
     
@@ -463,6 +463,229 @@ try {
         $sampleEquipmentAfter['serial_number'] === $sampleEquipmentBefore['serial_number'] &&
         $sampleEventAfter['title'] === $sampleEventBefore['title']
     );
+
+    // =========================================================================
+    // SUITE 8: Phase 2 Database Schema & RBAC Seed Verification
+    // =========================================================================
+    echo "\nSUITE 8: Phase 2 Roles & Permissions Database Schema & Seeding Verification\n";
+
+    $hasRolesTable = (bool)$pdo->query("SHOW TABLES LIKE 'tbl_roles'")->fetch();
+    $hasPermsTable = (bool)$pdo->query("SHOW TABLES LIKE 'tbl_permissions'")->fetch();
+    $hasRolePermsTable = (bool)$pdo->query("SHOW TABLES LIKE 'tbl_role_permissions'")->fetch();
+
+    assertTest("Test 8A: tbl_roles, tbl_permissions, tbl_role_permissions tables exist", $hasRolesTable && $hasPermsTable && $hasRolePermsTable);
+
+    $rolesCount = (int)$pdo->query("SELECT COUNT(*) FROM tbl_roles WHERE name IN ('Administrator', 'User') AND is_system = 1")->fetchColumn();
+    assertTest("Test 8B: System roles 'Administrator' and 'User' exist with is_system = 1", $rolesCount === 2);
+
+    $permsCount = (int)$pdo->query("SELECT COUNT(*) FROM tbl_permissions WHERE is_active = 1")->fetchColumn();
+    assertTest("Test 8C: System permissions seeded in tbl_permissions ({$permsCount} permissions)", $permsCount >= 33);
+
+    $adminRoleId = (int)$pdo->query("SELECT id FROM tbl_roles WHERE name = 'Administrator'")->fetchColumn();
+    $adminPermCount = (int)$pdo->query("SELECT COUNT(*) FROM tbl_role_permissions WHERE role_id = {$adminRoleId}")->fetchColumn();
+    assertTest("Test 8D: Administrator role possesses full permission suite ({$adminPermCount} assigned)", $adminPermCount >= 33);
+
+    $usersWithRoleId = (int)$pdo->query("SELECT COUNT(*) FROM tbl_users WHERE role_id IS NOT NULL AND role_id > 0")->fetchColumn();
+    $totalUsersCount = (int)$pdo->query("SELECT COUNT(*) FROM tbl_users WHERE deleted_at IS NULL")->fetchColumn();
+    assertTest("Test 8E: tbl_users.role_id successfully mapped for all users ({$usersWithRoleId}/{$totalUsersCount})", $usersWithRoleId === $totalUsersCount);
+
+    // =========================================================================
+    // SUITE 9: Roles API Production Endpoints (backend/api/core/roles/index.php)
+    // =========================================================================
+    echo "\nSUITE 9: Roles API Production Endpoints (CRUD, System Protection, Transactions)\n";
+
+    // 9A: GET roles unauthenticated -> 401
+    $resRolesUnauth = invokeApiEndpoint('backend/api/core/roles/index.php', 'GET');
+    assertTest("Test 9A: GET roles unauthenticated returns HTTP 401 Unauthorized", $resRolesUnauth['status'] === 401);
+
+    // 9B: GET roles as User (no roles.view) -> 403
+    $resRolesNoPerm = invokeApiEndpoint('backend/api/core/roles/index.php', 'GET', [], null, ['user_id' => 2, 'role' => 'User']);
+    assertTest("Test 9B: GET roles as User (lacking roles.view) returns HTTP 403 Forbidden", $resRolesNoPerm['status'] === 403);
+
+    // 9C: GET roles as Admin (has roles.view) -> 200
+    $resRolesAdmin = invokeApiEndpoint('backend/api/core/roles/index.php', 'GET', [], null, ['user_id' => 1, 'role' => 'Administrator']);
+    assertTest("Test 9C: GET roles as Administrator returns HTTP 200 OK with role list", $resRolesAdmin['status'] === 200 && is_array($resRolesAdmin['json']['data']));
+
+    // 9D: POST create custom role
+    $testRolePayload = ['name' => 'QA Auditor ' . time(), 'description' => 'Test role for automated verification', 'is_active' => true];
+    $resCreateRole = invokeApiEndpoint('backend/api/core/roles/index.php', 'POST', [], $testRolePayload, ['user_id' => 1, 'role' => 'Administrator']);
+    $createdRoleId = (int)($resCreateRole['json']['data']['id'] ?? 0);
+    assertTest("Test 9D: POST create custom role returns HTTP 201 Created (Role ID: {$createdRoleId})", $resCreateRole['status'] === 201 && $createdRoleId > 0);
+
+    // 9E: PATCH update custom role details
+    $resPatchRole = invokeApiEndpoint('backend/api/core/roles/index.php', 'PATCH', ['id' => $createdRoleId], ['name' => $testRolePayload['name'] . ' (Updated)', 'description' => 'Updated description'], ['user_id' => 1, 'role' => 'Administrator']);
+    assertTest("Test 9E: PATCH custom role details returns HTTP 200 OK", $resPatchRole['status'] === 200 && $resPatchRole['json']['success'] === true);
+
+    // 9F: PATCH assign permissions to custom role
+    $samplePermIds = $pdo->query("SELECT id FROM tbl_permissions WHERE module_key = 'inventory' AND permission_key IN ('view', 'create')")->fetchAll(PDO::FETCH_COLUMN);
+    $resAssignPerms = invokeApiEndpoint('backend/api/core/roles/index.php', 'PATCH', ['id' => $createdRoleId, 'action' => 'permissions'], ['permission_ids' => $samplePermIds], ['user_id' => 1, 'role' => 'Administrator']);
+    assertTest("Test 9F: PATCH assign permissions to custom role returns HTTP 200 OK", $resAssignPerms['status'] === 200 && $resAssignPerms['json']['data']['permission_count'] === count($samplePermIds));
+
+    // 9G: Attempt to rename system role -> 400
+    $resRenameSys = invokeApiEndpoint('backend/api/core/roles/index.php', 'PATCH', ['id' => $adminRoleId], ['name' => 'SuperAdmin'], ['user_id' => 1, 'role' => 'Administrator']);
+    assertTest("Test 9G: System role cannot be renamed (HTTP 400 rejection)", $resRenameSys['status'] === 400 && str_contains($resRenameSys['json']['message'] ?? '', 'System roles cannot be renamed'));
+
+    // 9H: Attempt to deactivate system role -> 400
+    $resDeactSys = invokeApiEndpoint('backend/api/core/roles/index.php', 'PATCH', ['id' => $adminRoleId], ['is_active' => false], ['user_id' => 1, 'role' => 'Administrator']);
+    assertTest("Test 9H: System role cannot be deactivated (HTTP 400 rejection)", $resDeactSys['status'] === 400 && str_contains($resDeactSys['json']['message'] ?? '', 'System roles cannot be deactivated'));
+
+    // 9I: Attempt to delete system role -> 400
+    $resDelSys = invokeApiEndpoint('backend/api/core/roles/index.php', 'DELETE', ['id' => $adminRoleId], null, ['user_id' => 1, 'role' => 'Administrator']);
+    assertTest("Test 9I: System role cannot be deleted (HTTP 400 rejection)", $resDelSys['status'] === 400 && str_contains($resDelSys['json']['message'] ?? '', 'System roles cannot be deleted'));
+
+    // 9J: Attempt to delete role assigned to users -> 400
+    // Create custom role and assign a test user to test un-deletable assigned custom role rule
+    $pdo->exec("INSERT INTO tbl_roles (name, is_system, is_active, created_at, updated_at) VALUES ('AssignedCustomRole', 0, 1, NOW(), NOW())");
+    $assignedCustomRoleId = (int)$pdo->lastInsertId();
+    $pdo->exec("INSERT INTO tbl_users (username, full_name, password, role_id, role, is_active, created_at, updated_at) VALUES ('assigned_test_usr', 'Assigned User', 'hash', {$assignedCustomRoleId}, 'AssignedCustomRole', 1, NOW(), NOW())");
+    $assignedTestUserId = (int)$pdo->lastInsertId();
+
+    $resDelAssigned = invokeApiEndpoint('backend/api/core/roles/index.php', 'DELETE', ['id' => $assignedCustomRoleId], null, ['user_id' => 1, 'role' => 'Administrator']);
+    assertTest(
+        "Test 9J: Assigned role cannot be deleted (HTTP 400 rejection with user count notice)",
+        $resDelAssigned['status'] === 400 && str_contains($resDelAssigned['json']['message'] ?? '', 'assigned to'),
+        "Status: {$resDelAssigned['status']}, Message: " . ($resDelAssigned['json']['message'] ?? 'none')
+    );
+
+    // Clean up assigned test user and role
+    $pdo->exec("DELETE FROM tbl_users WHERE id = {$assignedTestUserId}");
+    $pdo->exec("DELETE FROM tbl_roles WHERE id = {$assignedCustomRoleId}");
+
+    // 9K: DELETE unassigned custom role -> 200
+    $resDelCustom = invokeApiEndpoint('backend/api/core/roles/index.php', 'DELETE', ['id' => $createdRoleId], null, ['user_id' => 1, 'role' => 'Administrator']);
+    assertTest("Test 9K: Unassigned custom role deleted cleanly in transaction (HTTP 200)", $resDelCustom['status'] === 200);
+
+    // =========================================================================
+    // SUITE 10: Server-side Permissions Resolution & Invariants
+    // =========================================================================
+    echo "\nSUITE 10: Server-side Permissions Resolution & Invariant Verification\n";
+
+    // 10A: hasPermission() resolves correctly via PHP helper
+    $outputPermCheck = runPhpSnippet('
+        session_start();
+        $_SESSION["user_id"] = 1;
+        $_SESSION["role"] = "Administrator";
+        require "backend/helpers/permissions.php";
+        echo hasPermission("inventory", "view") ? "HAS_PERM_TRUE" : "HAS_PERM_FALSE";
+    ');
+    assertTest("Test 10A: hasPermission('inventory', 'view') for Administrator session returns true", trim($outputPermCheck) === 'HAS_PERM_TRUE');
+
+    $outputUserPermCheck = runPhpSnippet('
+        session_start();
+        $_SESSION["user_id"] = 2;
+        $_SESSION["role"] = "User";
+        require "backend/helpers/permissions.php";
+        echo hasPermission("roles", "delete") ? "HAS_PERM_TRUE" : "HAS_PERM_FALSE";
+    ');
+    assertTest("Test 10B: hasPermission('roles', 'delete') for standard User session returns false", trim($outputUserPermCheck) === 'HAS_PERM_FALSE');
+
+    // 10C: Configure Independence verification:
+    // inventory.configure does NOT grant inventory.create, inventory.edit, inventory.delete
+    $outputConfigIndep = runPhpSnippet('
+        $cfg = require "backend/config/database.php";
+        $pdo = new PDO("mysql:host={$cfg[\'host\']};dbname={$cfg[\'database\']}", $cfg[\'username\'], $cfg[\'password\']);
+        
+        // Create temp role with ONLY inventory.configure
+        $pdo->exec("INSERT INTO tbl_roles (name, is_system, is_active, created_at, updated_at) VALUES (\'TempConfigOnly\', 0, 1, NOW(), NOW())");
+        $tRoleId = (int)$pdo->lastInsertId();
+        $confPermId = (int)$pdo->query("SELECT id FROM tbl_permissions WHERE module_key = \'inventory\' AND permission_key = \'configure\'")->fetchColumn();
+        $pdo->exec("INSERT INTO tbl_role_permissions (role_id, permission_id, created_at) VALUES ({$tRoleId}, {$confPermId}, NOW())");
+        
+        // Create temp user assigned to TempConfigOnly
+        $pdo->exec("INSERT INTO tbl_users (username, full_name, password, role_id, role, is_active, created_at, updated_at) VALUES (\'test_cfg_user\', \'Test Cfg\', \'hash\', {$tRoleId}, \'TempConfigOnly\', 1, NOW(), NOW())");
+        $tUserId = (int)$pdo->lastInsertId();
+        
+        session_start();
+        $_SESSION[\'user_id\'] = $tUserId;
+        $_SESSION[\'role\'] = \'TempConfigOnly\';
+        
+        require "backend/helpers/permissions.php";
+        $hasConf = hasPermission("inventory", "configure");
+        $hasCreate = hasPermission("inventory", "create");
+        $hasEdit = hasPermission("inventory", "edit");
+        $hasDelete = hasPermission("inventory", "delete");
+        
+        // Clean up temp user & role
+        $pdo->exec("DELETE FROM tbl_users WHERE id = {$tUserId}");
+        $pdo->exec("DELETE FROM tbl_role_permissions WHERE role_id = {$tRoleId}");
+        $pdo->exec("DELETE FROM tbl_roles WHERE id = {$tRoleId}");
+        
+        echo json_encode(["conf" => $hasConf, "create" => $hasCreate, "edit" => $hasEdit, "delete" => $hasDelete]);
+    ');
+    $indepData = json_decode($outputConfigIndep, true);
+    assertTest(
+        "Test 10C: Configure Independence: inventory.configure does NOT grant create, edit, or delete",
+        is_array($indepData) && $indepData['conf'] === true && $indepData['create'] === false && $indepData['edit'] === false && $indepData['delete'] === false
+    );
+
+    // 10D: Module Invariant: Administrator + inventory.* when Inventory module is disabled -> HTTP 403
+    invokeApiEndpoint('backend/api/core/modules/index.php', 'PATCH', ['module_key' => 'inventory'], ['is_active' => false], ['user_id' => 1, 'role' => 'Administrator']);
+    $resInvDisabledAdmin = invokeApiEndpoint('backend/api/inventory/index.php', 'GET', [], null, ['user_id' => 1, 'role' => 'Administrator']);
+    assertTest(
+        "Test 10D: Module Invariant: Administrator with all permissions calling disabled module gets HTTP 403",
+        $resInvDisabledAdmin['status'] === 403 && str_contains($resInvDisabledAdmin['json']['message'] ?? '', 'disabled'),
+        "Status: {$resInvDisabledAdmin['status']}, Body: {$resInvDisabledAdmin['body']}"
+    );
+
+    // Re-enable Inventory
+    invokeApiEndpoint('backend/api/core/modules/index.php', 'PATCH', ['module_key' => 'inventory'], ['is_active' => true], ['user_id' => 1, 'role' => 'Administrator']);
+    $resInvEnabledAdmin = invokeApiEndpoint('backend/api/inventory/index.php', 'GET', ['view' => 'equipment_types'], null, ['user_id' => 1, 'role' => 'Administrator']);
+    assertTest(
+        "Test 10E: Re-enabling module immediately restores authorized access (HTTP 200 OK)",
+        $resInvEnabledAdmin['status'] === 200 && ($resInvEnabledAdmin['json']['success'] ?? false) === true,
+        "Status: {$resInvEnabledAdmin['status']}, Body: {$resInvEnabledAdmin['body']}"
+    );
+
+    // =========================================================================
+    // SUITE 11: Current User / Auth API RBAC Payload (backend/api/auth/index.php)
+    // =========================================================================
+    echo "\nSUITE 11: Current User / Auth API RBAC Payload Verification\n";
+
+    $resAuthCheck = invokeApiEndpoint('backend/api/auth/index.php', 'GET', [], null, ['user_id' => 1, 'role' => 'Administrator']);
+    assertTest(
+        "Test 11A: GET auth/index.php returns authenticated user with role_id and permissions array",
+        $resAuthCheck['status'] === 200 &&
+        isset($resAuthCheck['json']['user']['role_id']) &&
+        $resAuthCheck['json']['user']['role_id'] === 1 &&
+        is_array($resAuthCheck['json']['user']['permissions']) &&
+        in_array('inventory.view', $resAuthCheck['json']['user']['permissions']) &&
+        in_array('roles.view', $resAuthCheck['json']['user']['permissions']),
+        "Status: {$resAuthCheck['status']}, Body: {$resAuthCheck['body']}"
+    );
+
+    // =========================================================================
+    // SUITE 12: User Management Role Synchronization (backend/api/users/index.php)
+    // =========================================================================
+    echo "\nSUITE 12: User Management Role_ID Binding & Synchronization\n";
+
+    // Create a temporary user with role_id = 2 (User)
+    $tempUsername = 'test_sync_' . time();
+    $resCreateUser = invokeApiEndpoint('backend/api/users/index.php', 'POST', ['action' => 'create'], [
+        'username' => $tempUsername,
+        'full_name' => 'Sync Test User',
+        'password' => 'Password123!',
+        'role_id' => 2
+    ], ['user_id' => 1, 'role' => 'Administrator']);
+    $createdUserId = (int)($resCreateUser['json']['data']['id'] ?? 0);
+
+    assertTest("Test 12A: User created with role_id = 2 binds correctly", $resCreateUser['status'] === 201 && $createdUserId > 0);
+
+    // Update the temporary user's role to Administrator (role_id = 1)
+    $resUpdateUser = invokeApiEndpoint('backend/api/users/index.php', 'POST', ['action' => 'update'], [
+        'id' => $createdUserId,
+        'full_name' => 'Sync Test User (Updated)',
+        'role_id' => 1
+    ], ['user_id' => 1, 'role' => 'Administrator']);
+
+    $dbUserAfter = $pdo->query("SELECT role_id, role FROM tbl_users WHERE id = {$createdUserId}")->fetch();
+
+    assertTest(
+        "Test 12B: Updating user role_id synchronizes legacy role column (role_id=1, role='Administrator')",
+        $resUpdateUser['status'] === 200 && (int)$dbUserAfter['role_id'] === 1 && $dbUserAfter['role'] === 'Administrator'
+    );
+
+    // Clean up temporary user
+    $pdo->exec("DELETE FROM tbl_users WHERE id = {$createdUserId}");
 
 } finally {
     // =========================================================================

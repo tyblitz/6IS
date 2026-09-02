@@ -21,16 +21,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // Require authenticated session and active module for all calendar requests
 require_once __DIR__ . '/../../helpers/auth.php';
 require_once __DIR__ . '/../../helpers/modules.php';
+require_once __DIR__ . '/../../helpers/permissions.php';
 requireAuth();
 requireModuleActive('calendar');
 
-$host = 'localhost';
-$dbname = 'db_ict_system';
-$username = 'root';
-$password = '';
+$configPath = __DIR__ . '/../../config/database.php';
+$dbConfig = file_exists($configPath) ? require $configPath : ['host' => 'localhost', 'database' => 'db_ict_system', 'username' => 'root', 'password' => ''];
 
 try {
-    $pdo = new PDO("mysql:host={$host};dbname={$dbname};charset=utf8mb4", $username, $password, [
+    $dsn = "mysql:host={$dbConfig['host']};dbname={$dbConfig['database']};charset=utf8mb4";
+    $pdo = new PDO($dsn, $dbConfig['username'], $dbConfig['password'], [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
@@ -53,6 +53,7 @@ function sendJsonResponse(array $payload, int $statusCode = 200) {
 // GET ?action=types — Return Calendar Event Types Reference List
 // ============================================================
 if ($method === 'GET' && $action === 'types') {
+    requirePermission('calendar', 'view', $pdo);
     $stmt = $pdo->query("SELECT * FROM tbl_calendar_event_types WHERE deleted_at IS NULL AND is_active = 1 ORDER BY id ASC");
     $types = $stmt->fetchAll();
     sendJsonResponse(['success' => true, 'data' => $types]);
@@ -62,6 +63,7 @@ if ($method === 'GET' && $action === 'types') {
 // GET — Authoritative Calendar Activities Endpoint
 // ============================================================
 if ($method === 'GET') {
+    requirePermission('calendar', 'view', $pdo);
     $id = $_GET['id'] ?? null;
 
     // Fetch single activity with details & audit logs
@@ -258,7 +260,11 @@ if ($method === 'GET') {
 // PATCH ?action=status — Update Event Status
 // ============================================================
 if ($method === 'PATCH' && $action === 'status') {
+    requirePermission('calendar', 'edit', $pdo);
     $rawInput = file_get_contents('php://input');
+    if (empty($rawInput) && isset($GLOBALS['HTTP_RAW_POST_DATA'])) {
+        $rawInput = $GLOBALS['HTTP_RAW_POST_DATA'];
+    }
     $input = json_decode($rawInput, true) ?? [];
     $eventId = intval($input['id'] ?? 0);
     $newStatus = trim($input['status'] ?? '');
@@ -336,7 +342,11 @@ if ($method === 'PATCH' && $action === 'status') {
 // PATCH ?action=reschedule — Reschedule Event Datetime
 // ============================================================
 if ($method === 'PATCH' && $action === 'reschedule') {
+    requirePermission('calendar', 'edit', $pdo);
     $rawInput = file_get_contents('php://input');
+    if (empty($rawInput) && isset($GLOBALS['HTTP_RAW_POST_DATA'])) {
+        $rawInput = $GLOBALS['HTTP_RAW_POST_DATA'];
+    }
     $input = json_decode($rawInput, true) ?? [];
     $eventId = intval($input['id'] ?? 0);
     $newStartStr = trim($input['new_start_datetime'] ?? '');
@@ -424,7 +434,11 @@ if ($method === 'PATCH' && $action === 'reschedule') {
 // POST ?action=restore — Restore Canceled Event
 // ============================================================
 if ($method === 'POST' && $action === 'restore') {
+    requirePermission('calendar', 'edit', $pdo);
     $rawInput = file_get_contents('php://input');
+    if (empty($rawInput) && isset($GLOBALS['HTTP_RAW_POST_DATA'])) {
+        $rawInput = $GLOBALS['HTTP_RAW_POST_DATA'];
+    }
     $input = json_decode($rawInput, true) ?? [];
     $eventId = intval($input['id'] ?? 0);
     $reason = trim($input['reason'] ?? 'Restored canceled event');
@@ -472,7 +486,12 @@ if ($method === 'POST' && $action === 'restore') {
 // POST ?action=create_accomplishment — Transactional Link
 // ============================================================
 if ($method === 'POST' && $action === 'create_accomplishment') {
+    requirePermission('calendar', 'edit', $pdo);
+    requirePermission('accomplishments', 'create', $pdo);
     $rawInput = file_get_contents('php://input');
+    if (empty($rawInput) && isset($GLOBALS['HTTP_RAW_POST_DATA'])) {
+        $rawInput = $GLOBALS['HTTP_RAW_POST_DATA'];
+    }
     $input = json_decode($rawInput, true) ?? [];
     $eventId = intval($input['calendar_event_id'] ?? 0);
     $description = trim($input['description'] ?? ($input['title'] ?? ''));
@@ -548,7 +567,11 @@ if ($method === 'POST' && $action === 'create_accomplishment') {
 // POST — Create Calendar Activity
 // ============================================================
 if ($method === 'POST') {
+    requirePermission('calendar', 'create', $pdo);
     $rawInput = file_get_contents('php://input');
+    if (empty($rawInput) && isset($GLOBALS['HTTP_RAW_POST_DATA'])) {
+        $rawInput = $GLOBALS['HTTP_RAW_POST_DATA'];
+    }
     $input = json_decode($rawInput, true) ?? [];
     $title = trim($input['title'] ?? '');
     $eventDate = $input['event_date'] ?? date('Y-m-d');
@@ -597,7 +620,11 @@ if ($method === 'POST') {
 // PUT — Update Calendar Activity Fields
 // ============================================================
 if ($method === 'PUT') {
+    requirePermission('calendar', 'edit', $pdo);
     $rawInput = file_get_contents('php://input');
+    if (empty($rawInput) && isset($GLOBALS['HTTP_RAW_POST_DATA'])) {
+        $rawInput = $GLOBALS['HTTP_RAW_POST_DATA'];
+    }
     $input = json_decode($rawInput, true) ?? [];
     $id = intval($input['id'] ?? 0);
     $title = trim($input['title'] ?? '');
@@ -631,6 +658,7 @@ if ($method === 'PUT') {
 // DELETE — Soft Delete Calendar Event
 // ============================================================
 if ($method === 'DELETE') {
+    requirePermission('calendar', 'delete', $pdo);
     $id = intval($_GET['id'] ?? 0);
     if (!$id) {
         sendJsonResponse(['success' => false, 'message' => 'Event ID is required'], 400);

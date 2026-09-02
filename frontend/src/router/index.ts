@@ -20,6 +20,7 @@ import AdminAccomplishmentsView from '../views/administrator/AdminAccomplishment
 import AdminAccomplishmentCategoriesView from '../views/administrator/AdminAccomplishmentCategoriesView.vue'
 import AdminUsersView from '../views/administrator/AdminUsersView.vue'
 import AdminModulesView from '../views/administrator/AdminModulesView.vue'
+import AdminRolesView from '../views/administrator/AdminRolesView.vue'
 
 // Operational Views
 import CommunicationsView from '../views/communications/CommunicationsView.vue'
@@ -218,7 +219,19 @@ const routes: Array<RouteRecordRaw> = [
     meta: {
       module: ModuleName.Administrator,
       requiresAuth: true,
-      requiresRole: 'Administrator'
+      requiresRole: 'Administrator',
+      permission: 'modules.view'
+    }
+  },
+  {
+    path: '/administrator/roles',
+    name: 'Role Management',
+    component: AdminRolesView,
+    meta: {
+      module: ModuleName.Administrator,
+      requiresAuth: true,
+      requiresRole: 'Administrator',
+      permission: 'roles.view'
     }
   },
 
@@ -431,6 +444,7 @@ const router = createRouter({
 router.beforeEach(async (to, _from, next) => {
   const isPublicRoute = to.meta.requiresAuth === false
   const requiredRole = to.meta.requiresRole as string | undefined
+  const requiredPermission = to.meta.permission as string | undefined
   const user = await fetchCurrentUser()
 
   if (!isPublicRoute && !user) {
@@ -449,6 +463,16 @@ router.beforeEach(async (to, _from, next) => {
     // Authenticated user attempting role-restricted route without permission -> redirect to /home
     next('/home')
     return
+  }
+
+  // Enforce granular route permissions if specified in route meta
+  if (requiredPermission && user) {
+    const userPerms = (user.permissions || []).map(p => p.toLowerCase())
+    if (!userPerms.includes(requiredPermission.toLowerCase()) && user.role !== 'Administrator') {
+      console.warn(`[router] Direct route blocked: User lacks permission '${requiredPermission}'. Redirecting to /home.`)
+      next('/home')
+      return
+    }
   }
 
   // Check module activation if route specifies a module key

@@ -17,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/../../../helpers/auth.php';
+require_once __DIR__ . '/../../../helpers/permissions.php';
 
 function sendJsonResponse(bool $success, string $message, $data = null, $errors = null, int $statusCode = 200): void {
     http_response_code($statusCode);
@@ -89,6 +90,7 @@ if ($method === 'GET') {
 // =========================================================================
 if ($method === 'PATCH' || ($method === 'POST' && isset($_GET['_method']) && strtoupper($_GET['_method']) === 'PATCH')) {
     requireAuth();
+    requirePermission('modules', 'configure', $pdo);
     requireRole('Administrator');
 
     $rawInput = file_get_contents('php://input');

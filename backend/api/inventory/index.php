@@ -23,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // Require authenticated session and active module for all inventory requests
 require_once __DIR__ . '/../../helpers/auth.php';
 require_once __DIR__ . '/../../helpers/modules.php';
+require_once __DIR__ . '/../../helpers/permissions.php';
 requireAuth();
 requireModuleActive('inventory');
 
@@ -90,7 +91,7 @@ if ($method === 'POST') {
 
     // 1. Update JRRS Target Quantity (Admin)
     if ($action === 'update_jrrs') {
-        requireRole('Administrator');
+        requirePermission('inventory', 'configure', $pdo);
         $input = json_decode(file_get_contents('php://input'), true);
         $subtypeId = (int)($input['equipment_subtype_id'] ?? 0);
         $targetQty = (int)($input['target_quantity'] ?? 0);
@@ -114,6 +115,7 @@ if ($method === 'POST') {
 
     // 2. Create Equipment Record
     if ($action === 'create_equipment') {
+        requirePermission('inventory', 'create', $pdo);
         $input = json_decode(file_get_contents('php://input'), true);
         $officeId = (int)($input['office_id'] ?? 0);
         $typeId = (int)($input['equipment_type_id'] ?? 0);
@@ -207,6 +209,7 @@ if ($method === 'POST') {
 
     // 3. Update Equipment Record
     if ($action === 'update_equipment') {
+        requirePermission('inventory', 'edit', $pdo);
         $input = json_decode(file_get_contents('php://input'), true);
         $eqId = (int)($input['id'] ?? 0);
         $officeId = (int)($input['office_id'] ?? 0);
@@ -305,6 +308,7 @@ if ($method === 'POST') {
 
     // 4. Delete Equipment Record
     if ($action === 'delete_equipment') {
+        requirePermission('inventory', 'delete', $pdo);
         $input = json_decode(file_get_contents('php://input'), true);
         $eqId = (int)($input['id'] ?? 0);
         if ($eqId <= 0) {
@@ -321,7 +325,7 @@ if ($method === 'POST') {
 
     // 5. Generate Historical Snapshot (Admin)
     if ($action === 'generate_snapshot') {
-        requireRole('Administrator');
+        requirePermission('inventory', 'configure', $pdo);
         $input = json_decode(file_get_contents('php://input'), true);
         $ym = trim($input['year_month'] ?? date('Y-m'));
 
@@ -348,7 +352,7 @@ if ($method === 'POST') {
 
     // 6. Save (Create/Update) Equipment Type (Admin)
     if ($action === 'save_equipment_type') {
-        requireRole('Administrator');
+        requirePermission('inventory', 'configure', $pdo);
         $input = json_decode(file_get_contents('php://input'), true);
         $id = (int)($input['id'] ?? 0);
         $name = trim($input['name'] ?? '');
@@ -374,7 +378,7 @@ if ($method === 'POST') {
 
     // 7. Delete Equipment Type (Admin)
     if ($action === 'delete_equipment_type') {
-        requireRole('Administrator');
+        requirePermission('inventory', 'configure', $pdo);
         $input = json_decode(file_get_contents('php://input'), true);
         $id = (int)($input['id'] ?? 0);
         if ($id <= 0) sendJsonResponse(false, 'Invalid equipment type ID.', null, null, 400);
@@ -389,7 +393,7 @@ if ($method === 'POST') {
 
     // 8. Save (Create/Update) Equipment Subtype (Admin)
     if ($action === 'save_equipment_subtype') {
-        requireRole('Administrator');
+        requirePermission('inventory', 'configure', $pdo);
         $input = json_decode(file_get_contents('php://input'), true);
         $id = (int)($input['id'] ?? 0);
         $typeId = (int)($input['equipment_type_id'] ?? 0);
@@ -416,7 +420,7 @@ if ($method === 'POST') {
 
     // 9. Delete Equipment Subtype (Admin)
     if ($action === 'delete_equipment_subtype') {
-        requireRole('Administrator');
+        requirePermission('inventory', 'configure', $pdo);
         $input = json_decode(file_get_contents('php://input'), true);
         $id = (int)($input['id'] ?? 0);
         if ($id <= 0) sendJsonResponse(false, 'Invalid equipment subtype ID.', null, null, 400);
@@ -431,7 +435,7 @@ if ($method === 'POST') {
 
     // 10. Save (Create/Update) Equipment Status (Admin)
     if ($action === 'save_equipment_status') {
-        requireRole('Administrator');
+        requirePermission('inventory', 'configure', $pdo);
         $input = json_decode(file_get_contents('php://input'), true);
         $id = (int)($input['id'] ?? 0);
         $name = trim($input['name'] ?? '');
@@ -455,7 +459,7 @@ if ($method === 'POST') {
 
     // 11. Delete Equipment Status (Admin)
     if ($action === 'delete_equipment_status') {
-        requireRole('Administrator');
+        requirePermission('inventory', 'configure', $pdo);
         $input = json_decode(file_get_contents('php://input'), true);
         $id = (int)($input['id'] ?? 0);
         if ($id <= 0) sendJsonResponse(false, 'Invalid status ID.', null, null, 400);
@@ -470,7 +474,7 @@ if ($method === 'POST') {
 
     // 12. Save (Create/Update) Attribute Definition (Admin)
     if ($action === 'save_attribute_definition') {
-        requireRole('Administrator');
+        requirePermission('inventory', 'configure', $pdo);
         $input = json_decode(file_get_contents('php://input'), true);
         $id = (int)($input['id'] ?? 0);
         $subtypeId = (int)($input['equipment_subtype_id'] ?? 0);
@@ -500,7 +504,7 @@ if ($method === 'POST') {
 
     // 13. Delete Attribute Definition (Admin)
     if ($action === 'delete_attribute_definition') {
-        requireRole('Administrator');
+        requirePermission('inventory', 'configure', $pdo);
         $input = json_decode(file_get_contents('php://input'), true);
         $id = (int)($input['id'] ?? 0);
         if ($id <= 0) sendJsonResponse(false, 'Invalid attribute definition ID.', null, null, 400);
@@ -519,6 +523,7 @@ if ($method === 'POST') {
 // ==========================================
 
 if ($method === 'GET') {
+    requirePermission('inventory', 'view', $pdo);
 
     // 1. Available Equipment Types
     if ($view === 'equipment_types') {

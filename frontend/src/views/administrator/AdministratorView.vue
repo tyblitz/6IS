@@ -115,6 +115,15 @@
             <p>Manage system modules, activations, core platform protections, and feature availability.</p>
           </div>
         </div>
+
+        <!-- Role & Permission Management -->
+        <div class="admin-card" @click="goTo('/administrator/roles')">
+          <div class="card-icon navy-bg"><ion-icon :icon="shieldCheckmarkOutline" /></div>
+          <div class="card-info">
+            <h3>Role & Permission Management</h3>
+            <p>Manage system and custom roles, granular permissions, and module authorization matrices.</p>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -131,7 +140,8 @@ import {
   clipboardOutline,
   peopleOutline,
   checkmarkCircleOutline,
-  gridOutline
+  gridOutline,
+  shieldCheckmarkOutline
 } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
@@ -356,6 +366,7 @@ onMounted(() => {
 .orange-bg { background: #fff7ed; color: #ea580c; }
 .purple-bg { background: #faf5ff; color: #9333ea; }
 .indigo-bg { background: #eef2ff; color: #4f46e5; }
+.navy-bg { background: #eff6ff; color: #1e3a8a; }
 
 .card-info h3 {
   font-size: 18px;

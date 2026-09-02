@@ -17,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../../helpers/auth.php';
 require_once __DIR__ . '/../../helpers/modules.php';
+require_once __DIR__ . '/../../helpers/permissions.php';
 requireAuth();
 requireModuleActive('accomplishments');
 
@@ -75,6 +76,7 @@ switch ($method) {
  * GET Handler
  */
 function handleGet(PDO $pdo) {
+    requirePermission('accomplishments', 'view', $pdo);
     $view = isset($_GET['view']) ? trim($_GET['view']) : '';
     $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
@@ -351,6 +353,9 @@ function handleGet(PDO $pdo) {
 function handlePost(PDO $pdo) {
     $action = $_GET['action'] ?? '';
     $rawInput = file_get_contents('php://input');
+    if (empty($rawInput) && isset($GLOBALS['HTTP_RAW_POST_DATA'])) {
+        $rawInput = $GLOBALS['HTTP_RAW_POST_DATA'];
+    }
     $data = json_decode($rawInput, true);
 
     if (!$data) {
@@ -359,7 +364,7 @@ function handlePost(PDO $pdo) {
 
     // Admin Action: Create Category
     if ($action === 'create_category') {
-        requireRole('Administrator');
+        requirePermission('accomplishments', 'configure', $pdo);
         $catName = trim($data['category_name'] ?? '');
         $catCode = trim($data['category_code'] ?? '');
 
@@ -382,7 +387,7 @@ function handlePost(PDO $pdo) {
 
     // Admin Action: Update Category
     if ($action === 'update_category') {
-        requireRole('Administrator');
+        requirePermission('accomplishments', 'configure', $pdo);
         $id = (int)($data['id'] ?? 0);
         $catName = trim($data['category_name'] ?? '');
         $catCode = trim($data['category_code'] ?? '');
@@ -408,7 +413,7 @@ function handlePost(PDO $pdo) {
 
     // Admin Action: Delete Category
     if ($action === 'delete_category') {
-        requireRole('Administrator');
+        requirePermission('accomplishments', 'configure', $pdo);
         $id = (int)($data['id'] ?? 0);
         if ($id <= 0) {
             sendResponse(false, 'Valid category ID is required.', null, null, 400);
@@ -425,6 +430,7 @@ function handlePost(PDO $pdo) {
     }
 
     // Standard Create Accomplishment Entry
+    requirePermission('accomplishments', 'create', $pdo);
     $errors = validatePayload($pdo, $data);
     if (!empty($errors)) {
         sendResponse(false, 'Validation failed.', null, $errors, 400);
@@ -452,10 +458,10 @@ function handlePost(PDO $pdo) {
             ':uid' => $_SESSION['user_id']
         ]);
 
-        $newId = $pdo->lastInsertId();
-        sendResponse(true, 'Accomplishment recorded successfully.', ['id' => $newId], null, 201);
+        $newId = (int)$pdo->lastInsertId();
+        sendResponse(true, 'Accomplishment created successfully.', ['id' => $newId], null, 201);
     } catch (Exception $e) {
-        sendResponse(false, 'Failed to record accomplishment.', null, ['db' => $e->getMessage()], 500);
+        sendResponse(false, 'Failed to create accomplishment record.', null, ['db' => $e->getMessage()], 500);
     }
 }
 
@@ -463,8 +469,12 @@ function handlePost(PDO $pdo) {
  * PUT Handler (Update)
  */
 function handlePut(PDO $pdo) {
+    requirePermission('accomplishments', 'edit', $pdo);
     $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
     $rawInput = file_get_contents('php://input');
+    if (empty($rawInput) && isset($GLOBALS['HTTP_RAW_POST_DATA'])) {
+        $rawInput = $GLOBALS['HTTP_RAW_POST_DATA'];
+    }
     $data = json_decode($rawInput, true);
 
     if ($id <= 0 && isset($data['id'])) {
@@ -524,6 +534,7 @@ function handlePut(PDO $pdo) {
  * DELETE Handler
  */
 function handleDelete(PDO $pdo) {
+    requirePermission('accomplishments', 'delete', $pdo);
     $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
     if ($id <= 0) {
         sendResponse(false, 'Record ID is required for deletion.', null, null, 400);
