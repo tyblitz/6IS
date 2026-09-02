@@ -82,6 +82,22 @@ async function handleLogout() {
   opacity: 0.95;
 }
 
+.header-title h1 {
+  color: #FFFFFF !important;
+  font-size: 1.55rem;
+  font-weight: 800;
+  margin: 0;
+  line-height: 1;
+}
+
+.header-title p {
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-size: 0.825rem;
+  font-weight: 500;
+  margin: 4px 0 0 0;
+  line-height: 1.2;
+}
+
 .header-logo {
   height: 38px;
   width: auto;

@@ -130,3 +130,90 @@ select option {
   color: #1e293b;
   font-weight: 500;
 }
+
+/* ============================================================
+   STANDARDIZED SEMANTIC STATUS BADGES & ACTIVITY CATEGORIES
+   ============================================================ */
+
+.status-badge,
+.status-pill,
+.table-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm, 6px);
+  font-size: 0.725rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+/* Success / Accomplished / Serviceable / Active / Completed */
+.status-badge-success,
+.status-pill-success,
+.badge-success,
+.status-serviceable,
+.status-completed {
+  background-color: var(--color-success-bg, #F0FDF4);
+  color: var(--color-success-text, #15803D);
+  border: 1px solid var(--color-success-border, #BBF7D0);
+}
+
+/* Warning / In Progress / Pending / For Repair / Ongoing */
+.status-badge-warning,
+.status-pill-warning,
+.badge-warning,
+.status-repair,
+.status-pending {
+  background-color: var(--color-warning-bg, #FFFBEB);
+  color: var(--color-warning-text, #B45309);
+  border: 1px solid var(--color-warning-border, #FDE68A);
+}
+
+/* Danger / Canceled / Overdue / Unserviceable / High Priority */
+.status-badge-danger,
+.status-pill-danger,
+.badge-danger,
+.status-unserviceable {
+  background-color: var(--color-danger-bg, #FEF2F2);
+  color: var(--color-danger-text, #B91C1C);
+  border: 1px solid var(--color-danger-border, #FECACA);
+}
+
+/* Info / Scheduled / Normal / Low Priority / Ongoing */
+.status-badge-info,
+.status-pill-info,
+.badge-info,
+.status-ongoing {
+  background-color: var(--color-info-bg, #EFF6FF);
+  color: var(--color-info-text, #1D4ED8);
+  border: 1px solid var(--color-info-border, #BFDBFE);
+}
+
+/* Activity Categories */
+.badge-cat-conf {
+  background-color: var(--color-cat-conf-bg, #EFF6FF);
+  color: var(--color-cat-conf, #2563EB);
+  border: 1px solid var(--color-cat-conf-border, #BFDBFE);
+}
+
+.badge-cat-pas {
+  background-color: var(--color-cat-pas-bg, #F0FDF4);
+  color: var(--color-cat-pas, #16A34A);
+  border: 1px solid var(--color-cat-pas-border, #BBF7D0);
+}
+
+.badge-cat-vtc {
+  background-color: var(--color-cat-vtc-bg, #FAF5FF);
+  color: var(--color-cat-vtc, #9333EA);
+  border: 1px solid var(--color-cat-vtc-border, #E9D5FF);
+}
+
+.badge-cat-cer {
+  background-color: var(--color-cat-cer-bg, #FFFBEB);
+  color: var(--color-cat-cer, #D97706);
+  border: 1px solid var(--color-cat-cer-border, #FDE68A);
+}
+

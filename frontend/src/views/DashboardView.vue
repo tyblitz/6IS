@@ -114,8 +114,7 @@
         </div>
       </div>
 
-      <!-- SECONDARY COMPACT MODULE LAUNCHER CARDS GRID -->
-
+      <!-- MODULE LAUNCHER CARDS GRID -->
       <!-- Administrator Management Cards Grid -->
       <div v-if="activeUser?.role === 'Administrator'" class="module-cards-grid admin-cards-grid">
         
@@ -243,6 +242,7 @@ import {
   cubeOutline,
   chatbubbleEllipsesOutline,
   clipboardOutline,
+  shieldCheckmarkOutline,
   peopleOutline
 } from 'ionicons/icons'
 
@@ -411,7 +411,11 @@ async function handleConfirmDeleteEvent(act: CalendarActivity) {
   }
 }
 
-// Navigation Routes
+onMounted(() => {
+  loadWeekEvents()
+})
+
+// Operational Routes (Normal User)
 function goToInventory() {
   router.push('/inventory')
 }
@@ -432,6 +436,7 @@ function goToCalendarDay(date: string) {
   router.push(`/calendar?view=day&date=${date}`)
 }
 
+// Administrative Management Routes (Administrator Only)
 function goToAdminInventory() {
   router.push('/administrator/inventory')
 }
@@ -447,10 +452,6 @@ function goToAdminAccomplishments() {
 function goToAdminUsers() {
   router.push('/administrator/users')
 }
-
-onMounted(() => {
-  loadWeekEvents()
-})
 </script>
 
 <style scoped>
@@ -855,6 +856,11 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 14px;
+}
+
+.calendar-icon {
+  background: #eff6ff;
+  color: #2563eb;
 }
 
 @media (max-width: 900px) {

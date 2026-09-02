@@ -100,6 +100,7 @@ import {
 } from 'ionicons/icons'
 import type { CalendarActivity } from '../../types/calendar'
 import { fetchCalendarActivityDetail } from '../../services/calendarService'
+import { formatDateTime } from '../../utils/dateUtils'
 
 const props = defineProps<{
   isOpen: boolean;
@@ -193,7 +194,7 @@ function formatDateTimeDisplay(act: CalendarActivity): string {
 
 function formatDate(dtStr?: string) {
   if (!dtStr) return ''
-  return dtStr.slice(0, 16)
+  return formatDateTime(dtStr)
 }
 </script>
 
