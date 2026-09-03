@@ -8,10 +8,16 @@
           <h2>Daily Report</h2>
           <p class="subtitle">Daily accomplishment records log and management.</p>
         </div>
-        <button class="add-btn" type="button" @click="openCreateModal">
-          <ion-icon :icon="addOutline"></ion-icon>
-          <span>Add Activity</span>
-        </button>
+        <div class="header-action-group">
+          <button class="btn-print" type="button" @click="handlePrint">
+            <ion-icon :icon="printOutline"></ion-icon>
+            <span>Print Report</span>
+          </button>
+          <button class="add-btn" type="button" @click="openCreateModal">
+            <ion-icon :icon="addOutline"></ion-icon>
+            <span>Add Activity</span>
+          </button>
+        </div>
       </div>
 
       <!-- Printable Document Header (Visible in print) -->
@@ -145,7 +151,7 @@
                   <button class="icon-action-btn view-btn" title="View Details" @click="navigateToAccDetail(item)">
                     <ion-icon :icon="eyeOutline"></ion-icon>
                   </button>
-                  <button class="icon-action-btn edit-btn" title="Edit Record" @click="navigateToAccDetail(item)">
+                  <button class="icon-action-btn edit-btn" title="Edit Record" @click="openEditModal(item)">
                     <ion-icon :icon="createOutline"></ion-icon>
                   </button>
                   <button class="icon-action-btn delete-btn" title="Soft Delete" @click="handleDeletePrompt(item)">
@@ -202,7 +208,8 @@ import {
   calendarOutline,
   swapVerticalOutline,
   chevronUpOutline,
-  chevronDownOutline
+  chevronDownOutline,
+  printOutline
 } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
@@ -233,7 +240,7 @@ const loading = ref(true)
 const records = ref<AccomplishmentItem[]>([])
 
 const dateInputRef = ref<HTMLInputElement | null>(null)
-const filterDate = ref(new Date().toISOString().split('T')[0])
+const filterDate = ref((route.query.date as string) || new Date().toISOString().split('T')[0])
 const filterCategoryId = ref(0)
 const filterOfficeId = ref(0)
 const searchQuery = ref('')
@@ -326,6 +333,15 @@ function resetFilters() {
 function openCreateModal() {
   selectedRecord.value = null
   isFormOpen.value = true
+}
+
+function openEditModal(item: AccomplishmentItem) {
+  selectedRecord.value = item
+  isFormOpen.value = true
+}
+
+function handlePrint() {
+  window.print()
 }
 
 function handleEditFromDetail(record: AccomplishmentItem) {

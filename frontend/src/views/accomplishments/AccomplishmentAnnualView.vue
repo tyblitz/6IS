@@ -2,11 +2,17 @@
   <MainLayout title="Annual Summary" username="Admin">
     <div class="report-page-container">
 
-      <!-- Header -->
+      <!-- Header & Action Buttons -->
       <div class="module-header-bar print-hide">
         <div>
           <h2>Annual Accomplishment Summary</h2>
           <p class="subtitle">Breakdown of accomplishments and outgoing communications for the year.</p>
+        </div>
+        <div class="action-btn-group">
+          <button class="btn-print" type="button" @click="handlePrint">
+            <ion-icon :icon="printOutline"></ion-icon>
+            <span>Print Report</span>
+          </button>
         </div>
       </div>
 
@@ -171,7 +177,8 @@ import { IonSpinner, IonIcon, onIonViewWillEnter } from '@ionic/vue'
 import { 
   checkmarkDoneCircleOutline, 
   paperPlaneOutline,
-  shieldCheckmarkOutline 
+  shieldCheckmarkOutline,
+  printOutline
 } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
@@ -250,6 +257,10 @@ function calculatePercentage(count: number, total: number): number {
   if (!total || total === 0) return 0
   return Math.round(((Number(count) || 0) / total) * 100)
 }
+
+function handlePrint() {
+  window.print()
+}
 </script>
 
 <style scoped>
@@ -282,6 +293,26 @@ function calculatePercentage(count: number, total: number): number {
 .action-btn-group {
   display: flex;
   gap: 10px;
+}
+
+.btn-print {
+  background: #ffffff;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+}
+
+.btn-print:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
 }
 
 .btn-disabled {

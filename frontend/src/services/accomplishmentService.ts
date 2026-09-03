@@ -9,16 +9,9 @@ import type {
   OfficeOption
 } from '../types/accomplishment'
 
-function resolveApiUrl(): string {
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname || 'localhost'
-    const protocol = window.location.protocol || 'http:'
-    return `${protocol}//${host}/6IS/backend/api/accomplishments/index.php`
-  }
-  return 'http://localhost/6IS/backend/api/accomplishments/index.php'
-}
+import { resolveApiUrl as resolveCentralApiUrl } from '../utils/api'
 
-const API_BASE_URL = resolveApiUrl()
+const API_BASE_URL = resolveCentralApiUrl('accomplishments/index.php')
 
 const FALLBACK_OFFICES: OfficeOption[] = [
   { id: 1, office_name: 'Information & Communications Technology', office_code: 'ICT' },
@@ -777,7 +770,7 @@ export function generateClientSideWordDoc(month: number, year: number): void {
 export async function exportMonthlyReportDocx(month: number, year: number): Promise<void> {
   const url = `${API_BASE_URL}?view=monthly_report&month=${month}&year=${year}`
   try {
-    const response = await fetchWithTimeout(url, { credentials: 'include' }, 500)
+    const response = await fetchWithTimeout(url, { credentials: 'include' }, 15000)
     if (!response.ok) throw new Error('Backend offline or error')
     const blob = await response.blob()
     const downloadUrl = URL.createObjectURL(blob)

@@ -2,11 +2,22 @@
   <MainLayout title="Monthly Summary" username="Admin">
     <div class="report-page-container">
 
-      <!-- Header -->
+      <!-- Header & Action Buttons -->
       <div class="module-header-bar print-hide">
         <div>
           <h2>Monthly Accomplishment Summary</h2>
           <p class="subtitle">Breakdown of accomplishments and outgoing communications for the month.</p>
+        </div>
+        <div class="action-btn-group">
+          <button class="btn-export-doc" type="button" :disabled="isGeneratingDocx" @click="handleExportDocx">
+            <ion-spinner v-if="isGeneratingDocx" name="crescent" style="width: 18px; height: 18px; color: #ffffff;"></ion-spinner>
+            <ion-icon v-else :icon="documentTextOutline"></ion-icon>
+            <span>{{ isGeneratingDocx ? 'Generating report...' : 'Export DOCX Report' }}</span>
+          </button>
+          <button class="btn-print" type="button" @click="handlePrint">
+            <ion-icon :icon="printOutline"></ion-icon>
+            <span>Print Report</span>
+          </button>
         </div>
       </div>
 
@@ -178,7 +189,9 @@ import { IonSpinner, IonIcon, onIonViewWillEnter } from '@ionic/vue'
 import { 
   checkmarkDoneCircleOutline, 
   paperPlaneOutline,
-  shieldCheckmarkOutline
+  shieldCheckmarkOutline,
+  documentTextOutline,
+  printOutline
 } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
@@ -187,7 +200,7 @@ import type {
   OutgoingCommCategorySummary,
   ClearancePurposeSummary 
 } from '../../types/accomplishment'
-import { fetchMonthlyAccomplishments } from '../../services/accomplishmentService'
+import { fetchMonthlyAccomplishments, exportMonthlyReportDocx } from '../../services/accomplishmentService'
 
 const route = useRoute()
 
@@ -278,6 +291,23 @@ async function loadData() {
 function calculatePercentage(count: number, total: number): number {
   if (!total || total === 0) return 0
   return Math.round(((Number(count) || 0) / total) * 100)
+}
+
+const isGeneratingDocx = ref(false)
+
+function handlePrint() {
+  window.print()
+}
+
+async function handleExportDocx() {
+  isGeneratingDocx.value = true
+  try {
+    await exportMonthlyReportDocx(selectedMonth.value, selectedYear.value)
+  } catch (err) {
+    console.error('Failed to export DOCX report:', err)
+  } finally {
+    isGeneratingDocx.value = false
+  }
 }
 </script>
 

@@ -7,6 +7,8 @@ handleCors();
 header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../../helpers/auth.php';
+require_once __DIR__ . '/../../helpers/csrf.php';
+require_once __DIR__ . '/../../helpers/audit.php';
 require_once __DIR__ . '/../../helpers/modules.php';
 require_once __DIR__ . '/../../helpers/permissions.php';
 requireAuth();
@@ -353,6 +355,8 @@ function handlePost(PDO $pdo) {
         sendResponse(false, 'Invalid JSON payload.', null, null, 400);
     }
 
+    requireCsrf($data);
+
     // Admin Action: Create Category
     if ($action === 'create_category') {
         requirePermission('accomplishments', 'configure', $pdo);
@@ -363,17 +367,42 @@ function handlePost(PDO $pdo) {
             sendResponse(false, 'Category name is required.', null, null, 400);
         }
 
-        $stmt = $pdo->prepare("
-            INSERT INTO tbl_accomplishment_categories (category_name, category_code, created_at, updated_at, created_by, modified_by)
-            VALUES (:name, :code, NOW(), NOW(), :uid, :uid)
-        ");
-        $stmt->execute([
-            ':name' => $catName,
-            ':code' => $catCode ?: null,
-            ':uid' => $_SESSION['user_id']
-        ]);
+        try {
+            $pdo->beginTransaction();
 
-        sendResponse(true, "Accomplishment category '{$catName}' created successfully.");
+            $stmt = $pdo->prepare("
+                INSERT INTO tbl_accomplishment_categories (category_name, category_code, created_at, updated_at, created_by, modified_by)
+                VALUES (:name, :code, NOW(), NOW(), :uid, :uid)
+            ");
+            $stmt->execute([
+                ':name' => $catName,
+                ':code' => $catCode ?: null,
+                ':uid' => $_SESSION['user_id']
+            ]);
+            $newCatId = (int)$pdo->lastInsertId();
+
+            auditLog([
+                'action' => 'CREATE',
+                'module_key' => 'accomplishments',
+                'entity_type' => 'category',
+                'entity_id' => (string)$newCatId,
+                'description' => "Created accomplishment category '{$catName}'.",
+                'old_values' => null,
+                'new_values' => [
+                    'id' => $newCatId,
+                    'category_name' => $catName,
+                    'category_code' => $catCode ?: null
+                ]
+            ], $pdo);
+
+            $pdo->commit();
+            sendResponse(true, "Accomplishment category '{$catName}' created successfully.", ['id' => $newCatId], null, 201);
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            sendResponse(false, 'Failed to create category: ' . $e->getMessage(), null, ['error' => $e->getMessage()], 500);
+        }
     }
 
     // Admin Action: Update Category
@@ -387,19 +416,54 @@ function handlePost(PDO $pdo) {
             sendResponse(false, 'Category ID and name are required.', null, null, 400);
         }
 
-        $stmt = $pdo->prepare("
-            UPDATE tbl_accomplishment_categories
-            SET category_name = :name, category_code = :code, updated_at = NOW(), modified_by = :uid
-            WHERE id = :id AND deleted_at IS NULL
-        ");
-        $stmt->execute([
-            ':name' => $catName,
-            ':code' => $catCode ?: null,
-            ':uid' => $_SESSION['user_id'],
-            ':id' => $id
-        ]);
+        $fetchStmt = $pdo->prepare("SELECT * FROM tbl_accomplishment_categories WHERE id = :id AND deleted_at IS NULL");
+        $fetchStmt->execute([':id' => $id]);
+        $oldCategory = $fetchStmt->fetch();
+        if (!$oldCategory) {
+            sendResponse(false, 'Accomplishment category not found.', null, null, 404);
+        }
 
-        sendResponse(true, "Accomplishment category updated successfully.");
+        try {
+            $pdo->beginTransaction();
+
+            $stmt = $pdo->prepare("
+                UPDATE tbl_accomplishment_categories
+                SET category_name = :name, category_code = :code, updated_at = NOW(), modified_by = :uid
+                WHERE id = :id AND deleted_at IS NULL
+            ");
+            $stmt->execute([
+                ':name' => $catName,
+                ':code' => $catCode ?: null,
+                ':uid' => $_SESSION['user_id'],
+                ':id' => $id
+            ]);
+
+            auditLog([
+                'action' => 'UPDATE',
+                'module_key' => 'accomplishments',
+                'entity_type' => 'category',
+                'entity_id' => (string)$id,
+                'description' => "Updated accomplishment category '{$catName}'.",
+                'old_values' => [
+                    'id' => (int)$id,
+                    'category_name' => $oldCategory['category_name'],
+                    'category_code' => $oldCategory['category_code']
+                ],
+                'new_values' => [
+                    'id' => (int)$id,
+                    'category_name' => $catName,
+                    'category_code' => $catCode ?: null
+                ]
+            ], $pdo);
+
+            $pdo->commit();
+            sendResponse(true, "Accomplishment category updated successfully.", ['id' => $id]);
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            sendResponse(false, 'Failed to update category: ' . $e->getMessage(), null, ['error' => $e->getMessage()], 500);
+        }
     }
 
     // Admin Action: Delete Category
@@ -410,14 +474,50 @@ function handlePost(PDO $pdo) {
             sendResponse(false, 'Valid category ID is required.', null, null, 400);
         }
 
-        $stmt = $pdo->prepare("
-            UPDATE tbl_accomplishment_categories
-            SET deleted_at = NOW(), modified_by = :uid
-            WHERE id = :id AND deleted_at IS NULL
-        ");
-        $stmt->execute([':uid' => $_SESSION['user_id'], ':id' => $id]);
+        $fetchStmt = $pdo->prepare("SELECT * FROM tbl_accomplishment_categories WHERE id = :id AND deleted_at IS NULL");
+        $fetchStmt->execute([':id' => $id]);
+        $oldCategory = $fetchStmt->fetch();
+        if (!$oldCategory) {
+            sendResponse(false, 'Accomplishment category not found.', null, null, 404);
+        }
 
-        sendResponse(true, "Accomplishment category deleted successfully.");
+        $usageCount = (int)$pdo->query("SELECT COUNT(*) FROM tbl_accomplishments WHERE category_id = {$id} AND deleted_at IS NULL")->fetchColumn();
+        if ($usageCount > 0) {
+            sendResponse(false, "Cannot delete category '{$oldCategory['category_name']}' because {$usageCount} accomplishment record(s) reference it.", null, null, 409);
+        }
+
+        try {
+            $pdo->beginTransaction();
+
+            $stmt = $pdo->prepare("
+                UPDATE tbl_accomplishment_categories
+                SET deleted_at = NOW(), modified_by = :uid
+                WHERE id = :id AND deleted_at IS NULL
+            ");
+            $stmt->execute([':uid' => $_SESSION['user_id'], ':id' => $id]);
+
+            auditLog([
+                'action' => 'DELETE',
+                'module_key' => 'accomplishments',
+                'entity_type' => 'category',
+                'entity_id' => (string)$id,
+                'description' => "Deleted accomplishment category '{$oldCategory['category_name']}'.",
+                'old_values' => [
+                    'id' => (int)$id,
+                    'category_name' => $oldCategory['category_name'],
+                    'category_code' => $oldCategory['category_code']
+                ],
+                'new_values' => null
+            ], $pdo);
+
+            $pdo->commit();
+            sendResponse(true, "Accomplishment category deleted successfully.");
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            sendResponse(false, 'Failed to delete category: ' . $e->getMessage(), null, ['error' => $e->getMessage()], 500);
+        }
     }
 
     // Standard Create Accomplishment Entry
@@ -429,20 +529,24 @@ function handlePost(PDO $pdo) {
 
     $officeId = (int)$data['office_id'];
     $categoryId = (int)($data['category_id'] ?? 1);
+    $calendarEventId = !empty($data['calendar_event_id']) ? (int)$data['calendar_event_id'] : null;
     $date = trim($data['date']);
     $description = trim($data['description']);
     $remarks = isset($data['remarks']) ? trim($data['remarks']) : null;
 
     try {
+        $pdo->beginTransaction();
+
         $stmt = $pdo->prepare("
             INSERT INTO tbl_accomplishments 
-            (office_id, category_id, date, description, remarks, created_at, updated_at, created_by, modified_by)
+            (office_id, category_id, calendar_event_id, date, description, remarks, created_at, updated_at, created_by, modified_by)
             VALUES 
-            (:office_id, :category_id, :date, :description, :remarks, NOW(), NOW(), :uid, :uid)
+            (:office_id, :category_id, :calendar_event_id, :date, :description, :remarks, NOW(), NOW(), :uid, :uid)
         ");
         $stmt->execute([
             ':office_id' => $officeId,
             ':category_id' => $categoryId,
+            ':calendar_event_id' => $calendarEventId,
             ':date' => $date,
             ':description' => $description,
             ':remarks' => $remarks,
@@ -450,8 +554,31 @@ function handlePost(PDO $pdo) {
         ]);
 
         $newId = (int)$pdo->lastInsertId();
+
+        auditLog([
+            'action' => 'CREATE',
+            'module_key' => 'accomplishments',
+            'entity_type' => 'accomplishment',
+            'entity_id' => (string)$newId,
+            'description' => "Created accomplishment record #{$newId} for date '{$date}'.",
+            'old_values' => null,
+            'new_values' => [
+                'id' => $newId,
+                'office_id' => $officeId,
+                'category_id' => $categoryId,
+                'calendar_event_id' => $calendarEventId,
+                'date' => $date,
+                'description' => $description,
+                'remarks' => $remarks
+            ]
+        ], $pdo);
+
+        $pdo->commit();
         sendResponse(true, 'Accomplishment created successfully.', ['id' => $newId], null, 201);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         sendResponse(false, 'Failed to create accomplishment record.', null, ['db' => $e->getMessage()], 500);
     }
 }
@@ -476,9 +603,12 @@ function handlePut(PDO $pdo) {
         sendResponse(false, 'Record ID is required for update.', null, null, 400);
     }
 
-    $checkStmt = $pdo->prepare("SELECT id FROM tbl_accomplishments WHERE id = :id AND deleted_at IS NULL");
+    requireCsrf($data);
+
+    $checkStmt = $pdo->prepare("SELECT * FROM tbl_accomplishments WHERE id = :id AND deleted_at IS NULL");
     $checkStmt->execute([':id' => $id]);
-    if (!$checkStmt->fetch()) {
+    $oldRecord = $checkStmt->fetch();
+    if (!$oldRecord) {
         sendResponse(false, 'Accomplishment record not found.', null, null, 404);
     }
 
@@ -489,15 +619,19 @@ function handlePut(PDO $pdo) {
 
     $officeId = (int)$data['office_id'];
     $categoryId = (int)($data['category_id'] ?? 1);
+    $calendarEventId = isset($data['calendar_event_id']) ? ((int)$data['calendar_event_id'] ?: null) : $oldRecord['calendar_event_id'];
     $date = trim($data['date']);
     $description = trim($data['description']);
     $remarks = isset($data['remarks']) ? trim($data['remarks']) : null;
 
     try {
+        $pdo->beginTransaction();
+
         $stmt = $pdo->prepare("
             UPDATE tbl_accomplishments SET
                 office_id = :office_id,
                 category_id = :category_id,
+                calendar_event_id = :calendar_event_id,
                 date = :date,
                 description = :description,
                 remarks = :remarks,
@@ -509,14 +643,45 @@ function handlePut(PDO $pdo) {
             ':id' => $id,
             ':office_id' => $officeId,
             ':category_id' => $categoryId,
+            ':calendar_event_id' => $calendarEventId,
             ':date' => $date,
             ':description' => $description,
             ':remarks' => $remarks,
             ':uid' => $_SESSION['user_id']
         ]);
 
+        auditLog([
+            'action' => 'UPDATE',
+            'module_key' => 'accomplishments',
+            'entity_type' => 'accomplishment',
+            'entity_id' => (string)$id,
+            'description' => "Updated accomplishment record #{$id}.",
+            'old_values' => [
+                'id' => (int)$id,
+                'office_id' => (int)$oldRecord['office_id'],
+                'category_id' => (int)$oldRecord['category_id'],
+                'calendar_event_id' => $oldRecord['calendar_event_id'] ? (int)$oldRecord['calendar_event_id'] : null,
+                'date' => $oldRecord['date'],
+                'description' => $oldRecord['description'],
+                'remarks' => $oldRecord['remarks']
+            ],
+            'new_values' => [
+                'id' => (int)$id,
+                'office_id' => $officeId,
+                'category_id' => $categoryId,
+                'calendar_event_id' => $calendarEventId,
+                'date' => $date,
+                'description' => $description,
+                'remarks' => $remarks
+            ]
+        ], $pdo);
+
+        $pdo->commit();
         sendResponse(true, 'Accomplishment updated successfully.', ['id' => $id]);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         sendResponse(false, 'Failed to update accomplishment record.', null, ['db' => $e->getMessage()], 500);
     }
 }
@@ -531,7 +696,18 @@ function handleDelete(PDO $pdo) {
         sendResponse(false, 'Record ID is required for deletion.', null, null, 400);
     }
 
+    requireCsrf();
+
+    $checkStmt = $pdo->prepare("SELECT * FROM tbl_accomplishments WHERE id = :id AND deleted_at IS NULL");
+    $checkStmt->execute([':id' => $id]);
+    $oldRecord = $checkStmt->fetch();
+    if (!$oldRecord) {
+        sendResponse(false, 'Record not found or already deleted.', null, null, 404);
+    }
+
     try {
+        $pdo->beginTransaction();
+
         $stmt = $pdo->prepare("
             UPDATE tbl_accomplishments 
             SET deleted_at = NOW(), modified_by = :uid 
@@ -539,12 +715,29 @@ function handleDelete(PDO $pdo) {
         ");
         $stmt->execute([':uid' => $_SESSION['user_id'], ':id' => $id]);
 
-        if ($stmt->rowCount() === 0) {
-            sendResponse(false, 'Record not found or already deleted.', null, null, 404);
-        }
+        auditLog([
+            'action' => 'DELETE',
+            'module_key' => 'accomplishments',
+            'entity_type' => 'accomplishment',
+            'entity_id' => (string)$id,
+            'description' => "Deleted accomplishment record #{$id}.",
+            'old_values' => [
+                'id' => (int)$id,
+                'office_id' => (int)$oldRecord['office_id'],
+                'category_id' => (int)$oldRecord['category_id'],
+                'date' => $oldRecord['date'],
+                'description' => $oldRecord['description'],
+                'remarks' => $oldRecord['remarks']
+            ],
+            'new_values' => null
+        ], $pdo);
 
+        $pdo->commit();
         sendResponse(true, 'Accomplishment deleted successfully.', ['id' => $id]);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         sendResponse(false, 'Failed to delete accomplishment record.', null, ['db' => $e->getMessage()], 500);
     }
 }
