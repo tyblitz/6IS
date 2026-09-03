@@ -1740,38 +1740,127 @@ try {
     );
     $pdo->exec("DELETE FROM tbl_audit_logs WHERE id = {$testAuditId}");
 
-    // 18B: Recursive sanitization strips sensitive fields
-    $dirtyData = [
-        'username' => 'TestUser',
-        'password' => 'SuperSecret123!',
-        'password_hash' => '$2y$10$abcdefghijklmnopqrstuv',
-        'token' => 'bearer-token-abc',
-        'nested' => [
-            'key' => 'allowed_value',
-            'new_password' => 'SecretNewPass',
-            'api_key' => '12345-secret',
+    // 18B1: Normal array input sanitization
+    $arrInput = [
+        'username' => 'NormalUser',
+        'password' => 'secret_pass_123',
+        'token' => 'auth_token_xyz',
+        'status' => 'active'
+    ];
+    $sanitizedArr = sanitizeAuditData($arrInput);
+    assertTest(
+        "Test 18B1: Normal array input sanitizes sensitive fields to [REDACTED]",
+        ($sanitizedArr['password'] ?? '') === '[REDACTED]' &&
+        ($sanitizedArr['token'] ?? '') === '[REDACTED]' &&
+        ($sanitizedArr['username'] ?? '') === 'NormalUser' &&
+        ($sanitizedArr['status'] ?? '') === 'active'
+    );
+
+    // 18B2: Nested array input sanitization
+    $nestedArrInput = [
+        'account' => [
+            'user' => 'NestedUser',
+            'api_key' => 'secret_key_999',
             'deep' => [
-                'session_id' => 'sess_9999',
-                'secret' => 'topsecret'
+                'session_id' => 'sess_secret_123',
+                'secret' => 'classified'
             ]
         ]
     ];
-    $sanitized = sanitizeAuditData($dirtyData);
-    $rawJson = json_encode($sanitized);
-    $containsRawSecrets = str_contains($rawJson, 'SuperSecret123!') ||
-        str_contains($rawJson, 'SecretNewPass') ||
-        str_contains($rawJson, 'topsecret') ||
-        str_contains($rawJson, 'sess_9999') ||
-        str_contains($rawJson, '$2y$10$abcdefghijklmnopqrstuv');
-    $hasRedacted = ($sanitized['password'] ?? '') === '[REDACTED]' &&
-        ($sanitized['nested']['deep']['secret'] ?? '') === '[REDACTED]';
-    $retainsAllowed = ($sanitized['username'] ?? '') === 'TestUser' &&
-        ($sanitized['nested']['key'] ?? '') === 'allowed_value';
+    $sanitizedNested = sanitizeAuditData($nestedArrInput);
+    assertTest(
+        "Test 18B2: Nested array input recursively sanitizes deep sensitive fields",
+        ($sanitizedNested['account']['api_key'] ?? '') === '[REDACTED]' &&
+        ($sanitizedNested['account']['deep']['session_id'] ?? '') === '[REDACTED]' &&
+        ($sanitizedNested['account']['deep']['secret'] ?? '') === '[REDACTED]' &&
+        ($sanitizedNested['account']['user'] ?? '') === 'NestedUser'
+    );
+
+    // 18B3: JSON-string input sanitization (decoded, sanitized, and re-encoded)
+    $jsonStringInput = json_encode([
+        'username' => 'JsonUser',
+        'password' => 'JsonPassword123',
+        'authorization' => 'Bearer token_abc'
+    ]);
+    $sanitizedJsonStr = normalizeAndSanitizeAuditValues($jsonStringInput);
+    $decodedSanitizedJson = json_decode($sanitizedJsonStr ?? '', true);
+    assertTest(
+        "Test 18B3: JSON-string input is decoded, sanitized, and re-encoded",
+        !str_contains($sanitizedJsonStr ?? '', 'JsonPassword123') &&
+        !str_contains($sanitizedJsonStr ?? '', 'token_abc') &&
+        ($decodedSanitizedJson['password'] ?? '') === '[REDACTED]' &&
+        ($decodedSanitizedJson['authorization'] ?? '') === '[REDACTED]' &&
+        ($decodedSanitizedJson['username'] ?? '') === 'JsonUser'
+    );
+
+    // 18B4: Nested JSON-string input sanitization
+    $nestedJsonInput = [
+        'profile' => '{"name":"John","csrf_token":"csrf_secret_456","nested_config":"{\\"password_hash\\":\\"hash_secret\\"}"}'
+    ];
+    $sanitizedNestedJson = sanitizeAuditData($nestedJsonInput);
+    $nestedJsonStr = json_encode($sanitizedNestedJson);
+    assertTest(
+        "Test 18B4: Nested JSON-string input unpacks and sanitizes embedded sensitive keys",
+        !str_contains($nestedJsonStr, 'csrf_secret_456') &&
+        !str_contains($nestedJsonStr, 'hash_secret') &&
+        str_contains($nestedJsonStr, '[REDACTED]') &&
+        str_contains($nestedJsonStr, 'John')
+    );
+
+    // 18B5: Normal non-sensitive audit values continue to work without corruption
+    $cleanData = ['action' => 'login', 'device' => 'desktop', 'count' => 5];
+    $sanitizedClean = sanitizeAuditData($cleanData);
+    assertTest(
+        "Test 18B5: Normal non-sensitive audit values remain intact without corruption",
+        $sanitizedClean === $cleanData
+    );
+
+    // 18B6: End-to-end auditLog() with JSON-string and nested JSON-string input persisted to database
+    $rawJsonPayload = json_encode([
+        'username' => 'TestSecUser',
+        'password' => 'RawSuperSecretPassword999',
+        'api_key' => 'apiKeySecretString123',
+        'nested' => json_encode(['token' => 'jwt_secret_token_abc', 'status' => 'active'])
+    ]);
+    $secAuditId = auditLog([
+        'action' => 'SECURITY_TEST',
+        'module_key' => 'core',
+        'entity_type' => 'security',
+        'entity_id' => '100',
+        'description' => 'Test JSON string bypass protection',
+        'old_values' => '{"password":"old_secret_pass"}',
+        'new_values' => $rawJsonPayload
+    ], $pdo);
+
+    $persistedRow = $pdo->query("SELECT old_values, new_values FROM tbl_audit_logs WHERE id = {$secAuditId}")->fetch();
+    $pdo->exec("DELETE FROM tbl_audit_logs WHERE id = {$secAuditId}");
 
     assertTest(
-        "Test 18B: sanitizeAuditData() recursively strips passwords, tokens, secrets, and session IDs",
-        !$containsRawSecrets && $hasRedacted && $retainsAllowed,
-        "Sanitized output: " . json_encode($sanitized)
+        "Test 18B6: End-to-end auditLog() prevents sensitive values in JSON-strings from reaching the audit database",
+        $persistedRow &&
+        !str_contains($persistedRow['old_values'], 'old_secret_pass') &&
+        !str_contains($persistedRow['new_values'], 'RawSuperSecretPassword999') &&
+        !str_contains($persistedRow['new_values'], 'apiKeySecretString123') &&
+        !str_contains($persistedRow['new_values'], 'jwt_secret_token_abc') &&
+        str_contains($persistedRow['new_values'], '[REDACTED]') &&
+        str_contains($persistedRow['new_values'], 'TestSecUser')
+    );
+
+    // 18B7: Calling auditLog() with arbitrary non-JSON raw strings throws InvalidArgumentException
+    $rawStringRejected = false;
+    try {
+        auditLog([
+            'action' => 'BYPASS_TEST',
+            'module_key' => 'core',
+            'entity_type' => 'security',
+            'old_values' => 'arbitrary raw non-json text with password=secret123'
+        ], $pdo);
+    } catch (InvalidArgumentException $e) {
+        $rawStringRejected = true;
+    }
+    assertTest(
+        "Test 18B7: Calling auditLog() with arbitrary non-JSON raw strings is rejected with InvalidArgumentException",
+        $rawStringRejected
     );
 
     // 18C: Transaction atomicity: if auditLog fails in transaction, state mutation is rolled back
@@ -2054,6 +2143,87 @@ try {
         "Test 24C: Deleting system role 'Administrator' is rejected with HTTP 400",
         $resDelSysRole['status'] === 400 && str_contains($resDelSysRole['json']['message'] ?? '', 'System role'),
         "Status: {$resDelSysRole['status']}"
+    );
+
+    // Fetch all currently assigned permission IDs for Administrator
+    $adminPermStmt = $pdo->query("SELECT permission_id FROM tbl_role_permissions WHERE role_id = 1");
+    $originalAdminPermIds = array_map('intval', $adminPermStmt->fetchAll(PDO::FETCH_COLUMN));
+
+    // Get specific permission IDs for protected checks
+    $auditViewId = (int)$pdo->query("SELECT id FROM tbl_permissions WHERE module_key = 'audit' AND permission_key = 'view'")->fetchColumn();
+    $modulesConfigId = (int)$pdo->query("SELECT id FROM tbl_permissions WHERE module_key = 'modules' AND permission_key = 'configure'")->fetchColumn();
+    $rolesConfigId = (int)$pdo->query("SELECT id FROM tbl_permissions WHERE module_key = 'roles' AND permission_key = 'configure'")->fetchColumn();
+
+    // 24D: Remove audit.view -> rejected with HTTP 400
+    $withoutAuditView = array_values(array_diff($originalAdminPermIds, [$auditViewId]));
+    $resRemAudit = invokeApiEndpoint('backend/api/core/roles/index.php', 'PATCH', ['id' => 1], ['permission_ids' => $withoutAuditView], ['user_id' => 1, 'role' => 'Administrator']);
+    assertTest(
+        "Test 24D: Attempting to remove 'audit.view' from Administrator role is rejected with HTTP 400",
+        $resRemAudit['status'] === 400 &&
+        str_contains($resRemAudit['json']['message'] ?? '', 'audit.view'),
+        "Status: {$resRemAudit['status']}, Body: {$resRemAudit['body']}"
+    );
+
+    // 24E: Remove modules.configure -> rejected with HTTP 400
+    $withoutModulesConfig = array_values(array_diff($originalAdminPermIds, [$modulesConfigId]));
+    $resRemModConfig = invokeApiEndpoint('backend/api/core/roles/index.php', 'PATCH', ['id' => 1], ['permission_ids' => $withoutModulesConfig], ['user_id' => 1, 'role' => 'Administrator']);
+    assertTest(
+        "Test 24E: Attempting to remove 'modules.configure' from Administrator role is rejected with HTTP 400",
+        $resRemModConfig['status'] === 400 &&
+        str_contains($resRemModConfig['json']['message'] ?? '', 'modules.configure'),
+        "Status: {$resRemModConfig['status']}, Body: {$resRemModConfig['body']}"
+    );
+
+    // 24F: Remove roles.configure -> rejected with HTTP 400
+    $withoutRolesConfig = array_values(array_diff($originalAdminPermIds, [$rolesConfigId]));
+    $resRemRolesConfig = invokeApiEndpoint('backend/api/core/roles/index.php', 'PATCH', ['id' => 1], ['permission_ids' => $withoutRolesConfig], ['user_id' => 1, 'role' => 'Administrator']);
+    assertTest(
+        "Test 24F: Attempting to remove 'roles.configure' from Administrator role is rejected with HTTP 400",
+        $resRemRolesConfig['status'] === 400 &&
+        str_contains($resRemRolesConfig['json']['message'] ?? '', 'roles.configure'),
+        "Status: {$resRemRolesConfig['status']}, Body: {$resRemRolesConfig['body']}"
+    );
+
+    // 24G: Remove several protected permissions simultaneously -> rejected with HTTP 400
+    $withoutMultiple = array_values(array_diff($originalAdminPermIds, [$auditViewId, $modulesConfigId, $rolesConfigId]));
+    $resRemMultiple = invokeApiEndpoint('backend/api/core/roles/index.php', 'PATCH', ['id' => 1], ['permission_ids' => $withoutMultiple], ['user_id' => 1, 'role' => 'Administrator']);
+    assertTest(
+        "Test 24G: Removing multiple protected permissions simultaneously is rejected with HTTP 400",
+        $resRemMultiple['status'] === 400 &&
+        str_contains($resRemMultiple['json']['message'] ?? '', 'audit.view') &&
+        str_contains($resRemMultiple['json']['message'] ?? '', 'modules.configure') &&
+        str_contains($resRemMultiple['json']['message'] ?? '', 'roles.configure'),
+        "Status: {$resRemMultiple['status']}, Body: {$resRemMultiple['body']}"
+    );
+
+    // 24H: Retain all protected permissions while changing other (non-essential) permissions -> succeeds with HTTP 200
+    $invViewId = (int)$pdo->query("SELECT id FROM tbl_permissions WHERE module_key = 'inventory' AND permission_key = 'view'")->fetchColumn();
+    $toggleNonEssential = array_values(array_diff($originalAdminPermIds, [$invViewId]));
+    $resToggleNonEss = invokeApiEndpoint('backend/api/core/roles/index.php', 'PATCH', ['id' => 1], ['permission_ids' => $toggleNonEssential], ['user_id' => 1, 'role' => 'Administrator']);
+    assertTest(
+        "Test 24H: Modifying non-essential permissions while retaining all protected permissions succeeds (HTTP 200)",
+        $resToggleNonEss['status'] === 200 &&
+        ($resToggleNonEss['json']['success'] ?? false) === true,
+        "Status: {$resToggleNonEss['status']}, Body: {$resToggleNonEss['body']}"
+    );
+
+    // Restore original Administrator permissions
+    $resRestoreAdminPerms = invokeApiEndpoint('backend/api/core/roles/index.php', 'PATCH', ['id' => 1], ['permission_ids' => $originalAdminPermIds], ['user_id' => 1, 'role' => 'Administrator']);
+    assertTest(
+        "Test 24I: Restoring all original Administrator permissions succeeds (HTTP 200)",
+        $resRestoreAdminPerms['status'] === 200,
+        "Status: {$resRestoreAdminPerms['status']}"
+    );
+
+    // 24J: Verify no partial database update occurs after rejection
+    $postCheckPerms = array_map('intval', $pdo->query("SELECT permission_id FROM tbl_role_permissions WHERE role_id = 1")->fetchAll(PDO::FETCH_COLUMN));
+    sort($postCheckPerms);
+    $sortedOriginal = $originalAdminPermIds;
+    sort($sortedOriginal);
+    assertTest(
+        "Test 24J: Zero partial database updates occurred on rejected permission mutations",
+        $postCheckPerms === $sortedOriginal,
+        "Post count: " . count($postCheckPerms) . ", Original count: " . count($sortedOriginal)
     );
 
     // =========================================================================

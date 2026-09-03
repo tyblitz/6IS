@@ -30,6 +30,7 @@ const AUDIT_SENSITIVE_KEYS = [
 
 /**
  * Recursively sanitizes data payloads to strip or mask sensitive keys and credentials.
+ * Also recursively unpacks and sanitizes any nested JSON strings.
  * 
  * @param mixed $data Input payload (array, scalar, or null)
  * @return mixed Sanitized payload safe for audit persistence
@@ -55,12 +56,70 @@ function sanitizeAuditData($data) {
             $sanitized[$key] = '[REDACTED]';
         } elseif (is_array($value)) {
             $sanitized[$key] = sanitizeAuditData($value);
+        } elseif (is_string($value)) {
+            $trimmed = trim($value);
+            // If string is a JSON object or array, recursively sanitize its contents
+            if ($trimmed !== '' && ($trimmed[0] === '{' || $trimmed[0] === '[')) {
+                $nestedDecoded = json_decode($trimmed, true);
+                if (json_last_error() === JSON_ERROR_NONE && (is_array($nestedDecoded) || is_object($nestedDecoded))) {
+                    $sanitizedNested = sanitizeAuditData((array)$nestedDecoded);
+                    $sanitized[$key] = json_encode($sanitizedNested, JSON_UNESCAPED_UNICODE);
+                    continue;
+                }
+            }
+            $sanitized[$key] = $value;
         } else {
             $sanitized[$key] = $value;
         }
     }
 
     return $sanitized;
+}
+
+/**
+ * Normalizes and recursively sanitizes an audit payload field (old_values or new_values).
+ * Accepts array, object, valid structured JSON string, or null.
+ * 
+ * Rejects arbitrary non-JSON raw strings to preserve security boundary integrity.
+ * 
+ * @param mixed $value Input payload (array, object, JSON string, or null)
+ * @return string|null Sanitized JSON string or null
+ * @throws InvalidArgumentException If a non-null, non-empty, non-JSON string or invalid type is provided
+ */
+function normalizeAndSanitizeAuditValues($value): ?string {
+    if ($value === null || $value === '') {
+        return null;
+    }
+
+    if (is_object($value)) {
+        $value = json_decode(json_encode($value), true);
+    }
+
+    if (is_array($value)) {
+        $sanitized = sanitizeAuditData($value);
+        return json_encode($sanitized, JSON_UNESCAPED_UNICODE);
+    }
+
+    if (is_string($value)) {
+        $trimmed = trim($value);
+        if ($trimmed === '') {
+            return null;
+        }
+
+        // Must be a valid JSON string representing structured data (object or array)
+        if ($trimmed[0] === '{' || $trimmed[0] === '[') {
+            $decoded = json_decode($trimmed, true);
+            if (json_last_error() === JSON_ERROR_NONE && (is_array($decoded) || is_object($decoded))) {
+                $sanitized = sanitizeAuditData((array)$decoded);
+                return json_encode($sanitized, JSON_UNESCAPED_UNICODE);
+            }
+        }
+
+        // Reject arbitrary raw strings for old_values / new_values
+        throw new InvalidArgumentException('Audit value must be an array, object, or valid structured JSON string.');
+    }
+
+    throw new InvalidArgumentException('Audit value must be an array, object, or valid structured JSON string.');
 }
 
 /**
@@ -146,15 +205,9 @@ function auditLog(array $entry, ?PDO $pdo = null): int {
     $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
 
-    // Sanitize old_values and new_values recursively
-    $oldValuesRaw = $entry['old_values'] ?? null;
-    $newValuesRaw = $entry['new_values'] ?? null;
-
-    $sanitizedOld = is_array($oldValuesRaw) ? sanitizeAuditData($oldValuesRaw) : $oldValuesRaw;
-    $sanitizedNew = is_array($newValuesRaw) ? sanitizeAuditData($newValuesRaw) : $newValuesRaw;
-
-    $oldValuesJson = is_array($sanitizedOld) ? json_encode($sanitizedOld, JSON_UNESCAPED_UNICODE) : (is_string($sanitizedOld) ? $sanitizedOld : null);
-    $newValuesJson = is_array($sanitizedNew) ? json_encode($sanitizedNew, JSON_UNESCAPED_UNICODE) : (is_string($sanitizedNew) ? $sanitizedNew : null);
+    // Sanitize old_values and new_values recursively (including JSON strings and nested structures)
+    $oldValuesJson = normalizeAndSanitizeAuditValues($entry['old_values'] ?? null);
+    $newValuesJson = normalizeAndSanitizeAuditValues($entry['new_values'] ?? null);
 
     try {
         $db = getAuditDbConnection($pdo);

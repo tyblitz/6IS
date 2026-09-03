@@ -1,6 +1,8 @@
 .DS_Store
 node_modules
 /coverage
+dist
+frontend/dist
 /dist
 /ios
 /android

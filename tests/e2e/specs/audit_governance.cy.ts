@@ -29,24 +29,28 @@ describe('6IS Core Governance & Audit Trail (Phase 4)', () => {
     cy.contains('button', 'Reset Filters').should('exist')
   })
 
-  it('displays audit trail table and can open detail inspection modal', () => {
+  it('displays audit trail table or empty state and can open detail inspection modal if records exist', () => {
     cy.visit('/administrator/audit')
-    cy.get('.audit-table').should('exist')
-    cy.get('.audit-table th').should('contain', 'Timestamp')
-    cy.get('.audit-table th').should('contain', 'Actor')
-    cy.get('.audit-table th').should('contain', 'Action')
-    cy.get('.audit-table th').should('contain', 'Module')
-
-    // Click Details on the first row if rows exist
+    cy.get('.table-card').should('exist')
     cy.get('body').then(($body) => {
-      if ($body.find('.btn-inspect').length > 0) {
-        cy.get('.btn-inspect').first().click({ force: true })
-        cy.get('.audit-detail-modal').should('exist')
-        cy.contains('Immutable audit record').should('exist')
-        cy.contains('Previous State').should('exist')
-        cy.contains('Resulting State').should('exist')
-        cy.get('.modal-close-btn').click({ force: true })
-        cy.get('.audit-detail-modal').should('not.exist')
+      if ($body.find('.audit-table').length > 0) {
+        cy.get('.audit-table th').should('contain', 'Timestamp')
+        cy.get('.audit-table th').should('contain', 'Actor')
+        cy.get('.audit-table th').should('contain', 'Action')
+        cy.get('.audit-table th').should('contain', 'Module')
+
+        if ($body.find('.btn-inspect').length > 0) {
+          cy.get('.btn-inspect').first().click({ force: true })
+          cy.get('.audit-detail-modal').should('exist')
+          cy.contains('Immutable audit record').should('exist')
+          cy.contains('Previous State').should('exist')
+          cy.contains('Resulting State').should('exist')
+          cy.get('.modal-close-btn').click({ force: true })
+          cy.get('.audit-detail-modal').should('not.exist')
+        }
+      } else {
+        cy.get('.empty-state').should('exist')
+        cy.contains('No Audit Records Found').should('exist')
       }
     })
   })

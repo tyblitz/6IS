@@ -242,12 +242,38 @@ if ($method === 'PATCH') {
             }
         }
 
-        // Prevent stripping essential administration permissions from Administrator role
+        // Prevent stripping essential Core administrative permissions from Administrator role
         if ($isSystemRole && strtolower($existingRole['name']) === 'administrator') {
-            // Administrator must retain roles.configure
-            $corePermCheck = $pdo->query("SELECT id FROM tbl_permissions WHERE module_key = 'roles' AND permission_key = 'configure' LIMIT 1")->fetchColumn();
-            if ($corePermCheck && !in_array((int)$corePermCheck, array_map('intval', $permissionIds))) {
-                sendJsonResponse(false, 'The Administrator role must retain roles.configure permission to avoid lock-out.', null, null, 400);
+            $protectedPermissions = [
+                'users.view', 'users.edit', 'users.configure',
+                'roles.view', 'roles.edit', 'roles.configure',
+                'modules.view', 'modules.configure',
+                'audit.view',
+                'organization.view', 'organization.configure',
+                'offices.view', 'offices.edit', 'offices.configure'
+            ];
+
+            $quoted = implode("','", $protectedPermissions);
+            $protStmt = $pdo->query("SELECT id, CONCAT(module_key, '.', permission_key) FROM tbl_permissions WHERE CONCAT(module_key, '.', permission_key) IN ('{$quoted}')");
+            $protectedMap = $protStmt->fetchAll(PDO::FETCH_KEY_PAIR); // id => 'module.permission'
+
+            $inputPermIds = array_map('intval', $permissionIds);
+            $missingProtected = [];
+            foreach ($protectedPermissions as $permName) {
+                $permId = array_search($permName, $protectedMap, true);
+                if ($permId === false || !in_array((int)$permId, $inputPermIds, true)) {
+                    $missingProtected[] = $permName;
+                }
+            }
+
+            if (!empty($missingProtected)) {
+                sendJsonResponse(
+                    false,
+                    'Cannot remove essential Core administrative permissions from Administrator role: ' . implode(', ', $missingProtected) . '.',
+                    null,
+                    ['missing_protected_permissions' => $missingProtected],
+                    400
+                );
             }
         }
 
