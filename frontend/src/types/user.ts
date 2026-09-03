@@ -10,6 +10,9 @@ export interface UserAccount {
   role: UserRole
   role_id?: number | null
   role_name?: string
+  office_id?: number | null
+  office_name?: string | null
+  office_code?: string | null
   is_active: number
   created_at: string
   updated_at: string
@@ -21,6 +24,7 @@ export interface CreateUserPayload {
   password: string
   role?: UserRole
   role_id?: number | null
+  office_id?: number | null
 }
 
 export interface UpdateUserPayload {
@@ -28,5 +32,7 @@ export interface UpdateUserPayload {
   full_name: string
   role?: UserRole
   role_id?: number | null
+  office_id?: number | null
   password?: string
 }
+

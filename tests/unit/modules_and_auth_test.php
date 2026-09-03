@@ -6,8 +6,8 @@ ini_set('display_errors', '1');
 error_reporting(E_ALL);
 
 echo "===============================================================\n";
-echo " 6IS Phase 0 + Phase 1 + Phase 2 Automated Test Suite\n";
-echo " Core Auth, Module Registry & RBAC Permissions Architecture\n";
+echo " 6IS Phase 0 + Phase 1 + Phase 2 + Phase 3 Automated Test Suite\n";
+echo " Core Auth, Module Registry, RBAC & Organization/Offices\n";
 echo "===============================================================\n\n";
 
 $totalTests = 0;
@@ -17,6 +17,7 @@ $failedTests = 0;
 // Track dynamically created fixtures for guaranteed cleanup in finally
 $cleanupRoleIds = [];
 $cleanupUserIds = [];
+$cleanupOfficeIds = [];
 
 function assertTest(string $description, bool $condition, string $details = ''): void {
     global $totalTests, $passedTests, $failedTests;
@@ -129,6 +130,8 @@ $stmtPerm = $pdo->query("SELECT id, is_active FROM tbl_permissions");
 while ($row = $stmtPerm->fetch()) {
     $originalPermissionStates[(int)$row['id']] = (int)$row['is_active'];
 }
+
+$originalOrgRecord = $pdo->query("SELECT * FROM tbl_organization WHERE id = 1 LIMIT 1")->fetch();
 
 try {
 
@@ -820,6 +823,335 @@ try {
         "Output: {$outputCorePermCheck}"
     );
 
+    // =========================================================================
+    // SUITE 14: Core Organization Management (Phase 3)
+    // =========================================================================
+    echo "\nSUITE 14: Core Organization Management (Phase 3 Domain Integrity & Permissions)\n";
+
+    // 14A: GET organization profile with organization.view returns primary org (ID 1, 200 OK)
+    $resOrgGet = invokeApiEndpoint(
+        'backend/api/core/organization/index.php',
+        'GET',
+        [],
+        null,
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 14A: GET organization profile as Administrator returns HTTP 200 with primary organization",
+        $resOrgGet['status'] === 200 &&
+        ($resOrgGet['json']['success'] ?? false) === true &&
+        (int)($resOrgGet['json']['data']['id'] ?? 0) === 1 &&
+        !empty($resOrgGet['json']['data']['name']),
+        "Status: {$resOrgGet['status']}, Body: {$resOrgGet['body']}"
+    );
+
+    // 14B: GET organization without organization.view returns 403 Forbidden
+    $pdo->exec("INSERT INTO tbl_roles (name, description, is_system, is_active, created_at, updated_at) VALUES ('NoOrgRole', 'Role with no org perm', 0, 1, NOW(), NOW())");
+    $noOrgRoleId = (int)$pdo->lastInsertId();
+    $cleanupRoleIds[] = $noOrgRoleId;
+
+    $pdo->exec("INSERT INTO tbl_users (username, full_name, password, role, role_id, is_active, created_at, updated_at) VALUES ('no_org_user', 'No Org User', 'hash', 'NoOrgRole', {$noOrgRoleId}, 1, NOW(), NOW())");
+    $noOrgUserId = (int)$pdo->lastInsertId();
+    $cleanupUserIds[] = $noOrgUserId;
+
+    $resOrgNoPerm = invokeApiEndpoint(
+        'backend/api/core/organization/index.php',
+        'GET',
+        [],
+        null,
+        ['user_id' => $noOrgUserId, 'role' => 'NoOrgRole']
+    );
+    assertTest(
+        "Test 14B: GET organization without 'organization.view' returns HTTP 403 Forbidden",
+        $resOrgNoPerm['status'] === 403 &&
+        str_contains($resOrgNoPerm['json']['message'] ?? '', 'permission'),
+        "Status: {$resOrgNoPerm['status']}, Body: {$resOrgNoPerm['body']}"
+    );
+
+    // 14C: PATCH organization with organization.configure updates fields successfully
+    $resOrgPatch = invokeApiEndpoint(
+        'backend/api/core/organization/index.php',
+        'PATCH',
+        [],
+        [
+            'name' => '6th Infantry Division',
+            'short_name' => '6ID-TEST',
+            'contact_number' => '+63 999 888 7777'
+        ],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 14C: PATCH organization as Administrator updates profile and returns HTTP 200",
+        $resOrgPatch['status'] === 200 &&
+        ($resOrgPatch['json']['success'] ?? false) === true &&
+        ($resOrgPatch['json']['data']['short_name'] ?? '') === '6ID-TEST',
+        "Status: {$resOrgPatch['status']}, Body: {$resOrgPatch['body']}"
+    );
+
+    // 14D: PATCH organization validation (missing name returns HTTP 400)
+    $resOrgPatchInvalid = invokeApiEndpoint(
+        'backend/api/core/organization/index.php',
+        'PATCH',
+        [],
+        ['name' => '   '],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 14D: PATCH organization with empty name returns HTTP 400 Bad Request",
+        $resOrgPatchInvalid['status'] === 400 &&
+        ($resOrgPatchInvalid['json']['success'] ?? true) === false,
+        "Status: {$resOrgPatchInvalid['status']}, Body: {$resOrgPatchInvalid['body']}"
+    );
+
+    // =========================================================================
+    // SUITE 15: Core Offices Management (Phase 3)
+    // =========================================================================
+    echo "\nSUITE 15: Core Offices Management (Offices CRUD, Uniqueness & Dependency Guards)\n";
+
+    // 15A: GET offices list with offices.view returns offices array with user_count
+    $resOfficesGet = invokeApiEndpoint(
+        'backend/api/core/offices/index.php',
+        'GET',
+        [],
+        null,
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 15A: GET offices as Administrator returns HTTP 200 with offices list and user_count",
+        $resOfficesGet['status'] === 200 &&
+        ($resOfficesGet['json']['success'] ?? false) === true &&
+        is_array($resOfficesGet['json']['data']) &&
+        count($resOfficesGet['json']['data']) > 0 &&
+        isset($resOfficesGet['json']['data'][0]['user_count']),
+        "Status: {$resOfficesGet['status']}, Body: {$resOfficesGet['body']}"
+    );
+
+    // 15B: POST create office with offices.create succeeds (201 Created)
+    $testOfficeCode = 'TEST_OFF_' . time();
+    $resOfficeCreate = invokeApiEndpoint(
+        'backend/api/core/offices/index.php',
+        'POST',
+        [],
+        [
+            'code' => $testOfficeCode,
+            'name' => 'Test Unit Office Alpha',
+            'description' => 'Temporary test office',
+            'address' => 'Test Location HQ',
+            'contact_number' => '12345',
+            'email' => 'test_off@6id.mil.ph'
+        ],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    $createdOfficeId = (int)($resOfficeCreate['json']['data']['id'] ?? 0);
+    if ($createdOfficeId > 0) {
+        $cleanupOfficeIds[] = $createdOfficeId;
+    }
+    assertTest(
+        "Test 15B: POST create office as Administrator creates office and returns HTTP 201",
+        $resOfficeCreate['status'] === 201 &&
+        ($resOfficeCreate['json']['success'] ?? false) === true &&
+        $createdOfficeId > 0 &&
+        ($resOfficeCreate['json']['data']['code'] ?? '') === $testOfficeCode,
+        "Status: {$resOfficeCreate['status']}, Body: {$resOfficeCreate['body']}"
+    );
+
+    // 15C: POST create office duplicate code within org rejected with 400 Bad Request
+    $resOfficeDup = invokeApiEndpoint(
+        'backend/api/core/offices/index.php',
+        'POST',
+        [],
+        [
+            'code' => $testOfficeCode,
+            'name' => 'Duplicate Office Name',
+        ],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 15C: POST duplicate office code in same organization rejected with HTTP 409 Conflict",
+        in_array($resOfficeDup['status'], [400, 409], true) &&
+        ($resOfficeDup['json']['success'] ?? true) === false &&
+        str_contains($resOfficeDup['json']['message'] ?? '', 'already exists'),
+        "Status: {$resOfficeDup['status']}, Body: {$resOfficeDup['body']}"
+    );
+
+    // 15D: PATCH update office (edit name, toggle is_active) succeeds
+    $resOfficePatch = invokeApiEndpoint(
+        'backend/api/core/offices/index.php',
+        'PATCH',
+        [],
+        [
+            'id' => $createdOfficeId,
+            'name' => 'Test Unit Office Beta Updated',
+            'is_active' => 0
+        ],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 15D: PATCH update office name and deactivate succeeds with HTTP 200",
+        $resOfficePatch['status'] === 200 &&
+        ($resOfficePatch['json']['success'] ?? false) === true &&
+        (int)($resOfficePatch['json']['data']['is_active'] ?? 1) === 0,
+        "Status: {$resOfficePatch['status']}, Body: {$resOfficePatch['body']}"
+    );
+
+    // Reactivate office for user assignment test
+    $pdo->exec("UPDATE tbl_offices SET is_active = 1 WHERE id = {$createdOfficeId}");
+
+    // 15E: Deletion guard: Cannot delete office if user is assigned
+    $pdo->exec("INSERT INTO tbl_users (username, full_name, password, role, role_id, office_id, is_active, created_at, updated_at) VALUES ('office_guard_user', 'Guard User', 'hash', 'User', 2, {$createdOfficeId}, 1, NOW(), NOW())");
+    $guardUserId = (int)$pdo->lastInsertId();
+    $cleanupUserIds[] = $guardUserId;
+
+    $resDeleteBlocked = invokeApiEndpoint(
+        'backend/api/core/offices/index.php',
+        'DELETE',
+        [],
+        ['id' => $createdOfficeId],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 15E: DELETE office with assigned users blocked with HTTP 400 Bad Request",
+        $resDeleteBlocked['status'] === 400 &&
+        ($resDeleteBlocked['json']['success'] ?? true) === false &&
+        str_contains($resDeleteBlocked['json']['message'] ?? '', 'assigned user'),
+        "Status: {$resDeleteBlocked['status']}, Body: {$resDeleteBlocked['body']}"
+    );
+
+    // 15F: DELETE clean office with 0 dependencies succeeds
+    $ephemeralCode = 'EPH_' . time();
+    $pdo->exec("INSERT INTO tbl_offices (organization_id, name, code, is_active, created_at, updated_at) VALUES (1, 'Ephemeral Office', '{$ephemeralCode}', 1, NOW(), NOW())");
+    $ephemeralId = (int)$pdo->lastInsertId();
+
+    $resDeleteClean = invokeApiEndpoint(
+        'backend/api/core/offices/index.php',
+        'DELETE',
+        [],
+        ['id' => $ephemeralId],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 15F: DELETE office with zero dependencies succeeds with HTTP 200",
+        $resDeleteClean['status'] === 200 &&
+        ($resDeleteClean['json']['success'] ?? false) === true,
+        "Status: {$resDeleteClean['status']}, Body: {$resDeleteClean['body']}"
+    );
+
+    // =========================================================================
+    // SUITE 16: User-to-Office Association & Auth Integration (Phase 3)
+    // =========================================================================
+    echo "\nSUITE 16: User-to-Office Association & Auth Session Integration\n";
+
+    // 16A: Create user with valid active office associates office_id
+    $testUserWithOfficeName = 'user_with_office_' . time();
+    $resCreateUserWithOffice = invokeApiEndpoint(
+        'backend/api/users/index.php',
+        'POST',
+        ['action' => 'create'],
+        [
+            'username' => $testUserWithOfficeName,
+            'full_name' => 'Officer Test User',
+            'password' => 'Password123!',
+            'role_id' => 2,
+            'office_id' => $createdOfficeId
+        ],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    $officerUserId = (int)($resCreateUserWithOffice['json']['data']['id'] ?? 0);
+    if ($officerUserId > 0) {
+        $cleanupUserIds[] = $officerUserId;
+    }
+    assertTest(
+        "Test 16A: POST create user with valid active office stores and returns office_id (HTTP 201)",
+        $resCreateUserWithOffice['status'] === 201 &&
+        ($resCreateUserWithOffice['json']['success'] ?? false) === true &&
+        (int)($resCreateUserWithOffice['json']['data']['office_id'] ?? 0) === $createdOfficeId,
+        "Status: {$resCreateUserWithOffice['status']}, Body: {$resCreateUserWithOffice['body']}"
+    );
+
+    // 16B: User session and login payloads include office_id, office_name, and office_code
+    $resAuthSession = invokeApiEndpoint(
+        'backend/api/auth/index.php',
+        'GET',
+        [],
+        null,
+        ['user_id' => $officerUserId, 'role' => 'User']
+    );
+    assertTest(
+        "Test 16B: GET auth session for user with office includes office_id, office_name, and office_code",
+        $resAuthSession['status'] === 200 &&
+        ($resAuthSession['json']['authenticated'] ?? false) === true &&
+        (int)($resAuthSession['json']['user']['office_id'] ?? 0) === $createdOfficeId &&
+        !empty($resAuthSession['json']['user']['office_code']),
+        "Status: {$resAuthSession['status']}, Body: {$resAuthSession['body']}"
+    );
+
+    // 16C: User creation with invalid or inactive office rejected with HTTP 400 Bad Request
+    $pdo->exec("UPDATE tbl_offices SET is_active = 0 WHERE id = {$createdOfficeId}");
+
+    $resCreateUserInactiveOffice = invokeApiEndpoint(
+        'backend/api/users/index.php',
+        'POST',
+        ['action' => 'create'],
+        [
+            'username' => 'inactive_off_user_' . time(),
+            'full_name' => 'Inactive Off User',
+            'password' => 'Password123!',
+            'role_id' => 2,
+            'office_id' => $createdOfficeId
+        ],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 16C: POST create user with inactive office rejected with HTTP 400 Bad Request",
+        $resCreateUserInactiveOffice['status'] === 400 &&
+        ($resCreateUserInactiveOffice['json']['success'] ?? true) === false &&
+        str_contains($resCreateUserInactiveOffice['json']['message'] ?? '', 'inactive office'),
+        "Status: {$resCreateUserInactiveOffice['status']}, Body: {$resCreateUserInactiveOffice['body']}"
+    );
+
+    // 16D: Create user with null/empty office allowed (users without office remain fully functional)
+    $testUserNoOfficeName = 'user_no_office_' . time();
+    $resCreateUserNoOffice = invokeApiEndpoint(
+        'backend/api/users/index.php',
+        'POST',
+        ['action' => 'create'],
+        [
+            'username' => $testUserNoOfficeName,
+            'full_name' => 'No Office User',
+            'password' => 'Password123!',
+            'role_id' => 2,
+            'office_id' => null
+        ],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    $noOfficeUserId = (int)($resCreateUserNoOffice['json']['data']['id'] ?? 0);
+    if ($noOfficeUserId > 0) {
+        $cleanupUserIds[] = $noOfficeUserId;
+    }
+    assertTest(
+        "Test 16D: POST create user with office_id=null succeeds (HTTP 201, unassigned office allowed)",
+        $resCreateUserNoOffice['status'] === 201 &&
+        ($resCreateUserNoOffice['json']['success'] ?? false) === true &&
+        ($resCreateUserNoOffice['json']['data']['office_id'] ?? null) === null,
+        "Status: {$resCreateUserNoOffice['status']}, Body: {$resCreateUserNoOffice['body']}"
+    );
+
+    // 16E: Auth session for user without office remains fully functional with null office fields
+    $resAuthNoOffice = invokeApiEndpoint(
+        'backend/api/auth/index.php',
+        'GET',
+        [],
+        null,
+        ['user_id' => $noOfficeUserId, 'role' => 'User']
+    );
+    assertTest(
+        "Test 16E: GET auth session for user without office returns null office fields without error",
+        $resAuthNoOffice['status'] === 200 &&
+        ($resAuthNoOffice['json']['authenticated'] ?? false) === true &&
+        ($resAuthNoOffice['json']['user']['office_id'] ?? null) === null,
+        "Status: {$resAuthNoOffice['status']}, Body: {$resAuthNoOffice['body']}"
+    );
+
 } finally {
     // =========================================================================
     // GUARANTEED CLEANUP: Restore Exact Original Module & RBAC Database State
@@ -832,20 +1164,47 @@ try {
         $pdo->exec("DELETE FROM tbl_users WHERE id IN ({$inUsers})");
     }
 
-    // 2. Delete all tracked temporary test roles and their permissions
+    // 2. Delete all tracked temporary test offices
+    if (!empty($cleanupOfficeIds)) {
+        $inOffices = implode(',', array_map('intval', array_unique($cleanupOfficeIds)));
+        $pdo->exec("UPDATE tbl_users SET office_id = NULL WHERE office_id IN ({$inOffices})");
+        $pdo->exec("DELETE FROM tbl_offices WHERE id IN ({$inOffices})");
+    }
+
+    // 3. Delete all tracked temporary test roles and their permissions
     if (!empty($cleanupRoleIds)) {
         $inRoles = implode(',', array_map('intval', array_unique($cleanupRoleIds)));
         $pdo->exec("DELETE FROM tbl_role_permissions WHERE role_id IN ({$inRoles})");
         $pdo->exec("DELETE FROM tbl_roles WHERE id IN ({$inRoles})");
     }
 
-    // 3. Restore all original permission states
+    // 4. Restore original organization record if modified
+    if (!empty($originalOrgRecord)) {
+        $upOrg = $pdo->prepare("
+            UPDATE tbl_organization
+            SET name = :name, short_name = :short_name, description = :description,
+                address = :address, contact_number = :contact_number, email = :email,
+                is_active = :is_active
+            WHERE id = 1
+        ");
+        $upOrg->execute([
+            ':name' => $originalOrgRecord['name'],
+            ':short_name' => $originalOrgRecord['short_name'],
+            ':description' => $originalOrgRecord['description'],
+            ':address' => $originalOrgRecord['address'],
+            ':contact_number' => $originalOrgRecord['contact_number'],
+            ':email' => $originalOrgRecord['email'],
+            ':is_active' => $originalOrgRecord['is_active']
+        ]);
+    }
+
+    // 5. Restore all original permission states
     foreach ($originalPermissionStates as $permId => $origActive) {
         $upPerm = $pdo->prepare("UPDATE tbl_permissions SET is_active = :act WHERE id = :id");
         $upPerm->execute([':act' => $origActive, ':id' => $permId]);
     }
 
-    // 4. Restore original module activation states
+    // 6. Restore original module activation states
     $restoredCleanly = true;
     foreach ($originalModuleStates as $moduleKey => $originalActiveState) {
         $upStmt = $pdo->prepare("UPDATE tbl_modules SET is_active = :act WHERE module_key = :k");

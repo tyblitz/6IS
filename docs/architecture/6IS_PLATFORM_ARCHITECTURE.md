@@ -182,15 +182,85 @@ Deactivating or disabling a module **NEVER** executes `DROP TABLE`, `DELETE`, or
 
 ---
 
-## 7. Evolution Roadmap (Future Phases)
+## 7. Phase 3 Implementation Detail (Organization & Office Management)
+
+Phase 3 establishes the centralized organizational backbone of 6IS, making the platform organization-aware and office-aware while strictly adhering to core platform principles.
 
 ```
-Phase 0, 1 & 2 (COMPLETED)
-Core Stabilization + Database Module Registry + Core RBAC
-   │
-   ▼
-Phase 3 (Planned)
-Multi-Tenant Organization & Office Hierarchy
+6IS CORE
+├── Authentication
+├── Organization (tbl_organization)
+├── Offices (tbl_offices)
+├── Users (tbl_users.office_id)
+├── Roles (tbl_roles)
+├── Permissions (tbl_permissions)
+├── Module Registry (tbl_modules)
+└── Audit & System Administration
+```
+
+1. **Single-Organization Deployment Architecture (`tbl_organization`)**:
+   - 6IS operates on a single organization per deployment model (e.g. `6th Infantry Division`, `6ID`).
+   - Generic multi-company isolation, tenant switching, accounting multi-currency, and tenant isolation overhead are deliberately omitted.
+   - Database schema: `tbl_organization` (`id`, `name`, `short_name`, `description`, `address`, `contact_number`, `email`, `logo_path`, `is_active`, `created_at`, `updated_at`).
+   - Default primary record (ID = 1) is automatically seeded and preserved.
+
+2. **Organizational Offices Directory (`tbl_offices`)**:
+   - Relational child of `tbl_organization` (`organization_id` foreign key).
+   - Code uniqueness enforced within the organization: `UNIQUE KEY uq_org_office_code (organization_id, code)`.
+   - Backward compatibility: Preserves existing operational unit aliases (`office_name`, `office_code`, `office_abbv`) so that legacy queries in operational modules continue to function without breakage.
+   - Deactivation preference: Offices can be deactivated (`is_active = 0`) to retire units while preserving all historical references.
+   - Deletion protection guard: Physical deletion of an office is strictly rejected (HTTP 400) if user accounts are assigned or if historical business module records reference the office (`tbl_accomplishments`, `tbl_communications`, `tbl_inventory_equipment`).
+
+3. **User-to-Office Association (`tbl_users.office_id`)**:
+   - Each user account has an optional primary office assignment (`office_id INT NULL`).
+   - Relational integrity: Foreign key constraint `fk_users_office` with `ON DELETE SET NULL`.
+   - Null-tolerant: Users without an assigned office (e.g. external auditors, unassigned personnel) remain fully operational with zero authentication or permission impediments.
+   - User session integration: `/backend/api/auth/index.php` returns `office_id`, `office_name`, and `office_code` on login and session retrieval.
+
+4. **Phase 3 Core Permissions Catalog**:
+   - Seeded in `tbl_permissions` and governed by Core RBAC:
+     - `organization.view`: View organization identity and profile (Admin, User baseline).
+     - `organization.configure`: Edit and configure organization profile (Admin only).
+     - `offices.view`: View organizational offices directory (Admin, User baseline).
+     - `offices.create`: Register a new organizational office (Admin only).
+     - `offices.edit`: Update office metadata and toggle active status (Admin only).
+     - `offices.delete`: Delete an office with zero dependencies (Admin only).
+     - `offices.configure`: Manage office settings and categories (Admin only).
+
+5. **Scope Boundary — Business Modules Not Yet Office-Scoped**:
+   - Phase 3 establishes the organizational foundations in Core.
+   - **Business module data filtering (e.g. filtering inventory equipment, communications, or accomplishments by office) is NOT implemented in Phase 3**.
+   - Business modules will consume `tbl_offices` and user office assignments in subsequent phases.
+
+6. **Production APIs**:
+   - `backend/api/core/organization/index.php`:
+     - `GET`: Returns organization details (requires `organization.view`).
+     - `PATCH` / `POST`: Updates organization identity with input validation (requires `organization.configure`).
+   - `backend/api/core/offices/index.php`:
+     - `GET`: Returns offices list with assigned `user_count`, search filter, and active-only flag (requires `offices.view`).
+     - `POST`: Creates new office with code/name uniqueness enforcement (requires `offices.create`).
+     - `PATCH`: Updates office details and toggles active state (requires `offices.edit`).
+     - `DELETE`: Enforces zero-dependency safety check before deleting office (requires `offices.delete`).
+   - `backend/api/users/index.php`:
+     - `GET`: Returns users with `office_id`, `office_name`, `office_code`.
+     - `POST` (`create`, `update`): Validates and associates `office_id` (requires active office).
+
+7. **Frontend Architecture**:
+   - Types: `frontend/src/types/organization.ts`, `frontend/src/types/office.ts`, and updated `frontend/src/types/user.ts` & `frontend/src/types/auth.ts`.
+   - Services: `organizationService.ts` and `officeService.ts`.
+   - Administrator UI Views:
+     - `AdminOrganizationView.vue` at `/administrator/organization`: Enterprise profile card, contact details, headquarters location, and edit modal.
+     - `AdminOfficesView.vue` at `/administrator/offices`: Offices directory table, user count badges, search filter, status filter, create/edit modal, and safe deletion confirmation.
+     - `AdminUsersView.vue`: Office column, office filter, and office selector in user creation/edit modal.
+     - `AdministratorView.vue`: Organization Profile and Offices Management launcher cards.
+
+---
+
+## 8. Evolution Roadmap (Future Phases)
+
+```
+Phase 0, 1, 2 & 3 (COMPLETED)
+Core Stabilization + Module Registry + Core RBAC + Organization & Offices
    │
    ▼
 Phase 4 (Planned)
@@ -200,10 +270,6 @@ Declarative Module Manifests (module.json)
 Phase 5 (Planned)
 Modular App Store & Guided Setup Wizard
 ```
-
-### Phase 3: Multi-Tenant Organization & Office Hierarchy
-- Contextualize module activations by organizational branch or unit (e.g. Unit A enables Inventory, Unit B enables Communications).
-- Data isolation driven by tenant identifier while sharing the core platform codebase.
 
 ### Phase 4: Declarative Module Manifests (`module.json`)
 - Each business module self-defines:
@@ -215,4 +281,3 @@ Modular App Store & Guided Setup Wizard
 ### Phase 5: Modular App Store & Guided Setup Wizard
 - Interactive graphical installer allowing administrators to enable/disable module packs on initial system setup.
 - Versioned upgrade engine running module-specific database migrations safely.
-

@@ -61,7 +61,18 @@ VALUES
 
     -- Modules (Core Registry)
     ('modules', 'view', 'View Modules', 'View registered platform modules and status', 1, NOW(), NOW()),
-    ('modules', 'configure', 'Configure Modules', 'Activate or deactivate platform business modules', 1, NOW(), NOW())
+    ('modules', 'configure', 'Configure Modules', 'Activate or deactivate platform business modules', 1, NOW(), NOW()),
+
+    -- Organization (Core Phase 3)
+    ('organization', 'view', 'View Organization', 'View organization profile, branding, and details', 1, NOW(), NOW()),
+    ('organization', 'configure', 'Configure Organization', 'Update organization profile, headquarters, and contacts', 1, NOW(), NOW()),
+
+    -- Offices (Core Phase 3)
+    ('offices', 'view', 'View Offices', 'View offices directory and structure', 1, NOW(), NOW()),
+    ('offices', 'create', 'Create Offices', 'Create and register new organizational offices', 1, NOW(), NOW()),
+    ('offices', 'edit', 'Edit Offices', 'Update office details, contacts, and status', 1, NOW(), NOW()),
+    ('offices', 'delete', 'Delete Offices', 'Delete offices that have no dependent records', 1, NOW(), NOW()),
+    ('offices', 'configure', 'Configure Offices', 'Manage office operational policies and assignments', 1, NOW(), NOW())
 ON DUPLICATE KEY UPDATE
     `name` = VALUES(`name`),
     `description` = VALUES(`description`),
@@ -83,7 +94,10 @@ JOIN `tbl_permissions` p ON (
     (p.module_key = 'inventory' AND p.permission_key = 'view') OR
     (p.module_key = 'communications' AND p.permission_key = 'view') OR
     (p.module_key = 'calendar' AND p.permission_key = 'view') OR
-    (p.module_key = 'accomplishments' AND p.permission_key = 'view')
+    (p.module_key = 'accomplishments' AND p.permission_key = 'view') OR
+    (p.module_key = 'organization' AND p.permission_key = 'view') OR
+    (p.module_key = 'offices' AND p.permission_key = 'view')
 )
 WHERE r.name = 'User'
 ON DUPLICATE KEY UPDATE `created_at` = VALUES(`created_at`);
+

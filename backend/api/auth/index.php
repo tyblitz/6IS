@@ -62,11 +62,15 @@ require_once __DIR__ . '/../../helpers/permissions.php';
 if ($method === 'GET') {
     if (isset($_SESSION['user_id'])) {
         try {
-            // Verify user is still active in database and resolve active role
+            // Verify user is still active in database and resolve active role & office
             $stmt = $pdo->prepare("
-                SELECT u.id, u.username, u.role, u.role_id, u.is_active, u.deleted_at, r.name AS role_name
+                SELECT u.id, u.username, u.role, u.role_id, u.office_id,
+                       COALESCE(NULLIF(o.name, ''), o.office_name, o.code, o.office_code) AS office_name,
+                       COALESCE(NULLIF(o.code, ''), o.office_code, o.office_abbv) AS office_code,
+                       u.is_active, u.deleted_at, r.name AS role_name
                 FROM tbl_users u
                 LEFT JOIN tbl_roles r ON u.role_id = r.id
+                LEFT JOIN tbl_offices o ON u.office_id = o.id
                 WHERE u.id = :id
                 LIMIT 1
             ");
@@ -86,6 +90,9 @@ if ($method === 'GET') {
                         'username' => $user['username'],
                         'role' => $effectiveRole,
                         'role_id' => $user['role_id'] ? (int)$user['role_id'] : null,
+                        'office_id' => $user['office_id'] ? (int)$user['office_id'] : null,
+                        'office_name' => $user['office_name'] ?: null,
+                        'office_code' => $user['office_code'] ?: null,
                         'permissions' => $permissions
                     ]
                 ], JSON_UNESCAPED_UNICODE);
@@ -132,11 +139,15 @@ if ($method === 'POST') {
         sendJsonResponse(false, 'Username and password are required.', null, null, 400);
     }
 
-    // Query active user from tbl_users and join tbl_roles
+    // Query active user from tbl_users and join tbl_roles and tbl_offices
     $stmt = $pdo->prepare("
-        SELECT u.id, u.username, u.password, u.role, u.role_id, u.is_active, u.deleted_at, r.name AS role_name
+        SELECT u.id, u.username, u.password, u.role, u.role_id, u.office_id,
+               COALESCE(NULLIF(o.name, ''), o.office_name, o.code, o.office_code) AS office_name,
+               COALESCE(NULLIF(o.code, ''), o.office_code, o.office_abbv) AS office_code,
+               u.is_active, u.deleted_at, r.name AS role_name
         FROM tbl_users u
         LEFT JOIN tbl_roles r ON u.role_id = r.id
+        LEFT JOIN tbl_offices o ON u.office_id = o.id
         WHERE LOWER(u.username) = LOWER(:username) AND u.deleted_at IS NULL
         LIMIT 1
     ");
@@ -157,6 +168,9 @@ if ($method === 'POST') {
     if (!empty($user['role_id'])) {
         $_SESSION['role_id'] = (int)$user['role_id'];
     }
+    if (!empty($user['office_id'])) {
+        $_SESSION['office_id'] = (int)$user['office_id'];
+    }
 
     $permissions = getUserPermissions((int)$user['id'], $pdo);
 
@@ -168,6 +182,9 @@ if ($method === 'POST') {
             'username' => $user['username'],
             'role' => $effectiveRole,
             'role_id' => $user['role_id'] ? (int)$user['role_id'] : null,
+            'office_id' => $user['office_id'] ? (int)$user['office_id'] : null,
+            'office_name' => $user['office_name'] ?: null,
+            'office_code' => $user['office_code'] ?: null,
             'permissions' => $permissions
         ]
     ], JSON_UNESCAPED_UNICODE);

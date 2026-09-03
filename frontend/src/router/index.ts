@@ -21,6 +21,8 @@ import AdminAccomplishmentCategoriesView from '../views/administrator/AdminAccom
 import AdminUsersView from '../views/administrator/AdminUsersView.vue'
 import AdminModulesView from '../views/administrator/AdminModulesView.vue'
 import AdminRolesView from '../views/administrator/AdminRolesView.vue'
+import AdminOrganizationView from '../views/administrator/AdminOrganizationView.vue'
+import AdminOfficesView from '../views/administrator/AdminOfficesView.vue'
 
 // Operational Views
 import CommunicationsView from '../views/communications/CommunicationsView.vue'
@@ -232,6 +234,28 @@ const routes: Array<RouteRecordRaw> = [
       requiresAuth: true,
       requiresRole: 'Administrator',
       permission: 'roles.view'
+    }
+  },
+  {
+    path: '/administrator/organization',
+    name: 'Organization Profile',
+    component: AdminOrganizationView,
+    meta: {
+      module: ModuleName.Administrator,
+      requiresAuth: true,
+      requiresRole: 'Administrator',
+      permission: 'organization.view'
+    }
+  },
+  {
+    path: '/administrator/offices',
+    name: 'Offices Management',
+    component: AdminOfficesView,
+    meta: {
+      module: ModuleName.Administrator,
+      requiresAuth: true,
+      requiresRole: 'Administrator',
+      permission: 'offices.view'
     }
   },
 

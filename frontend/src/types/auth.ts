@@ -8,6 +8,9 @@ export interface AuthUser {
   username: string;
   role: UserRole;
   role_id?: number | null;
+  office_id?: number | null;
+  office_name?: string | null;
+  office_code?: string | null;
   permissions?: string[];
 }
 

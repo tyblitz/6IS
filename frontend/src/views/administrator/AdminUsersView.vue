@@ -48,6 +48,17 @@
             <option value="inactive">Inactive Only</option>
           </select>
         </div>
+
+        <div class="filter-group">
+          <label for="userOfficeFilter">Office</label>
+          <select id="userOfficeFilter" v-model="filterOffice" class="input-select">
+            <option value="all">All Offices</option>
+            <option value="unassigned">Unassigned</option>
+            <option v-for="off in availableOffices" :key="off.id" :value="off.id">
+              {{ off.code }} - {{ off.name }}
+            </option>
+          </select>
+        </div>
       </div>
 
       <!-- Users Table Card -->
@@ -87,6 +98,12 @@
                     <ion-icon :icon="getSortIcon('role')" :class="['sort-icon', sortKey === 'role' ? 'active-sort' : '']" />
                   </div>
                 </th>
+                <th class="sortable-th" @click="toggleSort('office_name')">
+                  <div class="th-content">
+                    <span>Office</span>
+                    <ion-icon :icon="getSortIcon('office_name')" :class="['sort-icon', sortKey === 'office_name' ? 'active-sort' : '']" />
+                  </div>
+                </th>
                 <th class="text-center sortable-th" @click="toggleSort('is_active')">
                   <div class="th-content justify-center">
                     <span>Status</span>
@@ -110,6 +127,12 @@
                   <span :class="['role-badge', user.role === 'Administrator' ? 'role-admin' : 'role-user']">
                     {{ user.role }}
                   </span>
+                </td>
+                <td>
+                  <span v-if="user.office_code" class="office-tag" :title="user.office_name || user.office_code">
+                    {{ user.office_code }}
+                  </span>
+                  <span v-else class="text-muted">—</span>
                 </td>
                 <td class="text-center">
                   <span :class="['status-badge', user.is_active === 1 ? 'status-active' : 'status-inactive']">
@@ -192,6 +215,16 @@
             </div>
 
             <div class="form-group">
+              <label for="office">Primary Office Assignment</label>
+              <select id="office" v-model="form.office_id" class="input-select">
+                <option :value="null">-- None / Unassigned --</option>
+                <option v-for="off in availableOffices" :key="off.id" :value="off.id">
+                  {{ off.code }} — {{ off.name }}
+                </option>
+              </select>
+            </div>
+
+            <div class="form-group">
               <label for="password">
                 Password {{ isEditMode ? '(Leave blank to keep unchanged)' : '' }}
               </label>
@@ -248,16 +281,20 @@ import {
   toggleUserActive
 } from '../../services/userService'
 import { fetchRoles } from '../../services/roleService'
+import { fetchOffices } from '../../services/officeService'
 import type { UserAccount, UserRole } from '../../types/user'
 import type { Role } from '../../types/permission'
+import type { Office } from '../../types/office'
 
 const users = ref<UserAccount[]>([])
 const availableRoles = ref<Role[]>([])
+const availableOffices = ref<Office[]>([])
 const loading = ref(true)
 
 const searchQuery = ref('')
 const filterRole = ref('all')
 const filterStatus = ref('all')
+const filterOffice = ref('all')
 
 const filteredUsers = computed(() => {
   return users.value.filter(u => {
@@ -276,6 +313,14 @@ const filteredUsers = computed(() => {
 
     // Status Filter
     if (filterStatus.value === 'active' && u.is_active !== 1) return false
+    if (filterStatus.value === 'inactive' && u.is_active === 1) return false
+
+    // Office Filter
+    if (filterOffice.value !== 'all') {
+      if (filterOffice.value === 'unassigned' && u.office_id) return false
+      if (filterOffice.value !== 'unassigned' && u.office_id !== Number(filterOffice.value)) return false
+    }
+
     return true
   })
 })
@@ -309,19 +354,22 @@ const form = ref({
   full_name: '',
   password: '',
   role_id: 2,
-  role: 'User' as UserRole
+  role: 'User' as UserRole,
+  office_id: null as number | null
 })
 
 async function loadUsers() {
   loading.value = true
-  const [res, rolesRes] = await Promise.all([
+  const [res, rolesRes, officesRes] = await Promise.all([
     fetchUsers(),
-    fetchRoles()
+    fetchRoles(),
+    fetchOffices(true)
   ])
   if (res.success) {
     users.value = res.data
   }
   availableRoles.value = rolesRes.filter(r => r.is_active)
+  availableOffices.value = officesRes
   loading.value = false
 }
 
@@ -334,7 +382,8 @@ function openCreateModal() {
     full_name: '',
     password: '',
     role_id: defaultRole ? defaultRole.id : 2,
-    role: defaultRole ? defaultRole.name : 'User'
+    role: defaultRole ? defaultRole.name : 'User',
+    office_id: null
   }
   modalError.value = ''
   showModal.value = true
@@ -349,7 +398,8 @@ function openEditModal(user: UserAccount) {
     full_name: user.full_name || '',
     password: '',
     role_id: matchingRole ? matchingRole.id : (user.role_id || 2),
-    role: user.role
+    role: user.role,
+    office_id: user.office_id || null
   }
   modalError.value = ''
   showModal.value = true
@@ -372,6 +422,7 @@ async function handleSubmit() {
       full_name: form.value.full_name,
       role: roleName,
       role_id: form.value.role_id,
+      office_id: form.value.office_id,
       password: form.value.password || undefined
     })
 
@@ -387,7 +438,8 @@ async function handleSubmit() {
       full_name: form.value.full_name,
       password: form.value.password,
       role: roleName,
-      role_id: form.value.role_id
+      role_id: form.value.role_id,
+      office_id: form.value.office_id
     })
 
     if (res.success) {
@@ -561,6 +613,22 @@ onMounted(() => {
 
 .status-active { background: #f0fdf4; color: #16a34a; }
 .status-inactive { background: #fef2f2; color: #dc2626; }
+
+.office-tag {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.text-muted {
+  color: #94a3b8;
+}
 
 .filter-controls-card {
   background: #ffffff;

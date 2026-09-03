@@ -98,6 +98,24 @@
           </div>
         </div>
 
+        <!-- Organization Management -->
+        <div v-if="hasPermission('organization', 'view')" class="admin-card" @click="goTo('/administrator/organization')">
+          <div class="card-icon teal-bg"><ion-icon :icon="businessOutline" /></div>
+          <div class="card-info">
+            <h3>Organization Profile</h3>
+            <p>Manage enterprise organization identity, headquarters location, and official contact channels.</p>
+          </div>
+        </div>
+
+        <!-- Offices Management -->
+        <div v-if="hasPermission('offices', 'view')" class="admin-card" @click="goTo('/administrator/offices')">
+          <div class="card-icon cyan-bg"><ion-icon :icon="businessOutline" /></div>
+          <div class="card-info">
+            <h3>Offices Management</h3>
+            <p>Manage organizational offices, unit identifiers, location addresses, and user associations.</p>
+          </div>
+        </div>
+
         <!-- User Management -->
         <div class="admin-card" @click="goTo('/administrator/users')">
           <div class="card-icon purple-bg"><ion-icon :icon="peopleOutline" /></div>
@@ -141,14 +159,17 @@ import {
   peopleOutline,
   checkmarkCircleOutline,
   gridOutline,
-  shieldCheckmarkOutline
+  shieldCheckmarkOutline,
+  businessOutline
 } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
 import { activeUser } from '../../services/authService'
 import { fetchUsers } from '../../services/userService'
+import { usePermissions } from '../../composables/usePermissions'
 
 const router = useRouter()
+const { hasPermission } = usePermissions()
 
 const loadingKpi = ref(true)
 const kpis = ref({
@@ -369,6 +390,8 @@ onMounted(() => {
 .purple-bg { background: #faf5ff; color: #9333ea; }
 .indigo-bg { background: #eef2ff; color: #4f46e5; }
 .navy-bg { background: #eff6ff; color: #1e3a8a; }
+.teal-bg { background: #f0fdfa; color: #0d9488; }
+.cyan-bg { background: #ecfeff; color: #0891b2; }
 
 .card-info h3 {
   font-size: 18px;

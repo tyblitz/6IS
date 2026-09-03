@@ -40,6 +40,7 @@ try {
         __DIR__ . '/migrations/create_calendar_tables.sql',
         __DIR__ . '/migrations/create_modules_table.sql',
         __DIR__ . '/migrations/create_roles_tables.sql',
+        __DIR__ . '/migrations/create_organization_and_offices_tables.sql',
         __DIR__ . '/migrations/seed_roles_and_permissions.sql',
         __DIR__ . '/migrations/add_role_id_to_users.sql'
     ];

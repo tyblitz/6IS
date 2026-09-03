@@ -67,10 +67,12 @@ if ($method === 'GET') {
                     WHEN 'communications' THEN 2
                     WHEN 'calendar' THEN 3
                     WHEN 'accomplishments' THEN 4
-                    WHEN 'users' THEN 5
-                    WHEN 'roles' THEN 6
-                    WHEN 'modules' THEN 7
-                    ELSE 8
+                    WHEN 'organization' THEN 5
+                    WHEN 'offices' THEN 6
+                    WHEN 'users' THEN 7
+                    WHEN 'roles' THEN 8
+                    WHEN 'modules' THEN 9
+                    ELSE 10
                 END,
                 CASE p.permission_key
                     WHEN 'view' THEN 1
