@@ -15,67 +15,71 @@ DELETE FROM `tbl_role_permissions` WHERE `permission_id` IN (SELECT `id` FROM `t
 DELETE FROM `tbl_permissions` WHERE `module_key` = 'dashboard' AND `permission_key` = 'view';
 
 -- 3. Seed Official Permissions Registry (Idempotent: ON DUPLICATE KEY UPDATE without overwriting is_active)
-INSERT INTO `tbl_permissions` (`module_key`, `permission_key`, `name`, `description`, `is_active`, `created_at`, `updated_at`)
+INSERT INTO `tbl_permissions` (`module_key`, `permission_key`, `name`, `description`, `is_active`, `is_system`, `created_at`, `updated_at`)
 VALUES
     -- Inventory
-    ('inventory', 'view', 'View Inventory', 'View ICT equipment records and JRRS target metrics', 1, NOW(), NOW()),
-    ('inventory', 'create', 'Create Equipment', 'Register new ICT equipment records into inventory', 1, NOW(), NOW()),
-    ('inventory', 'edit', 'Edit Equipment', 'Update equipment details, specifications, and service status', 1, NOW(), NOW()),
-    ('inventory', 'delete', 'Delete Equipment', 'Archive or remove equipment records from inventory', 1, NOW(), NOW()),
-    ('inventory', 'configure', 'Configure Inventory', 'Manage JRRS targets, equipment types, subtypes, and statuses', 1, NOW(), NOW()),
+    ('inventory', 'view', 'View Inventory', 'View ICT equipment records and JRRS target metrics', 1, 1, NOW(), NOW()),
+    ('inventory', 'create', 'Create Equipment', 'Register new ICT equipment records into inventory', 1, 1, NOW(), NOW()),
+    ('inventory', 'edit', 'Edit Equipment', 'Update equipment details, specifications, and service status', 1, 1, NOW(), NOW()),
+    ('inventory', 'delete', 'Delete Equipment', 'Archive or remove equipment records from inventory', 1, 1, NOW(), NOW()),
+    ('inventory', 'configure', 'Configure Inventory', 'Manage JRRS targets, equipment types, subtypes, and statuses', 1, 1, NOW(), NOW()),
 
     -- Communications
-    ('communications', 'view', 'View Communications', 'View incoming and outgoing communications records', 1, NOW(), NOW()),
-    ('communications', 'create', 'Create Communication', 'Register new incoming and outgoing communication entries', 1, NOW(), NOW()),
-    ('communications', 'edit', 'Edit Communication', 'Update communication details, attachments, and statuses', 1, NOW(), NOW()),
-    ('communications', 'delete', 'Delete Communication', 'Archive or remove communication records', 1, NOW(), NOW()),
-    ('communications', 'configure', 'Configure Communications', 'Manage communication categories, purposes, and reference data', 1, NOW(), NOW()),
+    ('communications', 'view', 'View Communications', 'View incoming and outgoing communications records', 1, 1, NOW(), NOW()),
+    ('communications', 'create', 'Create Communication', 'Register new incoming and outgoing communication entries', 1, 1, NOW(), NOW()),
+    ('communications', 'edit', 'Edit Communication', 'Update communication details, attachments, and statuses', 1, 1, NOW(), NOW()),
+    ('communications', 'delete', 'Delete Communication', 'Archive or remove communication records', 1, 1, NOW(), NOW()),
+    ('communications', 'configure', 'Configure Communications', 'Manage communication categories, purposes, and reference data', 1, 1, NOW(), NOW()),
 
     -- Calendar
-    ('calendar', 'view', 'View Calendar', 'View scheduled events, activities, and calendar views', 1, NOW(), NOW()),
-    ('calendar', 'create', 'Create Event', 'Schedule new calendar events and command activities', 1, NOW(), NOW()),
-    ('calendar', 'edit', 'Edit Event', 'Update event details, reschedule dates, and transition status', 1, NOW(), NOW()),
-    ('calendar', 'delete', 'Delete Event', 'Cancel or archive scheduled calendar events', 1, NOW(), NOW()),
-    ('calendar', 'configure', 'Configure Calendar', 'Manage calendar event types, categories, and references', 1, NOW(), NOW()),
+    ('calendar', 'view', 'View Calendar', 'View scheduled events, activities, and calendar views', 1, 1, NOW(), NOW()),
+    ('calendar', 'create', 'Create Event', 'Schedule new calendar events and command activities', 1, 1, NOW(), NOW()),
+    ('calendar', 'edit', 'Edit Event', 'Update event details, reschedule dates, and transition status', 1, 1, NOW(), NOW()),
+    ('calendar', 'delete', 'Delete Event', 'Cancel or archive scheduled calendar events', 1, 1, NOW(), NOW()),
+    ('calendar', 'configure', 'Configure Calendar', 'Manage calendar event types, categories, and references', 1, 1, NOW(), NOW()),
 
     -- Accomplishments
-    ('accomplishments', 'view', 'View Accomplishments', 'View accomplishment records and periodic summary reports', 1, NOW(), NOW()),
-    ('accomplishments', 'create', 'Create Accomplishment', 'Record new operational accomplishment reports', 1, NOW(), NOW()),
-    ('accomplishments', 'edit', 'Edit Accomplishment', 'Update accomplishment records, descriptions, and remarks', 1, NOW(), NOW()),
-    ('accomplishments', 'delete', 'Delete Accomplishment', 'Archive or delete accomplishment records', 1, NOW(), NOW()),
-    ('accomplishments', 'configure', 'Configure Accomplishments', 'Manage accomplishment categories and templates', 1, NOW(), NOW()),
+    ('accomplishments', 'view', 'View Accomplishments', 'View accomplishment records and periodic summary reports', 1, 1, NOW(), NOW()),
+    ('accomplishments', 'create', 'Create Accomplishment', 'Record new operational accomplishment reports', 1, 1, NOW(), NOW()),
+    ('accomplishments', 'edit', 'Edit Accomplishment', 'Update accomplishment records, descriptions, and remarks', 1, 1, NOW(), NOW()),
+    ('accomplishments', 'delete', 'Delete Accomplishment', 'Archive or delete accomplishment records', 1, 1, NOW(), NOW()),
+    ('accomplishments', 'configure', 'Configure Accomplishments', 'Manage accomplishment categories and templates', 1, 1, NOW(), NOW()),
 
     -- Users (Core)
-    ('users', 'view', 'View Users', 'View system user accounts, profiles, and active status', 1, NOW(), NOW()),
-    ('users', 'create', 'Create User', 'Register new user accounts in the platform', 1, NOW(), NOW()),
-    ('users', 'edit', 'Edit User', 'Update user account details, credentials, and active state', 1, NOW(), NOW()),
-    ('users', 'delete', 'Delete User', 'Deactivate or soft-delete user accounts', 1, NOW(), NOW()),
-    ('users', 'configure', 'Configure User Roles', 'Assign and reassign roles to user accounts', 1, NOW(), NOW()),
+    ('users', 'view', 'View Users', 'View system user accounts, profiles, and active status', 1, 1, NOW(), NOW()),
+    ('users', 'create', 'Create User', 'Register new user accounts in the platform', 1, 1, NOW(), NOW()),
+    ('users', 'edit', 'Edit User', 'Update user account details, credentials, and active state', 1, 1, NOW(), NOW()),
+    ('users', 'delete', 'Delete User', 'Deactivate or soft-delete user accounts', 1, 1, NOW(), NOW()),
+    ('users', 'configure', 'Configure User Roles', 'Assign and reassign roles to user accounts', 1, 1, NOW(), NOW()),
 
     -- Roles & Permissions (Core)
-    ('roles', 'view', 'View Roles', 'View system roles and permission matrices', 1, NOW(), NOW()),
-    ('roles', 'create', 'Create Role', 'Create new custom platform access roles', 1, NOW(), NOW()),
-    ('roles', 'edit', 'Edit Role', 'Update custom role details and active status', 1, NOW(), NOW()),
-    ('roles', 'delete', 'Delete Role', 'Delete custom, unassigned access roles', 1, NOW(), NOW()),
-    ('roles', 'configure', 'Configure Permissions', 'Assign and modify permission matrices for roles', 1, NOW(), NOW()),
+    ('roles', 'view', 'View Roles', 'View system roles and permission matrices', 1, 1, NOW(), NOW()),
+    ('roles', 'create', 'Create Role', 'Create new custom platform access roles', 1, 1, NOW(), NOW()),
+    ('roles', 'edit', 'Edit Role', 'Update custom role details and active status', 1, 1, NOW(), NOW()),
+    ('roles', 'delete', 'Delete Role', 'Delete custom, unassigned access roles', 1, 1, NOW(), NOW()),
+    ('roles', 'configure', 'Configure Permissions', 'Assign and modify permission matrices for roles', 1, 1, NOW(), NOW()),
 
     -- Modules (Core Registry)
-    ('modules', 'view', 'View Modules', 'View registered platform modules and status', 1, NOW(), NOW()),
-    ('modules', 'configure', 'Configure Modules', 'Activate or deactivate platform business modules', 1, NOW(), NOW()),
+    ('modules', 'view', 'View Modules', 'View registered platform modules and status', 1, 1, NOW(), NOW()),
+    ('modules', 'configure', 'Configure Modules', 'Activate or deactivate platform business modules', 1, 1, NOW(), NOW()),
 
     -- Organization (Core Phase 3)
-    ('organization', 'view', 'View Organization', 'View organization profile, branding, and details', 1, NOW(), NOW()),
-    ('organization', 'configure', 'Configure Organization', 'Update organization profile, headquarters, and contacts', 1, NOW(), NOW()),
+    ('organization', 'view', 'View Organization', 'View organization profile, branding, and details', 1, 1, NOW(), NOW()),
+    ('organization', 'configure', 'Configure Organization', 'Update organization profile, headquarters, and contacts', 1, 1, NOW(), NOW()),
 
     -- Offices (Core Phase 3)
-    ('offices', 'view', 'View Offices', 'View offices directory and structure', 1, NOW(), NOW()),
-    ('offices', 'create', 'Create Offices', 'Create and register new organizational offices', 1, NOW(), NOW()),
-    ('offices', 'edit', 'Edit Offices', 'Update office details, contacts, and status', 1, NOW(), NOW()),
-    ('offices', 'delete', 'Delete Offices', 'Delete offices that have no dependent records', 1, NOW(), NOW()),
-    ('offices', 'configure', 'Configure Offices', 'Manage office operational policies and assignments', 1, NOW(), NOW())
+    ('offices', 'view', 'View Offices', 'View offices directory and structure', 1, 1, NOW(), NOW()),
+    ('offices', 'create', 'Create Offices', 'Create and register new organizational offices', 1, 1, NOW(), NOW()),
+    ('offices', 'edit', 'Edit Offices', 'Update office details, contacts, and status', 1, 1, NOW(), NOW()),
+    ('offices', 'delete', 'Delete Offices', 'Delete offices that have no dependent records', 1, 1, NOW(), NOW()),
+    ('offices', 'configure', 'Configure Offices', 'Manage office operational policies and assignments', 1, 1, NOW(), NOW()),
+
+    -- Audit (Core Phase 4)
+    ('audit', 'view', 'View Audit Logs', 'View system security and operational audit trails', 1, 1, NOW(), NOW())
 ON DUPLICATE KEY UPDATE
     `name` = VALUES(`name`),
     `description` = VALUES(`description`),
+    `is_system` = VALUES(`is_system`),
     `updated_at` = NOW();
 
 -- 4. Grant Administrator System Role ALL Permissions (Idempotent)

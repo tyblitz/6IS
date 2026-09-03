@@ -142,6 +142,15 @@
             <p>Manage system and custom roles, granular permissions, and module authorization matrices.</p>
           </div>
         </div>
+
+        <!-- Audit Logs & System Activity -->
+        <div v-if="hasPermission('audit', 'view')" class="admin-card" @click="goTo('/administrator/audit')">
+          <div class="card-icon slate-bg"><ion-icon :icon="documentTextOutline" /></div>
+          <div class="card-info">
+            <h3>Audit Logs</h3>
+            <p>Inspect immutable administrative audit trails, user authentication records, and system security events.</p>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -160,7 +169,8 @@ import {
   checkmarkCircleOutline,
   gridOutline,
   shieldCheckmarkOutline,
-  businessOutline
+  businessOutline,
+  documentTextOutline
 } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
@@ -392,6 +402,7 @@ onMounted(() => {
 .navy-bg { background: #eff6ff; color: #1e3a8a; }
 .teal-bg { background: #f0fdfa; color: #0d9488; }
 .cyan-bg { background: #ecfeff; color: #0891b2; }
+.slate-bg { background: #f1f5f9; color: #334155; }
 
 .card-info h3 {
   font-size: 18px;

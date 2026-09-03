@@ -9,7 +9,10 @@ import {
   folderOutline,
   bookmarkOutline,
   clipboardOutline,
-  peopleOutline
+  peopleOutline,
+  shieldOutline,
+  businessOutline,
+  documentTextOutline
 } from 'ionicons/icons'
 
 export const administratorMenu: SidebarItem[] = [
@@ -100,8 +103,28 @@ export const administratorMenu: SidebarItem[] = [
     icon: peopleOutline
   },
   {
+    label: 'Roles & Permissions',
+    route: '/administrator/roles',
+    icon: shieldOutline
+  },
+  {
+    label: 'Organization',
+    route: '/administrator/organization',
+    icon: businessOutline
+  },
+  {
+    label: 'Offices',
+    route: '/administrator/offices',
+    icon: businessOutline
+  },
+  {
     label: 'Modules',
     route: '/administrator/modules',
     icon: gridOutline
+  },
+  {
+    label: 'Audit Logs',
+    route: '/administrator/audit',
+    icon: documentTextOutline
   }
 ]

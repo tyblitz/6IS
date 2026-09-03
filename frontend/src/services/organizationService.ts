@@ -1,7 +1,8 @@
 // frontend/src/services/organizationService.ts
-// Frontend Service for 6IS Core Organization API Communications (Phase 3)
+// Frontend Service for 6IS Core Organization API Communications (Phase 4 Hardened)
 
 import type { Organization, OrganizationUpdatePayload } from '../types/organization'
+import { apiFetch } from '../utils/api'
 
 function resolveOrgApiUrl(): string {
   if (typeof window !== 'undefined') {
@@ -19,10 +20,9 @@ const ORG_API_URL = resolveOrgApiUrl()
  */
 export async function fetchOrganization(): Promise<Organization | null> {
   try {
-    const res = await fetch(ORG_API_URL, {
+    const res = await apiFetch(ORG_API_URL, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include'
+      headers: { 'Content-Type': 'application/json' }
     })
 
     if (!res.ok) {
@@ -48,10 +48,9 @@ export async function updateOrganization(
   payload: OrganizationUpdatePayload
 ): Promise<{ success: boolean; message: string; data?: Organization }> {
   try {
-    const res = await fetch(ORG_API_URL, {
+    const res = await apiFetch(ORG_API_URL, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify(payload)
     })
 

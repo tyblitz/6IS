@@ -2,19 +2,14 @@
 // backend/api/core/offices/index.php
 // REST API Endpoint for 6IS Core Offices Management (Phase 3)
 
-$allowedOrigin = $_SERVER['HTTP_ORIGIN'] ?? 'http://localhost:5173';
-header("Access-Control-Allow-Origin: {$allowedOrigin}");
-header('Access-Control-Allow-Credentials: true');
-header('Access-Control-Allow-Methods: GET, POST, PATCH, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With');
+require_once __DIR__ . '/../../../helpers/cors.php';
+handleCors();
+
 header('Content-Type: application/json; charset=utf-8');
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
-
 require_once __DIR__ . '/../../../helpers/auth.php';
+require_once __DIR__ . '/../../../helpers/csrf.php';
+require_once __DIR__ . '/../../../helpers/audit.php';
 require_once __DIR__ . '/../../../helpers/permissions.php';
 
 requireAuth();
@@ -54,6 +49,10 @@ if (empty($rawInput) && isset($GLOBALS['HTTP_RAW_POST_DATA'])) {
     $rawInput = $GLOBALS['HTTP_RAW_POST_DATA'];
 }
 $input = json_decode($rawInput, true) ?? [];
+
+if (in_array($method, ['POST', 'PATCH', 'PUT', 'DELETE'], true)) {
+    requireCsrf($input);
+}
 
 // =========================================================================
 // CONFIGURE: Office Policies & Metadata Endpoint
@@ -228,6 +227,8 @@ if ($method === 'POST') {
             sendJsonResponse(false, "Office name '{$name}' already exists in this organization.", null, null, 409);
         }
 
+        $pdo->beginTransaction();
+
         $insertStmt = $pdo->prepare("
             INSERT INTO tbl_offices (
                 organization_id, name, code, description, address, contact_number, email,
@@ -267,8 +268,29 @@ if ($method === 'POST') {
         $newOffice['office_code'] = $newOffice['code'];
         $newOffice['office_abbv'] = $newOffice['code'];
 
+        auditLog([
+            'action' => 'CREATE',
+            'module_key' => 'offices',
+            'entity_type' => 'office',
+            'entity_id' => (string)$createdId,
+            'description' => "Created office '{$code}' ({$name}).",
+            'old_values' => null,
+            'new_values' => [
+                'id' => $createdId,
+                'name' => $name,
+                'code' => $code,
+                'organization_id' => $orgId,
+                'is_active' => $isActive
+            ]
+        ], $pdo);
+
+        $pdo->commit();
+
         sendJsonResponse(true, "Office '{$code}' created successfully.", $newOffice, null, 201);
     } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         error_log('[offices] Database error: ' . $e->getMessage());
         sendJsonResponse(false, 'Database failure creating office.', null, null, 500);
     }
@@ -383,6 +405,8 @@ if ($method === 'PATCH') {
             $params[':is_active'] = $isActive;
         }
 
+        $pdo->beginTransaction();
+
         if (!empty($updates)) {
             $updates[] = '`updated_at` = NOW()';
             $sql = "UPDATE tbl_offices SET " . implode(', ', $updates) . " WHERE id = :id";
@@ -412,8 +436,36 @@ if ($method === 'PATCH') {
         $updatedOffice['office_code'] = $updatedOffice['code'];
         $updatedOffice['office_abbv'] = $updatedOffice['code'];
 
+        $actionType = 'UPDATE';
+        if ($isActive !== null && $isActive !== (int)$existing['is_active']) {
+            $actionType = $isActive === 1 ? 'ACTIVATE' : 'DEACTIVATE';
+        }
+
+        auditLog([
+            'action' => $actionType,
+            'module_key' => 'offices',
+            'entity_type' => 'office',
+            'entity_id' => (string)$officeId,
+            'description' => "Office '{$updatedOffice['code']}' updated.",
+            'old_values' => [
+                'name' => $existing['name'],
+                'code' => $existing['code'],
+                'is_active' => (int)$existing['is_active']
+            ],
+            'new_values' => [
+                'name' => $updatedOffice['name'],
+                'code' => $updatedOffice['code'],
+                'is_active' => (int)$updatedOffice['is_active']
+            ]
+        ], $pdo);
+
+        $pdo->commit();
+
         sendJsonResponse(true, "Office '{$updatedOffice['code']}' updated successfully.", $updatedOffice);
     } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         error_log('[offices] Database error: ' . $e->getMessage());
         sendJsonResponse(false, 'Database failure updating office.', null, null, 500);
     }
@@ -511,6 +563,20 @@ if ($method === 'DELETE') {
         }
 
         // Clean deletion when zero dependencies
+        auditLog([
+            'action' => 'DELETE',
+            'module_key' => 'offices',
+            'entity_type' => 'office',
+            'entity_id' => (string)$officeId,
+            'description' => "Deleted office '{$office['code']}'.",
+            'old_values' => [
+                'id' => $officeId,
+                'name' => $office['name'],
+                'code' => $office['code']
+            ],
+            'new_values' => null
+        ], $pdo);
+
         $delStmt = $pdo->prepare("DELETE FROM tbl_offices WHERE id = :id");
         $delStmt->execute([':id' => $officeId]);
 

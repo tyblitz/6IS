@@ -84,6 +84,8 @@ export function formatDateTime(dateTimeInput?: string | Date | null): string {
   return `${day} ${hh}${mm}H ${month} ${year}`
 }
 
+export const formatDateTimeCombined = formatDateTime
+
 /**
  * 4. Date, Time, and Day of Week Format: "DD HHmmH MMM YYYY dddd" (e.g., "27 1400H Aug 2026 Friday")
  */

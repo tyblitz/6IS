@@ -23,6 +23,7 @@ import AdminModulesView from '../views/administrator/AdminModulesView.vue'
 import AdminRolesView from '../views/administrator/AdminRolesView.vue'
 import AdminOrganizationView from '../views/administrator/AdminOrganizationView.vue'
 import AdminOfficesView from '../views/administrator/AdminOfficesView.vue'
+import AdminAuditView from '../views/administrator/AdminAuditView.vue'
 
 // Operational Views
 import CommunicationsView from '../views/communications/CommunicationsView.vue'
@@ -256,6 +257,17 @@ const routes: Array<RouteRecordRaw> = [
       requiresAuth: true,
       requiresRole: 'Administrator',
       permission: 'offices.view'
+    }
+  },
+  {
+    path: '/administrator/audit',
+    name: 'Audit Logs',
+    component: AdminAuditView,
+    meta: {
+      module: ModuleName.Administrator,
+      requiresAuth: true,
+      requiresRole: 'Administrator',
+      permission: 'audit.view'
     }
   },
 

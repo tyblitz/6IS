@@ -1,20 +1,15 @@
 <?php
 // backend/api/core/roles/index.php
-// REST API Endpoint for 6IS Core Roles Management (Phase 2)
+// REST API Endpoint for 6IS Core Roles Management (Phase 4 Hardened)
 
-$allowedOrigin = $_SERVER['HTTP_ORIGIN'] ?? 'http://localhost:5173';
-header("Access-Control-Allow-Origin: {$allowedOrigin}");
-header('Access-Control-Allow-Credentials: true');
-header('Access-Control-Allow-Methods: GET, POST, PATCH, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With');
+require_once __DIR__ . '/../../../helpers/cors.php';
+handleCors();
+
 header('Content-Type: application/json; charset=utf-8');
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
-
 require_once __DIR__ . '/../../../helpers/auth.php';
+require_once __DIR__ . '/../../../helpers/csrf.php';
+require_once __DIR__ . '/../../../helpers/audit.php';
 require_once __DIR__ . '/../../../helpers/permissions.php';
 
 // Enforce authenticated session
@@ -57,11 +52,15 @@ if (empty($rawInput) && isset($GLOBALS['HTTP_RAW_POST_DATA'])) {
 }
 $input = json_decode($rawInput, true) ?? [];
 
+// Enforce CSRF validation on mutating operations
+if (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
+    requireCsrf($input);
+}
+
 // =========================================================================
 // GET: List all roles or fetch single role with permissions
 // =========================================================================
 if ($method === 'GET') {
-    // Requires 'roles.view' permission
     requirePermission('roles', 'view', $pdo);
 
     $roleId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -135,7 +134,6 @@ if ($method === 'GET') {
 // POST: Create custom role
 // =========================================================================
 if ($method === 'POST') {
-    // Requires 'roles.create' permission
     requirePermission('roles', 'create', $pdo);
 
     $name = trim($input['name'] ?? '');
@@ -153,27 +151,55 @@ if ($method === 'POST') {
         sendJsonResponse(false, "A role named '{$name}' already exists.", null, null, 400);
     }
 
-    $stmt = $pdo->prepare("
-        INSERT INTO tbl_roles (name, description, is_system, is_active, created_at, updated_at)
-        VALUES (:name, :description, 0, :is_active, NOW(), NOW())
-    ");
-    $stmt->execute([
-        ':name' => $name,
-        ':description' => $description ?: null,
-        ':is_active' => $isActive
-    ]);
+    try {
+        $pdo->beginTransaction();
 
-    $newId = (int)$pdo->lastInsertId();
+        $stmt = $pdo->prepare("
+            INSERT INTO tbl_roles (name, description, is_system, is_active, created_at, updated_at)
+            VALUES (:name, :description, 0, :is_active, NOW(), NOW())
+        ");
+        $stmt->execute([
+            ':name' => $name,
+            ':description' => $description ?: null,
+            ':is_active' => $isActive
+        ]);
 
-    sendJsonResponse(true, "Role '{$name}' created successfully.", [
-        'id' => $newId,
-        'name' => $name,
-        'description' => $description,
-        'is_system' => false,
-        'is_active' => (bool)$isActive,
-        'user_count' => 0,
-        'permission_count' => 0
-    ], null, 201);
+        $newId = (int)$pdo->lastInsertId();
+
+        auditLog([
+            'action' => 'CREATE',
+            'module_key' => 'roles',
+            'entity_type' => 'role',
+            'entity_id' => (string)$newId,
+            'description' => "Created custom role '{$name}'.",
+            'old_values' => null,
+            'new_values' => [
+                'id' => $newId,
+                'name' => $name,
+                'description' => $description,
+                'is_system' => false,
+                'is_active' => (bool)$isActive
+            ]
+        ], $pdo);
+
+        $pdo->commit();
+
+        sendJsonResponse(true, "Role '{$name}' created successfully.", [
+            'id' => $newId,
+            'name' => $name,
+            'description' => $description,
+            'is_system' => false,
+            'is_active' => (bool)$isActive,
+            'user_count' => 0,
+            'permission_count' => 0
+        ], null, 201);
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('[roles] Failed to create role: ' . $e->getMessage());
+        sendJsonResponse(false, 'Database failure creating role.', null, null, 500);
+    }
 }
 
 // =========================================================================
@@ -197,7 +223,6 @@ if ($method === 'PATCH') {
 
     // A. Permission assignment replacement
     if ($action === 'permissions' || isset($input['permission_ids'])) {
-        // Requires 'roles.configure' permission
         requirePermission('roles', 'configure', $pdo);
 
         $permissionIds = $input['permission_ids'] ?? [];
@@ -226,7 +251,11 @@ if ($method === 'PATCH') {
             }
         }
 
-        // Transactional replacement
+        // Fetch previous assigned permissions for audit
+        $oldPermStmt = $pdo->prepare("SELECT permission_id FROM tbl_role_permissions WHERE role_id = :role_id");
+        $oldPermStmt->execute([':role_id' => $roleId]);
+        $oldPermIds = array_map('intval', $oldPermStmt->fetchAll(PDO::FETCH_COLUMN));
+
         try {
             $pdo->beginTransaction();
 
@@ -246,6 +275,16 @@ if ($method === 'PATCH') {
                 }
             }
 
+            auditLog([
+                'action' => 'ASSIGN',
+                'module_key' => 'roles',
+                'entity_type' => 'role_permissions',
+                'entity_id' => (string)$roleId,
+                'description' => "Updated permissions assignment for role '{$existingRole['name']}'.",
+                'old_values' => ['role_id' => $roleId, 'permission_ids' => $oldPermIds],
+                'new_values' => ['role_id' => $roleId, 'permission_ids' => array_values(array_map('intval', array_unique($permissionIds)))]
+            ], $pdo);
+
             $pdo->commit();
             sendJsonResponse(true, "Permissions for role '{$existingRole['name']}' updated successfully.", [
                 'role_id' => $roleId,
@@ -255,6 +294,7 @@ if ($method === 'PATCH') {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
+            error_log('[roles] Failed to update role permissions: ' . $e->getMessage());
             sendJsonResponse(false, 'Failed to update role permissions.', null, ['db' => $e->getMessage()], 500);
         }
     }
@@ -285,38 +325,67 @@ if ($method === 'PATCH') {
         }
     }
 
-    $upStmt = $pdo->prepare("
-        UPDATE tbl_roles
-        SET name = :name, description = :description, is_active = :is_active, updated_at = NOW()
-        WHERE id = :id
-    ");
-    $upStmt->execute([
-        ':name' => $newName,
-        ':description' => $newDesc ?: null,
-        ':is_active' => $newActive,
-        ':id' => $roleId
-    ]);
+    try {
+        $pdo->beginTransaction();
 
-    // Synchronize legacy role column in tbl_users if role name changed
-    if (strcasecmp($newName, $existingRole['name']) !== 0) {
-        $syncUsers = $pdo->prepare("UPDATE tbl_users SET role = :name WHERE role_id = :role_id");
-        $syncUsers->execute([':name' => $newName, ':role_id' => $roleId]);
+        $upStmt = $pdo->prepare("
+            UPDATE tbl_roles
+            SET name = :name, description = :description, is_active = :is_active, updated_at = NOW()
+            WHERE id = :id
+        ");
+        $upStmt->execute([
+            ':name' => $newName,
+            ':description' => $newDesc ?: null,
+            ':is_active' => $newActive,
+            ':id' => $roleId
+        ]);
+
+        // Synchronize legacy role column in tbl_users if role name changed
+        if (strcasecmp($newName, $existingRole['name']) !== 0) {
+            $syncUsers = $pdo->prepare("UPDATE tbl_users SET role = :name WHERE role_id = :role_id");
+            $syncUsers->execute([':name' => $newName, ':role_id' => $roleId]);
+        }
+
+        auditLog([
+            'action' => 'UPDATE',
+            'module_key' => 'roles',
+            'entity_type' => 'role',
+            'entity_id' => (string)$roleId,
+            'description' => "Updated role '{$newName}'.",
+            'old_values' => [
+                'name' => $existingRole['name'],
+                'description' => $existingRole['description'],
+                'is_active' => (int)$existingRole['is_active']
+            ],
+            'new_values' => [
+                'name' => $newName,
+                'description' => $newDesc,
+                'is_active' => $newActive
+            ]
+        ], $pdo);
+
+        $pdo->commit();
+
+        sendJsonResponse(true, "Role '{$newName}' updated successfully.", [
+            'id' => $roleId,
+            'name' => $newName,
+            'description' => $newDesc,
+            'is_system' => $isSystemRole,
+            'is_active' => (bool)$newActive
+        ]);
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('[roles] Failed to update role: ' . $e->getMessage());
+        sendJsonResponse(false, 'Database failure updating role.', null, null, 500);
     }
-
-    sendJsonResponse(true, "Role '{$newName}' updated successfully.", [
-        'id' => $roleId,
-        'name' => $newName,
-        'description' => $newDesc,
-        'is_system' => $isSystemRole,
-        'is_active' => (bool)$newActive
-    ]);
 }
 
 // =========================================================================
 // DELETE: Delete unassigned custom role
 // =========================================================================
 if ($method === 'DELETE') {
-    // Requires 'roles.delete' permission
     requirePermission('roles', 'delete', $pdo);
 
     $roleId = isset($_GET['id']) ? (int)$_GET['id'] : (int)($input['id'] ?? 0);
@@ -356,12 +425,23 @@ if ($method === 'DELETE') {
         $delRole = $pdo->prepare("DELETE FROM tbl_roles WHERE id = :id");
         $delRole->execute([':id' => $roleId]);
 
+        auditLog([
+            'action' => 'DELETE',
+            'module_key' => 'roles',
+            'entity_type' => 'role',
+            'entity_id' => (string)$roleId,
+            'description' => "Deleted custom role '{$role['name']}'.",
+            'old_values' => ['id' => $roleId, 'name' => $role['name'], 'is_system' => false],
+            'new_values' => null
+        ], $pdo);
+
         $pdo->commit();
         sendJsonResponse(true, "Role '{$role['name']}' deleted successfully.");
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
+        error_log('[roles] Failed to delete role: ' . $e->getMessage());
         sendJsonResponse(false, 'Failed to delete role.', null, ['db' => $e->getMessage()], 500);
     }
 }

@@ -1,7 +1,8 @@
 // frontend/src/services/officeService.ts
-// Frontend Service for 6IS Core Offices API Communications (Phase 3)
+// Frontend Service for 6IS Core Offices API Communications (Phase 4 Hardened)
 
 import type { Office, OfficeCreatePayload, OfficeUpdatePayload } from '../types/office'
+import { apiFetch } from '../utils/api'
 
 function resolveOfficesApiUrl(): string {
   if (typeof window !== 'undefined') {
@@ -24,10 +25,9 @@ export async function fetchOffices(activeOnly: boolean = false, search: string =
     if (search.trim()) params.append('search', search.trim())
 
     const queryString = params.toString() ? `?${params.toString()}` : ''
-    const res = await fetch(`${OFFICES_API_URL}${queryString}`, {
+    const res = await apiFetch(`${OFFICES_API_URL}${queryString}`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include'
+      headers: { 'Content-Type': 'application/json' }
     })
 
     if (!res.ok) {
@@ -51,10 +51,9 @@ export async function fetchOffices(activeOnly: boolean = false, search: string =
  */
 export async function fetchOffice(id: number): Promise<Office | null> {
   try {
-    const res = await fetch(`${OFFICES_API_URL}?id=${id}`, {
+    const res = await apiFetch(`${OFFICES_API_URL}?id=${id}`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include'
+      headers: { 'Content-Type': 'application/json' }
     })
 
     if (!res.ok) {
@@ -79,10 +78,9 @@ export async function createOffice(
   payload: OfficeCreatePayload
 ): Promise<{ success: boolean; message: string; data?: Office }> {
   try {
-    const res = await fetch(OFFICES_API_URL, {
+    const res = await apiFetch(OFFICES_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify(payload)
     })
 
@@ -108,10 +106,9 @@ export async function updateOffice(
   payload: OfficeUpdatePayload
 ): Promise<{ success: boolean; message: string; data?: Office }> {
   try {
-    const res = await fetch(OFFICES_API_URL, {
+    const res = await apiFetch(OFFICES_API_URL, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify(payload)
     })
 
@@ -151,10 +148,9 @@ export async function deleteOffice(
   id: number
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const res = await fetch(OFFICES_API_URL, {
+    const res = await apiFetch(OFFICES_API_URL, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify({ id })
     })
 

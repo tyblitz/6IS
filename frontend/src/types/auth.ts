@@ -23,10 +23,12 @@ export interface LoginResponse {
   success: boolean;
   message: string;
   user?: AuthUser | null;
+  csrf_token?: string;
   errors?: Record<string, string> | null;
 }
 
 export interface CurrentUserResponse {
   authenticated: boolean;
   user?: AuthUser | null;
+  csrf_token?: string;
 }

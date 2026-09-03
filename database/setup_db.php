@@ -43,6 +43,8 @@ try {
         __DIR__ . '/migrations/add_role_id_to_users.sql',
         __DIR__ . '/migrations/create_organization_and_offices_tables.sql',
         __DIR__ . '/migrations/alter_inventory_foreign_keys_to_restrict.sql',
+        __DIR__ . '/migrations/create_audit_tables.sql',
+        __DIR__ . '/migrations/add_is_system_to_permissions.sql',
         __DIR__ . '/migrations/seed_roles_and_permissions.sql'
     ];
 

@@ -1,20 +1,15 @@
 <?php
 // backend/api/core/organization/index.php
-// REST API Endpoint for 6IS Core Organization Management (Phase 3)
+// REST API Endpoint for 6IS Core Organization Management (Phase 4 Hardened)
 
-$allowedOrigin = $_SERVER['HTTP_ORIGIN'] ?? 'http://localhost:5173';
-header("Access-Control-Allow-Origin: {$allowedOrigin}");
-header('Access-Control-Allow-Credentials: true');
-header('Access-Control-Allow-Methods: GET, POST, PATCH, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With');
+require_once __DIR__ . '/../../../helpers/cors.php';
+handleCors();
+
 header('Content-Type: application/json; charset=utf-8');
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
-
 require_once __DIR__ . '/../../../helpers/auth.php';
+require_once __DIR__ . '/../../../helpers/csrf.php';
+require_once __DIR__ . '/../../../helpers/audit.php';
 require_once __DIR__ . '/../../../helpers/permissions.php';
 
 requireAuth();
@@ -55,6 +50,10 @@ if (empty($rawInput) && isset($GLOBALS['HTTP_RAW_POST_DATA'])) {
     $rawInput = $GLOBALS['HTTP_RAW_POST_DATA'];
 }
 $input = json_decode($rawInput, true) ?? [];
+
+if (in_array($method, ['POST', 'PATCH', 'PUT'], true)) {
+    requireCsrf($input);
+}
 
 // =========================================================================
 // GET: Retrieve the Primary Organization Record
@@ -141,10 +140,22 @@ if ($method === 'POST' || $method === 'PATCH') {
 
     try {
         // Resolve current organization
-        $existing = $pdo->query("SELECT id FROM tbl_organization ORDER BY is_active DESC, id ASC LIMIT 1")->fetch();
+        $existing = $pdo->query("SELECT id, name, short_name, description, address, contact_number, email, logo_path, is_active FROM tbl_organization ORDER BY is_active DESC, id ASC LIMIT 1")->fetch();
 
         if ($existing) {
             $orgId = (int)$existing['id'];
+
+            // Organization Invariant Check: Prevent leaving system with 0 active organizations
+            if ($isActive !== null && $isActive === 0 && (int)$existing['is_active'] === 1) {
+                $otherActiveStmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_organization WHERE is_active = 1 AND id != :id");
+                $otherActiveStmt->execute([':id' => $orgId]);
+                $otherActiveCount = (int)$otherActiveStmt->fetchColumn();
+
+                if ($otherActiveCount < 1) {
+                    sendJsonResponse(false, 'Cannot deactivate organization. The system requires at least one active organization per deployment.', null, null, 400);
+                }
+            }
+
             $updates = [];
             $params = [':id' => $orgId];
 
@@ -181,6 +192,8 @@ if ($method === 'POST' || $method === 'PATCH') {
                 $params[':is_active'] = $isActive;
             }
 
+            $pdo->beginTransaction();
+
             if (!empty($updates)) {
                 $updates[] = '`updated_at` = NOW()';
                 $sql = "UPDATE tbl_organization SET " . implode(', ', $updates) . " WHERE id = :id";
@@ -194,12 +207,37 @@ if ($method === 'POST' || $method === 'PATCH') {
             $updatedOrg['id'] = (int)$updatedOrg['id'];
             $updatedOrg['is_active'] = (int)$updatedOrg['is_active'];
 
+            auditLog([
+                'action' => 'UPDATE',
+                'module_key' => 'organization',
+                'entity_type' => 'organization',
+                'entity_id' => (string)$orgId,
+                'description' => "Updated organization profile '{$updatedOrg['name']}'.",
+                'old_values' => [
+                    'name' => $existing['name'],
+                    'short_name' => $existing['short_name'],
+                    'email' => $existing['email'],
+                    'is_active' => (int)$existing['is_active']
+                ],
+                'new_values' => [
+                    'name' => $updatedOrg['name'],
+                    'short_name' => $updatedOrg['short_name'],
+                    'email' => $updatedOrg['email'],
+                    'is_active' => (int)$updatedOrg['is_active']
+                ]
+            ], $pdo);
+
+            $pdo->commit();
+
             sendJsonResponse(true, 'Organization profile updated successfully.', $updatedOrg);
         } else {
             // Insert initial organization
             if (empty($name)) {
                 sendJsonResponse(false, 'Organization name is required.', null, null, 400);
             }
+
+            $pdo->beginTransaction();
+
             $stmt = $pdo->prepare("
                 INSERT INTO tbl_organization (name, short_name, description, address, contact_number, email, logo_path, is_active, created_at, updated_at)
                 VALUES (:name, :short_name, :description, :address, :contact_number, :email, :logo_path, :is_active, NOW(), NOW())
@@ -222,9 +260,29 @@ if ($method === 'POST' || $method === 'PATCH') {
             $newOrg['id'] = (int)$newOrg['id'];
             $newOrg['is_active'] = (int)$newOrg['is_active'];
 
+            auditLog([
+                'action' => 'CREATE',
+                'module_key' => 'organization',
+                'entity_type' => 'organization',
+                'entity_id' => (string)$newId,
+                'description' => "Created organization '{$newOrg['name']}'.",
+                'old_values' => null,
+                'new_values' => [
+                    'id' => $newId,
+                    'name' => $newOrg['name'],
+                    'short_name' => $newOrg['short_name'],
+                    'is_active' => (int)$newOrg['is_active']
+                ]
+            ], $pdo);
+
+            $pdo->commit();
+
             sendJsonResponse(true, 'Organization profile created successfully.', $newOrg, null, 201);
         }
     } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         error_log('[organization] Database error: ' . $e->getMessage());
         sendJsonResponse(false, 'Database failure updating organization.', null, null, 500);
     }

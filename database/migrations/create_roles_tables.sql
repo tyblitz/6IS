@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS `tbl_permissions` (
     `name` VARCHAR(100) NOT NULL,
     `description` VARCHAR(255) NULL,
     `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+    `is_system` TINYINT(1) NOT NULL DEFAULT 0,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY `uk_module_permission` (`module_key`, `permission_key`),

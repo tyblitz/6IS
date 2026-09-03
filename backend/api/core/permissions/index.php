@@ -2,17 +2,10 @@
 // backend/api/core/permissions/index.php
 // REST API Endpoint for 6IS Core Permissions Catalog (Phase 2)
 
-$allowedOrigin = $_SERVER['HTTP_ORIGIN'] ?? 'http://localhost:5173';
-header("Access-Control-Allow-Origin: {$allowedOrigin}");
-header('Access-Control-Allow-Credentials: true');
-header('Access-Control-Allow-Methods: GET, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With');
-header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/../../../helpers/cors.php';
+handleCors();
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
+header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../../../helpers/auth.php';
 require_once __DIR__ . '/../../../helpers/permissions.php';
@@ -54,7 +47,7 @@ if ($method === 'GET') {
 
     try {
         $stmt = $pdo->query("
-            SELECT p.id, p.module_key, p.permission_key, p.name, p.description, p.is_active,
+            SELECT p.id, p.module_key, p.permission_key, p.name, p.description, p.is_active, p.is_system,
                    CONCAT(p.module_key, '.', p.permission_key) AS code,
                    COALESCE(m.name, p.module_key) AS module_name,
                    COALESCE(m.is_active, 1) AS module_is_active
@@ -72,7 +65,8 @@ if ($method === 'GET') {
                     WHEN 'users' THEN 7
                     WHEN 'roles' THEN 8
                     WHEN 'modules' THEN 9
-                    ELSE 10
+                    WHEN 'audit' THEN 10
+                    ELSE 11
                 END,
                 CASE p.permission_key
                     WHEN 'view' THEN 1
@@ -88,6 +82,7 @@ if ($method === 'GET') {
         foreach ($permissions as &$p) {
             $p['id'] = (int)$p['id'];
             $p['is_active'] = (bool)$p['is_active'];
+            $p['is_system'] = (bool)$p['is_system'];
             $p['module_is_active'] = (bool)$p['module_is_active'];
         }
 

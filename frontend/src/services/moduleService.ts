@@ -1,7 +1,8 @@
 // frontend/src/services/moduleService.ts
-// Frontend Service for 6IS Core Module Registry API Communications
+// Frontend Service for 6IS Core Module Registry API Communications (Phase 4 Hardened)
 
 import type { SystemModule, ModulesApiResponse, ModuleUpdateApiResponse } from '../types/module'
+import { apiFetch } from '../utils/api'
 
 function resolveApiUrl(): string {
   if (typeof window !== 'undefined') {
@@ -19,12 +20,11 @@ const API_BASE_URL = resolveApiUrl()
  */
 export async function fetchModules(): Promise<SystemModule[]> {
   try {
-    const res = await fetch(API_BASE_URL, {
+    const res = await apiFetch(API_BASE_URL, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json'
-      },
-      credentials: 'include'
+      }
     })
 
     if (!res.ok) {
@@ -54,12 +54,11 @@ export async function toggleModuleActive(
   isActive: boolean
 ): Promise<ModuleUpdateApiResponse> {
   try {
-    const res = await fetch(`${API_BASE_URL}?id=${moduleId}`, {
+    const res = await apiFetch(`${API_BASE_URL}?id=${moduleId}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json'
       },
-      credentials: 'include',
       body: JSON.stringify({ is_active: isActive })
     })
 

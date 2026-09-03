@@ -1,22 +1,15 @@
 <?php
 // backend/api/core/modules/index.php
-// REST API Endpoint for 6IS Core Module Registry & Activation Management
+// REST API Endpoint for 6IS Core Module Registry & Activation Management (Phase 4 Hardened)
 
-// CORS & Credential Headers
-$allowedOrigin = $_SERVER['HTTP_ORIGIN'] ?? 'http://localhost:5173';
-header("Access-Control-Allow-Origin: {$allowedOrigin}");
-header('Access-Control-Allow-Credentials: true');
-header('Access-Control-Allow-Methods: GET, POST, PATCH, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With');
+require_once __DIR__ . '/../../../helpers/cors.php';
+handleCors();
+
 header('Content-Type: application/json; charset=utf-8');
 
-// Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
-
 require_once __DIR__ . '/../../../helpers/auth.php';
+require_once __DIR__ . '/../../../helpers/csrf.php';
+require_once __DIR__ . '/../../../helpers/audit.php';
 require_once __DIR__ . '/../../../helpers/permissions.php';
 
 function sendJsonResponse(bool $success, string $message, $data = null, $errors = null, int $statusCode = 200): void {
@@ -63,7 +56,6 @@ if ($method === 'GET') {
         ");
         $rawModules = $stmt->fetchAll();
 
-        // Format boolean fields cleanly for JSON consumer
         $modules = array_map(function ($m) {
             return [
                 'id' => (int)$m['id'],
@@ -97,13 +89,14 @@ if ($method === 'PATCH' || ($method === 'POST' && isset($_GET['_method']) && str
     if (empty($rawInput) && !empty($GLOBALS['HTTP_RAW_POST_DATA'])) {
         $rawInput = $GLOBALS['HTTP_RAW_POST_DATA'];
     }
-    $input = json_decode($rawInput, true);
+    $input = json_decode($rawInput, true) ?? [];
+
+    requireCsrf($input);
 
     if (!is_array($input)) {
         sendJsonResponse(false, 'Invalid JSON body provided.', null, null, 400);
     }
 
-    // Identify target module by query param ?id=X or body id/module_key
     $moduleId = isset($_GET['id']) ? (int)$_GET['id'] : (isset($input['id']) ? (int)$input['id'] : null);
     $moduleKey = isset($_GET['module_key']) ? trim($_GET['module_key']) : (isset($input['module_key']) ? trim($input['module_key']) : null);
 
@@ -120,7 +113,6 @@ if ($method === 'PATCH' || ($method === 'POST' && isset($_GET['_method']) && str
         sendJsonResponse(false, "'is_active' must be a valid boolean value.", null, null, 400);
     }
 
-    // Look up target module
     if ($moduleId) {
         $stmt = $pdo->prepare("SELECT * FROM tbl_modules WHERE id = :id LIMIT 1");
         $stmt->execute([':id' => $moduleId]);
@@ -134,13 +126,14 @@ if ($method === 'PATCH' || ($method === 'POST' && isset($_GET['_method']) && str
         sendJsonResponse(false, 'Module not found in registry.', null, null, 404);
     }
 
-    // Critical Server-Side Validation: Core modules cannot be disabled
+    // Server-Side Invariant: Core modules cannot be disabled
     if ((int)$module['is_core'] === 1 && !$newActive) {
         sendJsonResponse(false, 'Core modules cannot be disabled.', null, null, 400);
     }
 
-    // Perform safe state update without altering data tables
     try {
+        $pdo->beginTransaction();
+
         $updateStmt = $pdo->prepare("
             UPDATE tbl_modules
             SET is_active = :is_active, updated_at = NOW()
@@ -151,7 +144,19 @@ if ($method === 'PATCH' || ($method === 'POST' && isset($_GET['_method']) && str
             ':id' => $module['id']
         ]);
 
-        // Return updated record
+        $actionType = $newActive ? 'ACTIVATE' : 'DEACTIVATE';
+        auditLog([
+            'action' => $actionType,
+            'module_key' => 'modules',
+            'entity_type' => 'module',
+            'entity_id' => $module['module_key'],
+            'description' => "Module '{$module['name']}' " . strtolower($actionType) . "d.",
+            'old_values' => ['module_key' => $module['module_key'], 'is_active' => (bool)$module['is_active']],
+            'new_values' => ['module_key' => $module['module_key'], 'is_active' => (bool)$newActive]
+        ], $pdo);
+
+        $pdo->commit();
+
         $stmt->execute($moduleId ? [':id' => $moduleId] : [':key' => $moduleKey]);
         $updated = $stmt->fetch();
 
@@ -167,7 +172,11 @@ if ($method === 'PATCH' || ($method === 'POST' && isset($_GET['_method']) && str
             'sort_order' => (int)$updated['sort_order'],
             'version' => $updated['version']
         ]);
-    } catch (PDOException $e) {
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('[modules] Failed to update module state: ' . $e->getMessage());
         sendJsonResponse(false, 'Failed to update module state.', null, ['error' => $e->getMessage()], 500);
     }
 }

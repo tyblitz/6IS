@@ -1,7 +1,8 @@
 // frontend/src/services/userService.ts
-// Frontend Service for 6IS User Management
+// Frontend Service for 6IS User Management (Phase 4 Hardened)
 
 import type { UserAccount, CreateUserPayload, UpdateUserPayload } from '../types/user'
+import { apiFetch } from '../utils/api'
 
 function resolveApiUrl(): string {
   if (typeof window !== 'undefined') {
@@ -26,9 +27,8 @@ export interface UserApiResponse<T> {
  */
 export async function fetchUsers(): Promise<UserApiResponse<UserAccount[]>> {
   try {
-    const res = await fetch(API_BASE_URL, {
-      method: 'GET',
-      credentials: 'include'
+    const res = await apiFetch(API_BASE_URL, {
+      method: 'GET'
     })
     return await res.json()
   } catch (err: any) {
@@ -46,10 +46,9 @@ export async function fetchUsers(): Promise<UserApiResponse<UserAccount[]>> {
  */
 export async function createUser(payload: CreateUserPayload): Promise<UserApiResponse<null>> {
   try {
-    const res = await fetch(`${API_BASE_URL}?action=create`, {
+    const res = await apiFetch(`${API_BASE_URL}?action=create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify(payload)
     })
     return await res.json()
@@ -68,10 +67,9 @@ export async function createUser(payload: CreateUserPayload): Promise<UserApiRes
  */
 export async function updateUser(payload: UpdateUserPayload): Promise<UserApiResponse<null>> {
   try {
-    const res = await fetch(`${API_BASE_URL}?action=update`, {
+    const res = await apiFetch(`${API_BASE_URL}?action=update`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify(payload)
     })
     return await res.json()
@@ -90,10 +88,9 @@ export async function updateUser(payload: UpdateUserPayload): Promise<UserApiRes
  */
 export async function toggleUserActive(id: number, isActive: number): Promise<UserApiResponse<null>> {
   try {
-    const res = await fetch(`${API_BASE_URL}?action=toggle_active`, {
+    const res = await apiFetch(`${API_BASE_URL}?action=toggle_active`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify({ id, is_active: isActive })
     })
     return await res.json()

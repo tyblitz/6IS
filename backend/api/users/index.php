@@ -1,22 +1,18 @@
 <?php
 // backend/api/users/index.php
-// REST API Endpoint for 6IS User Management (Administrator Only)
+// REST API Endpoint for 6IS User Management (Phase 4 Hardened)
 
-$allowedOrigin = $_SERVER['HTTP_ORIGIN'] ?? 'http://localhost:5173';
-header("Access-Control-Allow-Origin: {$allowedOrigin}");
-header('Access-Control-Allow-Credentials: true');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With');
+require_once __DIR__ . '/../../helpers/cors.php';
+handleCors();
+
+require_once __DIR__ . '/../../helpers/auth.php';
+require_once __DIR__ . '/../../helpers/csrf.php';
+require_once __DIR__ . '/../../helpers/audit.php';
+require_once __DIR__ . '/../../helpers/permissions.php';
+
 header('Content-Type: application/json; charset=utf-8');
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
-
-// Enforce both Authentication AND Administrator Authorization for ALL methods (GET & POST)
-require_once __DIR__ . '/../../helpers/auth.php';
-require_once __DIR__ . '/../../helpers/permissions.php';
+// Enforce both Authentication AND User View Authorization for GET requests
 requireAuth();
 
 function sendJsonResponse($success, $message, $data = null, $errors = null, $statusCode = 200) {
@@ -91,6 +87,29 @@ if ($method === 'POST') {
     }
     $input = json_decode($rawInput, true) ?? [];
 
+    // Enforce CSRF protection on all state-changing operations
+    requireCsrf($input);
+
+    // Helper: Resolve Administrator Role ID
+    $getAdminRoleId = function() use ($pdo): int {
+        $stmt = $pdo->query("SELECT id FROM tbl_roles WHERE LOWER(name) = 'administrator' LIMIT 1");
+        return (int)($stmt->fetchColumn() ?: 1);
+    };
+
+    // Helper: Count other active Administrators in the system
+    $countOtherActiveAdmins = function(int $excludeUserId) use ($pdo, $getAdminRoleId): int {
+        $adminRoleId = $getAdminRoleId();
+        $stmt = $pdo->prepare("
+            SELECT COUNT(*) FROM tbl_users
+            WHERE (role_id = :role_id OR (role_id IS NULL AND LOWER(role) = 'administrator'))
+              AND is_active = 1
+              AND deleted_at IS NULL
+              AND id != :exclude_id
+        ");
+        $stmt->execute([':role_id' => $adminRoleId, ':exclude_id' => $excludeUserId]);
+        return (int)$stmt->fetchColumn();
+    };
+
     // Helper: Resolve role_id and validate against tbl_roles
     $resolveRole = function(?int $roleId, ?string $roleName) use ($pdo): ?array {
         if ($roleId && $roleId > 0) {
@@ -159,26 +178,57 @@ if ($method === 'POST') {
 
         $passwordHash = password_hash($password, PASSWORD_BCRYPT);
 
-        $stmt = $pdo->prepare("
-            INSERT INTO tbl_users (username, full_name, password, role, role_id, office_id, is_active, created_at, updated_at)
-            VALUES (:username, :full_name, :password, :role, :role_id, :office_id, 1, NOW(), NOW())
-        ");
-        $stmt->execute([
-            ':username' => $username,
-            ':full_name' => $fullName ?: $username,
-            ':password' => $passwordHash,
-            ':role' => $resolvedRole['name'],
-            ':role_id' => (int)$resolvedRole['id'],
-            ':office_id' => $officeId
-        ]);
+        try {
+            $pdo->beginTransaction();
 
-        sendJsonResponse(true, "User account '{$username}' created successfully.", [
-            'id' => (int)$pdo->lastInsertId(),
-            'username' => $username,
-            'role' => $resolvedRole['name'],
-            'role_id' => (int)$resolvedRole['id'],
-            'office_id' => $officeId
-        ], null, 201);
+            $stmt = $pdo->prepare("
+                INSERT INTO tbl_users (username, full_name, password, role, role_id, office_id, is_active, created_at, updated_at)
+                VALUES (:username, :full_name, :password, :role, :role_id, :office_id, 1, NOW(), NOW())
+            ");
+            $stmt->execute([
+                ':username' => $username,
+                ':full_name' => $fullName ?: $username,
+                ':password' => $passwordHash,
+                ':role' => $resolvedRole['name'],
+                ':role_id' => (int)$resolvedRole['id'],
+                ':office_id' => $officeId
+            ]);
+            $newUserId = (int)$pdo->lastInsertId();
+
+            auditLog([
+                'action' => 'CREATE',
+                'module_key' => 'users',
+                'entity_type' => 'user',
+                'entity_id' => (string)$newUserId,
+                'description' => "Created user account '{$username}' with role '{$resolvedRole['name']}'.",
+                'old_values' => null,
+                'new_values' => [
+                    'id' => $newUserId,
+                    'username' => $username,
+                    'full_name' => $fullName ?: $username,
+                    'role' => $resolvedRole['name'],
+                    'role_id' => (int)$resolvedRole['id'],
+                    'office_id' => $officeId,
+                    'is_active' => 1
+                ]
+            ], $pdo);
+
+            $pdo->commit();
+
+            sendJsonResponse(true, "User account '{$username}' created successfully.", [
+                'id' => $newUserId,
+                'username' => $username,
+                'role' => $resolvedRole['name'],
+                'role_id' => (int)$resolvedRole['id'],
+                'office_id' => $officeId
+            ], null, 201);
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            error_log('[users] Failed to create user: ' . $e->getMessage());
+            sendJsonResponse(false, 'Database failure creating user account.', null, null, 500);
+        }
     }
 
     // 2. Update User Account (Full Name, Role, Office, Password)
@@ -197,13 +247,16 @@ if ($method === 'POST') {
             sendJsonResponse(false, 'Valid user ID is required.', null, null, 400);
         }
 
-        $userStmt = $pdo->prepare("SELECT id, username, role, role_id, office_id FROM tbl_users WHERE id = :id AND deleted_at IS NULL LIMIT 1");
+        $userStmt = $pdo->prepare("SELECT id, username, full_name, role, role_id, office_id, is_active FROM tbl_users WHERE id = :id AND deleted_at IS NULL LIMIT 1");
         $userStmt->execute([':id' => $userId]);
         $existingUser = $userStmt->fetch();
 
         if (!$existingUser) {
             sendJsonResponse(false, 'User not found.', null, null, 404);
         }
+
+        $adminRoleId = $getAdminRoleId();
+        $isExistingAdmin = ((int)$existingUser['role_id'] === $adminRoleId || strcasecmp($existingUser['role'], 'Administrator') === 0);
 
         $resolvedRole = null;
         if ($roleIdInput || $roleNameInput) {
@@ -217,37 +270,78 @@ if ($method === 'POST') {
         $targetRoleName = $resolvedRole ? $resolvedRole['name'] : $existingUser['role'];
         $targetOfficeId = $hasOfficeKey ? $officeId : ($existingUser['office_id'] ? (int)$existingUser['office_id'] : null);
 
-        if (!empty($password)) {
-            $passwordHash = password_hash($password, PASSWORD_BCRYPT);
-            $stmt = $pdo->prepare("
-                UPDATE tbl_users
-                SET full_name = :full_name, role = :role, role_id = :role_id, office_id = :office_id, password = :password, updated_at = NOW()
-                WHERE id = :id AND deleted_at IS NULL
-            ");
-            $stmt->execute([
-                ':full_name' => $fullName ?: $existingUser['username'],
-                ':role' => $targetRoleName,
-                ':role_id' => $targetRoleId,
-                ':office_id' => $targetOfficeId,
-                ':password' => $passwordHash,
-                ':id' => $userId
-            ]);
-        } else {
-            $stmt = $pdo->prepare("
-                UPDATE tbl_users
-                SET full_name = :full_name, role = :role, role_id = :role_id, office_id = :office_id, updated_at = NOW()
-                WHERE id = :id AND deleted_at IS NULL
-            ");
-            $stmt->execute([
-                ':full_name' => $fullName ?: $existingUser['username'],
-                ':role' => $targetRoleName,
-                ':role_id' => $targetRoleId,
-                ':office_id' => $targetOfficeId,
-                ':id' => $userId
-            ]);
+        // Final Administrator Invariant Check:
+        // If target is an active Administrator, but new role is not Administrator:
+        if ($isExistingAdmin && (int)$existingUser['is_active'] === 1 && $targetRoleId !== $adminRoleId) {
+            if ($countOtherActiveAdmins($userId) < 1) {
+                sendJsonResponse(false, 'Cannot modify or deactivate the final active Administrator account.', null, null, 400);
+            }
         }
 
-        sendJsonResponse(true, "User account updated successfully.");
+        try {
+            $pdo->beginTransaction();
+
+            if (!empty($password)) {
+                $passwordHash = password_hash($password, PASSWORD_BCRYPT);
+                $stmt = $pdo->prepare("
+                    UPDATE tbl_users
+                    SET full_name = :full_name, role = :role, role_id = :role_id, office_id = :office_id, password = :password, updated_at = NOW()
+                    WHERE id = :id AND deleted_at IS NULL
+                ");
+                $stmt->execute([
+                    ':full_name' => $fullName ?: $existingUser['username'],
+                    ':role' => $targetRoleName,
+                    ':role_id' => $targetRoleId,
+                    ':office_id' => $targetOfficeId,
+                    ':password' => $passwordHash,
+                    ':id' => $userId
+                ]);
+            } else {
+                $stmt = $pdo->prepare("
+                    UPDATE tbl_users
+                    SET full_name = :full_name, role = :role, role_id = :role_id, office_id = :office_id, updated_at = NOW()
+                    WHERE id = :id AND deleted_at IS NULL
+                ");
+                $stmt->execute([
+                    ':full_name' => $fullName ?: $existingUser['username'],
+                    ':role' => $targetRoleName,
+                    ':role_id' => $targetRoleId,
+                    ':office_id' => $targetOfficeId,
+                    ':id' => $userId
+                ]);
+            }
+
+            // Write transactional audit log (passwords strictly excluded)
+            auditLog([
+                'action' => 'UPDATE',
+                'module_key' => 'users',
+                'entity_type' => 'user',
+                'entity_id' => (string)$userId,
+                'description' => "Updated user account '{$existingUser['username']}'.",
+                'old_values' => [
+                    'full_name' => $existingUser['full_name'],
+                    'role' => $existingUser['role'],
+                    'role_id' => (int)$existingUser['role_id'],
+                    'office_id' => $existingUser['office_id'] ? (int)$existingUser['office_id'] : null
+                ],
+                'new_values' => [
+                    'full_name' => $fullName ?: $existingUser['username'],
+                    'role' => $targetRoleName,
+                    'role_id' => $targetRoleId,
+                    'office_id' => $targetOfficeId,
+                    'password_changed' => !empty($password)
+                ]
+            ], $pdo);
+
+            $pdo->commit();
+            sendJsonResponse(true, "User account updated successfully.");
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            error_log('[users] Failed to update user: ' . $e->getMessage());
+            sendJsonResponse(false, 'Database failure updating user account.', null, null, 500);
+        }
     }
 
     // 3. Toggle Active State (Activate / Deactivate - NO Physical Delete)
@@ -261,23 +355,124 @@ if ($method === 'POST') {
             sendJsonResponse(false, 'Valid user ID is required.', null, null, 400);
         }
 
-        // Prevent self-deactivation if updating current session user
-        if ($userId === (int)($_SESSION['user_id'] ?? 0) && $isActive === 0) {
-            sendJsonResponse(false, 'You cannot deactivate your own currently active administrator account.', null, null, 400);
+        $userStmt = $pdo->prepare("SELECT id, username, full_name, role, role_id, is_active FROM tbl_users WHERE id = :id AND deleted_at IS NULL LIMIT 1");
+        $userStmt->execute([':id' => $userId]);
+        $existingUser = $userStmt->fetch();
+
+        if (!$existingUser) {
+            sendJsonResponse(false, 'User not found.', null, null, 404);
         }
 
-        $stmt = $pdo->prepare("
-            UPDATE tbl_users
-            SET is_active = :is_active, updated_at = NOW()
-            WHERE id = :id AND deleted_at IS NULL
-        ");
-        $stmt->execute([
-            ':is_active' => $isActive,
-            ':id' => $userId
-        ]);
+        $adminRoleId = $getAdminRoleId();
+        $isExistingAdmin = ((int)$existingUser['role_id'] === $adminRoleId || strcasecmp($existingUser['role'], 'Administrator') === 0);
 
-        $statusText = $isActive === 1 ? 'activated' : 'deactivated';
-        sendJsonResponse(true, "User account has been {$statusText}.");
+        // Deactivation checks
+        if ($isActive === 0) {
+            // Self-deactivation protection
+            if ($userId === (int)($_SESSION['user_id'] ?? 0)) {
+                sendJsonResponse(false, 'You cannot deactivate your own account.', null, null, 400);
+            }
+
+            // Final Administrator Invariant Check
+            if ($isExistingAdmin) {
+                if ($countOtherActiveAdmins($userId) < 1) {
+                    sendJsonResponse(false, 'Cannot modify or deactivate the final active Administrator account.', null, null, 400);
+                }
+            }
+        }
+
+        try {
+            $pdo->beginTransaction();
+
+            $stmt = $pdo->prepare("
+                UPDATE tbl_users
+                SET is_active = :is_active, updated_at = NOW()
+                WHERE id = :id AND deleted_at IS NULL
+            ");
+            $stmt->execute([
+                ':is_active' => $isActive,
+                ':id' => $userId
+            ]);
+
+            $actionType = $isActive === 1 ? 'ACTIVATE' : 'DEACTIVATE';
+            auditLog([
+                'action' => $actionType,
+                'module_key' => 'users',
+                'entity_type' => 'user',
+                'entity_id' => (string)$userId,
+                'description' => "User account '{$existingUser['username']}' " . strtolower($actionType) . "d.",
+                'old_values' => ['is_active' => (int)$existingUser['is_active']],
+                'new_values' => ['is_active' => $isActive]
+            ], $pdo);
+
+            $pdo->commit();
+
+            $statusText = $isActive === 1 ? 'activated' : 'deactivated';
+            sendJsonResponse(true, "User account has been {$statusText}.");
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            error_log('[users] Failed to toggle user active status: ' . $e->getMessage());
+            sendJsonResponse(false, 'Database failure updating user status.', null, null, 500);
+        }
+    }
+
+    // 4. Soft Delete User Account (if requested)
+    if ($action === 'delete') {
+        requirePermission('users', 'delete', $pdo);
+
+        $userId = (int)($input['id'] ?? $_GET['id'] ?? 0);
+        if ($userId <= 0) {
+            sendJsonResponse(false, 'Valid user ID is required.', null, null, 400);
+        }
+
+        $userStmt = $pdo->prepare("SELECT id, username, full_name, role, role_id, is_active FROM tbl_users WHERE id = :id AND deleted_at IS NULL LIMIT 1");
+        $userStmt->execute([':id' => $userId]);
+        $existingUser = $userStmt->fetch();
+
+        if (!$existingUser) {
+            sendJsonResponse(false, 'User not found.', null, null, 404);
+        }
+
+        $adminRoleId = $getAdminRoleId();
+        $isExistingAdmin = ((int)$existingUser['role_id'] === $adminRoleId || strcasecmp($existingUser['role'], 'Administrator') === 0);
+
+        if ($isExistingAdmin && (int)$existingUser['is_active'] === 1) {
+            if ($countOtherActiveAdmins($userId) < 1) {
+                sendJsonResponse(false, 'Cannot modify or deactivate the final active Administrator account.', null, null, 400);
+            }
+        }
+
+        if ($userId === (int)($_SESSION['user_id'] ?? 0)) {
+            sendJsonResponse(false, 'You cannot delete your own currently active account.', null, null, 400);
+        }
+
+        try {
+            $pdo->beginTransaction();
+
+            $stmt = $pdo->prepare("UPDATE tbl_users SET deleted_at = NOW(), is_active = 0 WHERE id = :id");
+            $stmt->execute([':id' => $userId]);
+
+            auditLog([
+                'action' => 'DELETE',
+                'module_key' => 'users',
+                'entity_type' => 'user',
+                'entity_id' => (string)$userId,
+                'description' => "Soft-deleted user account '{$existingUser['username']}'.",
+                'old_values' => ['is_active' => (int)$existingUser['is_active'], 'deleted_at' => null],
+                'new_values' => ['is_active' => 0, 'deleted_at' => date('Y-m-d H:i:s')]
+            ], $pdo);
+
+            $pdo->commit();
+            sendJsonResponse(true, "User account '{$existingUser['username']}' deleted successfully.");
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            error_log('[users] Failed to delete user: ' . $e->getMessage());
+            sendJsonResponse(false, 'Database failure deleting user account.', null, null, 500);
+        }
     }
 }
 

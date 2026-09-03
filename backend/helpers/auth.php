@@ -2,18 +2,33 @@
 // backend/helpers/auth.php
 // Reusable Backend Authorization Middleware & Helpers for 6IS
 
-if (session_status() === PHP_SESSION_NONE) {
-    @session_start();
+/**
+ * Ensures PHP session is initialized with hardened cookie attributes.
+ * Preserves compatibility with HTTP local development while enforcing HTTPS in production.
+ */
+function ensureSessionStarted(): void {
+    if (session_status() === PHP_SESSION_NONE) {
+        $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+        @session_set_cookie_params([
+            'lifetime' => 0,
+            'path' => '/',
+            'domain' => '',
+            'secure' => $secure,
+            'httponly' => true,
+            'samesite' => 'Lax'
+        ]);
+        @session_start();
+    }
 }
+
+ensureSessionStarted();
 
 /**
  * Ensures a valid authenticated PHP session exists.
  * Rejects unauthenticated requests with HTTP 401 Unauthorized.
  */
 function requireAuth() {
-    if (session_status() === PHP_SESSION_NONE) {
-        @session_start();
-    }
+    ensureSessionStarted();
 
     if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
         if (isset($_SESSION['user']) && isset($_SESSION['user']['id'])) {

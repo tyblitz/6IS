@@ -2,6 +2,7 @@
 // Frontend Service for 6IS Core Roles & Permissions API Communications
 
 import type { Role, RolePayload, Permission, GroupedModulePermissions } from '../types/permission'
+import { apiFetch } from '../utils/api'
 
 function resolveRolesApiUrl(): string {
   if (typeof window !== 'undefined') {
@@ -29,10 +30,9 @@ const PERMISSIONS_API_URL = resolvePermissionsApiUrl()
  */
 export async function fetchRoles(): Promise<Role[]> {
   try {
-    const res = await fetch(ROLES_API_URL, {
+    const res = await apiFetch(ROLES_API_URL, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include'
+      headers: { 'Content-Type': 'application/json' }
     })
 
     if (!res.ok) {
@@ -56,10 +56,9 @@ export async function fetchRoles(): Promise<Role[]> {
  */
 export async function fetchRole(id: number): Promise<Role | null> {
   try {
-    const res = await fetch(`${ROLES_API_URL}?id=${id}`, {
+    const res = await apiFetch(`${ROLES_API_URL}?id=${id}`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include'
+      headers: { 'Content-Type': 'application/json' }
     })
 
     if (!res.ok) {
@@ -82,10 +81,9 @@ export async function fetchRole(id: number): Promise<Role | null> {
  */
 export async function createRole(payload: RolePayload): Promise<{ success: boolean; message: string; data?: Role; errors?: any }> {
   try {
-    const res = await fetch(ROLES_API_URL, {
+    const res = await apiFetch(ROLES_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify(payload)
     })
 
@@ -109,10 +107,9 @@ export async function updateRole(
   payload: Partial<RolePayload>
 ): Promise<{ success: boolean; message: string; data?: Role; errors?: any }> {
   try {
-    const res = await fetch(`${ROLES_API_URL}?id=${id}`, {
+    const res = await apiFetch(`${ROLES_API_URL}?id=${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify(payload)
     })
 
@@ -136,10 +133,9 @@ export async function updateRolePermissions(
   permissionIds: number[]
 ): Promise<{ success: boolean; message: string; data?: any; errors?: any }> {
   try {
-    const res = await fetch(`${ROLES_API_URL}?id=${roleId}&action=permissions`, {
+    const res = await apiFetch(`${ROLES_API_URL}?id=${roleId}&action=permissions`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify({ permission_ids: permissionIds })
     })
 
@@ -160,10 +156,9 @@ export async function updateRolePermissions(
  */
 export async function deleteRole(id: number): Promise<{ success: boolean; message: string; errors?: any }> {
   try {
-    const res = await fetch(`${ROLES_API_URL}?id=${id}`, {
+    const res = await apiFetch(`${ROLES_API_URL}?id=${id}`, {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include'
+      headers: { 'Content-Type': 'application/json' }
     })
 
     const data = await res.json()
@@ -183,10 +178,9 @@ export async function deleteRole(id: number): Promise<{ success: boolean; messag
  */
 export async function fetchPermissions(): Promise<{ list: Permission[]; grouped: GroupedModulePermissions[] }> {
   try {
-    const res = await fetch(PERMISSIONS_API_URL, {
+    const res = await apiFetch(PERMISSIONS_API_URL, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include'
+      headers: { 'Content-Type': 'application/json' }
     })
 
     if (!res.ok) {

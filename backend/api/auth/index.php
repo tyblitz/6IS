@@ -1,25 +1,16 @@
 <?php
 // backend/api/auth/index.php
-// REST API Endpoint for 6IS Authentication & Session Management
+// REST API Endpoint for 6IS Authentication & Session Management (Phase 4 Hardened)
 
-// CORS & Credential Headers
-$allowedOrigin = $_SERVER['HTTP_ORIGIN'] ?? 'http://localhost:5173';
-header("Access-Control-Allow-Origin: {$allowedOrigin}");
-header('Access-Control-Allow-Credentials: true');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With');
+require_once __DIR__ . '/../../helpers/cors.php';
+handleCors();
+
+require_once __DIR__ . '/../../helpers/auth.php';
+require_once __DIR__ . '/../../helpers/csrf.php';
+require_once __DIR__ . '/../../helpers/audit.php';
+require_once __DIR__ . '/../../helpers/permissions.php';
+
 header('Content-Type: application/json; charset=utf-8');
-
-// Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
-
-// Start PHP Session if not already active
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
 
 /**
  * Standardized JSON Response Helper
@@ -56,10 +47,10 @@ try {
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 
-require_once __DIR__ . '/../../helpers/permissions.php';
-
-// GET Method - Current User Check
+// GET Method - Current User Check & CSRF Token Bootstrap
 if ($method === 'GET') {
+    $csrfToken = getCsrfToken();
+
     if (isset($_SESSION['user_id'])) {
         try {
             // Verify user is still active in database and resolve active role & office
@@ -85,6 +76,7 @@ if ($method === 'GET') {
                 echo json_encode([
                     'success' => true,
                     'authenticated' => true,
+                    'csrf_token' => $csrfToken,
                     'user' => [
                         'id' => (int)$user['id'],
                         'username' => $user['username'],
@@ -111,6 +103,7 @@ if ($method === 'GET') {
     echo json_encode([
         'success' => false,
         'authenticated' => false,
+        'csrf_token' => $csrfToken,
         'user' => null
     ], JSON_UNESCAPED_UNICODE);
     exit();
@@ -120,6 +113,26 @@ if ($method === 'GET') {
 if ($method === 'POST') {
     // Handle Logout
     if ($action === 'logout') {
+        $logoutUserId = $_SESSION['user_id'] ?? null;
+        $logoutUsername = $_SESSION['username'] ?? 'unknown';
+
+        if ($logoutUserId) {
+            try {
+                auditLog([
+                    'action' => 'LOGOUT',
+                    'module_key' => 'core',
+                    'entity_type' => 'authentication',
+                    'entity_id' => (string)$logoutUserId,
+                    'user_id' => (int)$logoutUserId,
+                    'description' => "User '{$logoutUsername}' logged out.",
+                    'old_values' => ['user_id' => (int)$logoutUserId, 'username' => $logoutUsername],
+                    'new_values' => null
+                ], $pdo);
+            } catch (Throwable $e) {
+                error_log('[auth] Audit log failure during logout: ' . $e->getMessage());
+            }
+        }
+
         session_unset();
         session_destroy();
         sendJsonResponse(true, 'Logged out successfully.');
@@ -156,12 +169,34 @@ if ($method === 'POST') {
 
     // Check user existence, active status, and password hash verification
     if (!$user || (int)$user['is_active'] !== 1 || !password_verify($password, $user['password'])) {
+        // Audit failed login without logging passwords, tokens, or hashes
+        try {
+            auditLog([
+                'action' => 'LOGIN_FAILED',
+                'module_key' => 'core',
+                'entity_type' => 'authentication',
+                'entity_id' => $user ? (string)$user['id'] : null,
+                'user_id' => $user ? (int)$user['id'] : null,
+                'description' => "Failed login attempt for username '{$username}'.",
+                'old_values' => null,
+                'new_values' => ['attempted_username' => $username]
+            ], $pdo);
+        } catch (Throwable $e) {
+            error_log('[auth] Audit log failure during LOGIN_FAILED: ' . $e->getMessage());
+        }
+
         sendJsonResponse(false, 'Invalid username or password.', null, null, 401);
     }
 
+    // 1. Session Fixation Protection: Regenerate session ID upon successful credential verification
+    session_regenerate_id(true);
+
+    // 2. Generate fresh CSRF token for authenticated session
+    $csrfToken = generateCsrfToken();
+
     $effectiveRole = !empty($user['role_name']) ? $user['role_name'] : $user['role'];
 
-    // Successful Login - Set Session Data
+    // 3. Set authenticated session variables
     $_SESSION['user_id'] = (int)$user['id'];
     $_SESSION['username'] = $user['username'];
     $_SESSION['role'] = $effectiveRole;
@@ -172,11 +207,33 @@ if ($method === 'POST') {
         $_SESSION['office_id'] = (int)$user['office_id'];
     }
 
+    // 4. Audit successful LOGIN
+    try {
+        auditLog([
+            'action' => 'LOGIN',
+            'module_key' => 'core',
+            'entity_type' => 'authentication',
+            'entity_id' => (string)$user['id'],
+            'user_id' => (int)$user['id'],
+            'description' => "User '{$user['username']}' logged in successfully.",
+            'old_values' => null,
+            'new_values' => [
+                'user_id' => (int)$user['id'],
+                'username' => $user['username'],
+                'role' => $effectiveRole
+            ]
+        ], $pdo);
+    } catch (Throwable $e) {
+        error_log('[auth] Audit log failure during LOGIN: ' . $e->getMessage());
+        // Do not abort login if already authenticated, but report error log
+    }
+
     $permissions = getUserPermissions((int)$user['id'], $pdo);
 
     echo json_encode([
         'success' => true,
         'message' => 'Login successful.',
+        'csrf_token' => $csrfToken,
         'user' => [
             'id' => (int)$user['id'],
             'username' => $user['username'],

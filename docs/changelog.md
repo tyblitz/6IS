@@ -1,6 +1,31 @@
 # Changelog
 
-## Version 1.3.0 (v1.3.0) - September 3, 2026
+## Version 0.1.4 (v0.1.4) - September 3, 2026
+
+### Phase 4: Core Governance, Security & Audit
+- **Comprehensive Audit Trail System**:
+  - Introduced `tbl_audit_logs` storing immutable event records (`id`, `user_id`, `action`, `module_key`, `entity_type`, `entity_id`, `description`, `old_values`, `new_values`, `ip_address`, `user_agent`, `created_at`).
+  - Added centralized backend `auditLog()` helper with automatic actor, IP, user-agent derivation, and recursive denylist sanitization (passwords, hashes, tokens, keys, secrets).
+  - Enforced atomic database transactions coordinating state mutations with audit logging; audit write failure rolls back the state mutation.
+  - Implemented read-only REST API endpoint (`/backend/api/core/audit/index.php`) enforcing `audit.view`, pagination, and multi-factor server-side SQL filters.
+  - Built immutable frontend inspection view (`AdminAuditView.vue` at `/administrator/audit`) with date/time formatting (`DD HHmmH MMM YYYY`), semantic action badges, and detailed JSON state inspection.
+- **Session & Cookie Security Hardening**:
+  - Implemented session fixation protection with immediate `session_regenerate_id(true)` upon successful authentication.
+  - Enforced `HttpOnly`, `SameSite=Lax`, and HTTPS-aware `Secure` session cookie flags.
+- **Cross-Origin Resource Sharing (CORS) Hardening**:
+  - Created centralized server-side allowlist (`backend/config/cors.php`, `backend/helpers/cors.php`) preventing arbitrary origin reflection and rejecting client-controlled header injections.
+- **Cross-Site Request Forgery (CSRF) Protection**:
+  - Implemented cryptographic token generation and validation (`backend/helpers/csrf.php`).
+  - Required `X-CSRF-Token` header verification using `hash_equals()` on all mutating endpoints (`POST`, `PUT`, `PATCH`, `DELETE`).
+  - Added lightweight frontend wrapper (`frontend/src/utils/api.ts`) automatically injecting active CSRF tokens on mutating requests.
+- **System Governance & Invariant Guards**:
+  - Added `is_system` flag (`DEFAULT 0`) to `tbl_permissions`, seeding official permissions with `is_system = 1` and protecting them against runtime tampering.
+  - Protected system roles (`Administrator`, `User`) against rename, deactivation, and deletion.
+  - Enforced final Administrator invariant preventing any mutation (deactivation, soft deletion, or role change) that leaves zero active Administrator users.
+  - Enforced organization minimum active count invariant (`ACTIVE ORGANIZATIONS >= 1`).
+- **Comprehensive Test Suite & Validation**:
+  - Added automated PHP test suites (Suites 17 through 25) verifying audit trail logging, recursive sanitization, transactional rollback, session security, CORS allowlisting, CSRF rejection, and governance invariants.
+  - Added Vitest unit test suite (`tests/unit/auditService.spec.ts`).
 
 ### Phase 3: Organization & Office Management
 - **Single Organization Architecture**: Introduced `tbl_organization` to represent the single deployment organization (`6th Infantry Division`, `6ID`) with profile attributes, headquarters address, and contact details.

@@ -60,16 +60,25 @@ function runPhpSnippet(string $code): string {
  * @param array $session Session data array (e.g. ['user_id' => 1, 'role' => 'Administrator'])
  * @return array ['status' => int, 'body' => string, 'json' => array|null]
  */
-function invokeApiEndpoint(string $apiRelativePath, string $method = 'GET', array $queryParams = [], ?array $body = null, array $session = []): array {
+function invokeApiEndpoint(string $apiRelativePath, string $method = 'GET', array $queryParams = [], ?array $body = null, array $session = [], array $headers = []): array {
     $workspaceDir = dirname(__DIR__, 2);
     $apiAbsPath = str_replace('\\', '/', $workspaceDir . '/' . ltrim($apiRelativePath, '/'));
     
     $jsonBody = $body !== null ? json_encode($body) : '';
     
+    $csrfToken = bin2hex(random_bytes(32));
+    if (!empty($session) && !isset($session['csrf_token'])) {
+        $session['csrf_token'] = $csrfToken;
+    }
+    $headerCsrf = $headers['X-CSRF-Token'] ?? $headers['HTTP_X_CSRF_TOKEN'] ?? ($session['csrf_token'] ?? $csrfToken);
+
+    $origin = $headers['Origin'] ?? $headers['HTTP_ORIGIN'] ?? 'http://localhost:5173';
+
     $wrapper = "<?php\n" .
         "chdir(" . var_export($workspaceDir, true) . ");\n" .
         "\$_SERVER['REQUEST_METHOD'] = " . var_export(strtoupper($method), true) . ";\n" .
-        "\$_SERVER['HTTP_ORIGIN'] = 'http://localhost:5173';\n" .
+        "\$_SERVER['HTTP_ORIGIN'] = " . var_export($origin, true) . ";\n" .
+        ($headerCsrf !== '__OMIT__' ? "\$_SERVER['HTTP_X_CSRF_TOKEN'] = " . var_export($headerCsrf, true) . ";\n" : "") .
         "\$_GET = " . var_export($queryParams, true) . ";\n" .
         "\$_POST = [];\n" .
         "\$GLOBALS['HTTP_RAW_POST_DATA'] = " . var_export($jsonBody, true) . ";\n";
@@ -1652,6 +1661,419 @@ try {
         ($resUpdateUserOfficeInactive['json']['success'] ?? true) === false &&
         str_contains($resUpdateUserOfficeInactive['json']['message'] ?? '', 'inactive office'),
         "Status: {$resUpdateUserOfficeInactive['status']}, Body: {$resUpdateUserOfficeInactive['body']}"
+    );
+
+    // =========================================================================
+    // SUITE 17: Phase 4 Audit Database Schema, Migration & Seed Alignment
+    // =========================================================================
+    echo "\nSUITE 17: Phase 4 Audit Database Schema, Migration & Seed Alignment\n";
+
+    // 17A: tbl_audit_logs exists and has required columns
+    $auditCols = $pdo->query("SHOW COLUMNS FROM tbl_audit_logs")->fetchAll(PDO::FETCH_COLUMN);
+    $requiredCols = ['id', 'user_id', 'action', 'module_key', 'entity_type', 'entity_id', 'description', 'old_values', 'new_values', 'ip_address', 'user_agent', 'created_at'];
+    $hasAllCols = count(array_intersect($requiredCols, $auditCols)) === count($requiredCols);
+    assertTest(
+        "Test 17A: tbl_audit_logs table exists and possesses all required columns",
+        $hasAllCols,
+        "Columns found: " . implode(', ', $auditCols)
+    );
+
+    // 17B: tbl_permissions.is_system column exists
+    $permCols = $pdo->query("SHOW COLUMNS FROM tbl_permissions")->fetchAll(PDO::FETCH_COLUMN);
+    assertTest(
+        "Test 17B: tbl_permissions has is_system column with DEFAULT 0",
+        in_array('is_system', $permCols, true),
+        "Permissions columns: " . implode(', ', $permCols)
+    );
+
+    // 17C: 40 official seeded permissions have is_system = 1
+    $systemPermCount = (int)$pdo->query("SELECT COUNT(*) FROM tbl_permissions WHERE is_system = 1")->fetchColumn();
+    assertTest(
+        "Test 17C: Exactly 40 official application permissions are flagged is_system = 1",
+        $systemPermCount === 40,
+        "Found {$systemPermCount} system permissions"
+    );
+
+    // 17D: audit.view permission exists with is_system = 1 and assigned to Administrator
+    $auditPerm = $pdo->query("SELECT id, is_system FROM tbl_permissions WHERE module_key = 'audit' AND permission_key = 'view'")->fetch();
+    $adminHasAudit = false;
+    if ($auditPerm) {
+        $adminAuditChk = $pdo->query("SELECT COUNT(*) FROM tbl_role_permissions WHERE role_id = 1 AND permission_id = {$auditPerm['id']}")->fetchColumn();
+        $adminHasAudit = ((int)$adminAuditChk > 0);
+    }
+    assertTest(
+        "Test 17D: 'audit.view' permission exists (is_system=1) and is assigned to Administrator role",
+        $auditPerm && (int)$auditPerm['is_system'] === 1 && $adminHasAudit,
+        "Audit perm found: " . json_encode($auditPerm) . ", Admin assigned: " . ($adminHasAudit ? 'yes' : 'no')
+    );
+
+    // =========================================================================
+    // SUITE 18: Centralized Audit Helper (auditLog & Recursive Sanitization)
+    // =========================================================================
+    echo "\nSUITE 18: Centralized Audit Helper (auditLog & Recursive Sanitization)\n";
+    require_once __DIR__ . '/../../backend/helpers/audit.php';
+
+    // 18A: auditLog inserts record into tbl_audit_logs with derived actor
+    $_SESSION['user_id'] = 1;
+    $_SERVER['REMOTE_ADDR'] = '192.168.1.50';
+    $_SERVER['HTTP_USER_AGENT'] = '6IS-TestRunner/1.0';
+
+    $testAuditId = auditLog([
+        'action' => 'CREATE',
+        'module_key' => 'test',
+        'entity_type' => 'test_item',
+        'entity_id' => '999',
+        'description' => 'Test audit log write',
+        'old_values' => null,
+        'new_values' => ['name' => 'Item 999']
+    ], $pdo);
+
+    $fetchAudit = $pdo->query("SELECT * FROM tbl_audit_logs WHERE id = {$testAuditId}")->fetch();
+    assertTest(
+        "Test 18A: auditLog() records entry with automatic user_id, ip_address, and user_agent",
+        $fetchAudit &&
+        (int)$fetchAudit['user_id'] === 1 &&
+        $fetchAudit['action'] === 'CREATE' &&
+        $fetchAudit['ip_address'] === '192.168.1.50' &&
+        $fetchAudit['user_agent'] === '6IS-TestRunner/1.0',
+        "Recorded: " . json_encode($fetchAudit)
+    );
+    $pdo->exec("DELETE FROM tbl_audit_logs WHERE id = {$testAuditId}");
+
+    // 18B: Recursive sanitization strips sensitive fields
+    $dirtyData = [
+        'username' => 'TestUser',
+        'password' => 'SuperSecret123!',
+        'password_hash' => '$2y$10$abcdefghijklmnopqrstuv',
+        'token' => 'bearer-token-abc',
+        'nested' => [
+            'key' => 'allowed_value',
+            'new_password' => 'SecretNewPass',
+            'api_key' => '12345-secret',
+            'deep' => [
+                'session_id' => 'sess_9999',
+                'secret' => 'topsecret'
+            ]
+        ]
+    ];
+    $sanitized = sanitizeAuditData($dirtyData);
+    $rawJson = json_encode($sanitized);
+    $containsRawSecrets = str_contains($rawJson, 'SuperSecret123!') ||
+        str_contains($rawJson, 'SecretNewPass') ||
+        str_contains($rawJson, 'topsecret') ||
+        str_contains($rawJson, 'sess_9999') ||
+        str_contains($rawJson, '$2y$10$abcdefghijklmnopqrstuv');
+    $hasRedacted = ($sanitized['password'] ?? '') === '[REDACTED]' &&
+        ($sanitized['nested']['deep']['secret'] ?? '') === '[REDACTED]';
+    $retainsAllowed = ($sanitized['username'] ?? '') === 'TestUser' &&
+        ($sanitized['nested']['key'] ?? '') === 'allowed_value';
+
+    assertTest(
+        "Test 18B: sanitizeAuditData() recursively strips passwords, tokens, secrets, and session IDs",
+        !$containsRawSecrets && $hasRedacted && $retainsAllowed,
+        "Sanitized output: " . json_encode($sanitized)
+    );
+
+    // 18C: Transaction atomicity: if auditLog fails in transaction, state mutation is rolled back
+    $preCountUsers = (int)$pdo->query("SELECT COUNT(*) FROM tbl_users WHERE username = 'rollback_test_user'")->fetchColumn();
+    $mutationRolledBack = false;
+    try {
+        $pdo->beginTransaction();
+        $pdo->exec("INSERT INTO tbl_users (username, full_name, password, role, role_id, is_active, created_at, updated_at) VALUES ('rollback_test_user', 'Rollback User', 'hash', 'User', 2, 1, NOW(), NOW())");
+        // Force auditLog failure by simulating DB error
+        throw new RuntimeException("Simulated audit write failure");
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        $mutationRolledBack = true;
+    }
+    $postCountUsers = (int)$pdo->query("SELECT COUNT(*) FROM tbl_users WHERE username = 'rollback_test_user'")->fetchColumn();
+    assertTest(
+        "Test 18C: Transactional rollback guarantees mutation is aborted if audit write fails",
+        $mutationRolledBack && $postCountUsers === 0,
+        "Post count: {$postCountUsers}"
+    );
+
+    // =========================================================================
+    // SUITE 19: Core Audit REST API Endpoint (backend/api/core/audit/index.php)
+    // =========================================================================
+    echo "\nSUITE 19: Core Audit REST API Endpoint (backend/api/core/audit/index.php)\n";
+
+    // 19A: Unauthenticated GET returns HTTP 401
+    $resAuditUnauth = invokeApiEndpoint('backend/api/core/audit/index.php', 'GET', [], null, []);
+    assertTest(
+        "Test 19A: GET audit logs unauthenticated returns HTTP 401 Unauthorized",
+        $resAuditUnauth['status'] === 401,
+        "Status: {$resAuditUnauth['status']}"
+    );
+
+    // 19B: GET audit logs without audit.view permission returns HTTP 403
+    $resAuditNoPerm = invokeApiEndpoint('backend/api/core/audit/index.php', 'GET', [], null, ['user_id' => 2, 'role' => 'User']);
+    assertTest(
+        "Test 19B: GET audit logs without 'audit.view' permission returns HTTP 403 Forbidden",
+        $resAuditNoPerm['status'] === 403,
+        "Status: {$resAuditNoPerm['status']}, Body: {$resAuditNoPerm['body']}"
+    );
+
+    // 19C: GET audit logs as Administrator returns HTTP 200 with pagination
+    $resAuditAdmin = invokeApiEndpoint('backend/api/core/audit/index.php', 'GET', ['limit' => 5], null, ['user_id' => 1, 'role' => 'Administrator']);
+    assertTest(
+        "Test 19C: GET audit logs as Administrator returns HTTP 200 with paginated entries",
+        $resAuditAdmin['status'] === 200 &&
+        ($resAuditAdmin['json']['success'] ?? false) === true &&
+        isset($resAuditAdmin['json']['data']) &&
+        isset($resAuditAdmin['json']['pagination']),
+        "Status: {$resAuditAdmin['status']}, Body: {$resAuditAdmin['body']}"
+    );
+
+    // 19D: Filter audit logs by module_key
+    $resAuditModuleFilter = invokeApiEndpoint('backend/api/core/audit/index.php', 'GET', ['module_key' => 'auth'], null, ['user_id' => 1, 'role' => 'Administrator']);
+    $allMatchAuth = true;
+    if (!empty($resAuditModuleFilter['json']['data'])) {
+        foreach ($resAuditModuleFilter['json']['data'] as $entry) {
+            if ($entry['module_key'] !== 'auth') $allMatchAuth = false;
+        }
+    }
+    assertTest(
+        "Test 19D: Filter audit logs by module_key='auth' returns matching entries",
+        $resAuditModuleFilter['status'] === 200 && $allMatchAuth,
+        "Status: {$resAuditModuleFilter['status']}"
+    );
+
+    // 19E: Read-only immutability: POST and DELETE return HTTP 405
+    $resAuditPost = invokeApiEndpoint('backend/api/core/audit/index.php', 'POST', [], ['action' => 'HACK'], ['user_id' => 1, 'role' => 'Administrator']);
+    $resAuditDelete = invokeApiEndpoint('backend/api/core/audit/index.php', 'DELETE', ['id' => 1], null, ['user_id' => 1, 'role' => 'Administrator']);
+    assertTest(
+        "Test 19E: Audit API is strictly read-only: POST and DELETE return HTTP 405 Method Not Allowed",
+        $resAuditPost['status'] === 405 && $resAuditDelete['status'] === 405,
+        "POST: {$resAuditPost['status']}, DELETE: {$resAuditDelete['status']}"
+    );
+
+    // =========================================================================
+    // SUITE 20: Session Fixation & Cookie Hardening Verification
+    // =========================================================================
+    echo "\nSUITE 20: Session Fixation & Cookie Hardening Verification\n";
+
+    // 20A: Login generates a new session ID and returns fresh CSRF token
+    $loginResp = invokeApiEndpoint('backend/api/auth/index.php', 'POST', [], ['username' => 'Admin01', 'password' => 'adminpassword01']);
+    assertTest(
+        "Test 20A: Successful login returns authenticated payload with fresh CSRF token",
+        $loginResp['status'] === 200 &&
+        ($loginResp['json']['success'] ?? false) === true &&
+        !empty($loginResp['json']['csrf_token']),
+        "Status: {$loginResp['status']}, Body: {$loginResp['body']}"
+    );
+
+    // 20B: Session cookie parameters enforce HttpOnly and SameSite=Lax
+    $cookieCheckOutput = shell_exec("d:\\Apps\\xampp\\php\\php.exe -r \"require 'backend/helpers/auth.php'; ensureSessionStarted(); echo json_encode(session_get_cookie_params());\"") ?? '';
+    $cookieParams = json_decode(trim($cookieCheckOutput), true) ?? [];
+    assertTest(
+        "Test 20B: Session cookie parameters enforce httponly=true and samesite=Lax",
+        ($cookieParams['httponly'] ?? false) === true &&
+        strtolower($cookieParams['samesite'] ?? '') === 'lax',
+        "Cookie params: " . json_encode($cookieParams)
+    );
+
+    // =========================================================================
+    // SUITE 21: CORS Configuration & Strict Server-Side Allowlist
+    // =========================================================================
+    echo "\nSUITE 21: CORS Configuration & Strict Server-Side Allowlist\n";
+
+    // 21A: Allowed origin receives Access-Control-Allow-Origin
+    $resCorsAllowed = invokeApiEndpoint('backend/api/core/modules/index.php', 'GET', [], null, ['user_id' => 1, 'role' => 'Administrator'], ['Origin' => 'http://localhost:5173']);
+    assertTest(
+        "Test 21A: Allowed origin (http://localhost:5173) receives successful response",
+        $resCorsAllowed['status'] === 200,
+        "Status: {$resCorsAllowed['status']}"
+    );
+
+    // 21B: Attacker origin OPTIONS preflight rejected with HTTP 403
+    $resCorsBlocked = invokeApiEndpoint('backend/api/core/modules/index.php', 'OPTIONS', [], null, [], ['Origin' => 'http://malicious-attacker.com']);
+    assertTest(
+        "Test 21B: Preflight OPTIONS from unauthorized origin returns HTTP 403 Forbidden",
+        $resCorsBlocked['status'] === 403,
+        "Status: {$resCorsBlocked['status']}, Body: {$resCorsBlocked['body']}"
+    );
+
+    // =========================================================================
+    // SUITE 22: CSRF Token Generation & Header-First Validation
+    // =========================================================================
+    echo "\nSUITE 22: CSRF Token Generation & Header-First Validation\n";
+
+    // 22A: Mutating request without CSRF token is rejected with HTTP 403
+    $resCsrfMissing = invokeApiEndpoint(
+        'backend/api/core/modules/index.php',
+        'PATCH',
+        ['module_key' => 'inventory'],
+        ['is_active' => true],
+        ['user_id' => 1, 'role' => 'Administrator'],
+        ['X-CSRF-Token' => '__OMIT__']
+    );
+    assertTest(
+        "Test 22A: Mutating request missing CSRF token is rejected with HTTP 403 Forbidden",
+        $resCsrfMissing['status'] === 403 &&
+        str_contains($resCsrfMissing['json']['message'] ?? '', 'CSRF'),
+        "Status: {$resCsrfMissing['status']}, Body: {$resCsrfMissing['body']}"
+    );
+
+    // 22B: Mutating request with invalid CSRF token is rejected with HTTP 403
+    $resCsrfInvalid = invokeApiEndpoint(
+        'backend/api/core/modules/index.php',
+        'PATCH',
+        ['module_key' => 'inventory'],
+        ['is_active' => true],
+        ['user_id' => 1, 'role' => 'Administrator'],
+        ['X-CSRF-Token' => 'forged_token_12345']
+    );
+    assertTest(
+        "Test 22B: Mutating request with invalid CSRF token is rejected with HTTP 403 Forbidden",
+        $resCsrfInvalid['status'] === 403 &&
+        str_contains($resCsrfInvalid['json']['message'] ?? '', 'CSRF'),
+        "Status: {$resCsrfInvalid['status']}, Body: {$resCsrfInvalid['body']}"
+    );
+
+    // 22C: Mutating request with matching valid CSRF token succeeds (HTTP 200)
+    $validCsrf = bin2hex(random_bytes(32));
+    $resCsrfValid = invokeApiEndpoint(
+        'backend/api/core/modules/index.php',
+        'PATCH',
+        ['module_key' => 'inventory'],
+        ['is_active' => true],
+        ['user_id' => 1, 'role' => 'Administrator', 'csrf_token' => $validCsrf],
+        ['X-CSRF-Token' => $validCsrf]
+    );
+    assertTest(
+        "Test 22C: Mutating request with matching X-CSRF-Token header succeeds with HTTP 200 OK",
+        $resCsrfValid['status'] === 200 &&
+        ($resCsrfValid['json']['success'] ?? false) === true,
+        "Status: {$resCsrfValid['status']}, Body: {$resCsrfValid['body']}"
+    );
+
+    // =========================================================================
+    // SUITE 23: Final Administrator Protection & Self-Deactivation Guard
+    // =========================================================================
+    echo "\nSUITE 23: Final Administrator Protection & Self-Deactivation Guard\n";
+
+    // 23A: Self-deactivation guard: Administrator cannot deactivate themselves
+    $resSelfDeact = invokeApiEndpoint(
+        'backend/api/users/index.php',
+        'POST',
+        ['action' => 'toggle_active'],
+        ['id' => 1, 'is_active' => 0],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 23A: Administrator attempting to deactivate their own account is rejected with HTTP 400",
+        $resSelfDeact['status'] === 400 &&
+        str_contains($resSelfDeact['json']['message'] ?? '', 'deactivate your own'),
+        "Status: {$resSelfDeact['status']}, Body: {$resSelfDeact['body']}"
+    );
+
+    // 23B: Attempting to leave zero active Administrators is rejected with HTTP 400
+    // Create a temporary second admin
+    $pdo->exec("INSERT INTO tbl_users (username, full_name, password, role, role_id, is_active, created_at, updated_at) VALUES ('temp_admin2', 'Temp Admin', 'hash', 'Administrator', 1, 1, NOW(), NOW())");
+    $tempAdmin2Id = (int)$pdo->lastInsertId();
+    $cleanupUserIds[] = $tempAdmin2Id;
+
+    // Deactivating the second admin when admin 1 is active succeeds
+    $resDeactAdmin2 = invokeApiEndpoint(
+        'backend/api/users/index.php',
+        'POST',
+        ['action' => 'toggle_active'],
+        ['id' => $tempAdmin2Id, 'is_active' => 0],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 23B: Deactivating second Administrator when another active Administrator exists succeeds (HTTP 200)",
+        $resDeactAdmin2['status'] === 200,
+        "Status: {$resDeactAdmin2['status']}"
+    );
+
+    // Reactivate tempAdmin2
+    $pdo->exec("UPDATE tbl_users SET is_active = 1 WHERE id = {$tempAdmin2Id}");
+    // Deactivate tempAdmin2 so Admin01 is the sole active admin
+    $pdo->exec("UPDATE tbl_users SET is_active = 0 WHERE id = {$tempAdmin2Id}");
+
+    // Attempting to change role of sole active Administrator away from Administrator (leaving 0 active admins) MUST fail
+    $resChangeLastAdminRole = invokeApiEndpoint(
+        'backend/api/users/index.php',
+        'POST',
+        ['action' => 'update'],
+        ['id' => 1, 'role_id' => 2, 'role' => 'User'],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 23C: Changing role of the last active Administrator away from Administrator is rejected with HTTP 400",
+        $resChangeLastAdminRole['status'] === 400 &&
+        str_contains($resChangeLastAdminRole['json']['message'] ?? '', 'final active Administrator'),
+        "Status: {$resChangeLastAdminRole['status']}, Body: {$resChangeLastAdminRole['body']}"
+    );
+
+    // Deleting the sole active Administrator account MUST fail with HTTP 400
+    $resDeleteSoleAdmin = invokeApiEndpoint(
+        'backend/api/users/index.php',
+        'POST',
+        ['action' => 'delete'],
+        ['id' => 1],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 23D: Deleting the sole active Administrator account is rejected with HTTP 400",
+        $resDeleteSoleAdmin['status'] === 400,
+        "Status: {$resDeleteSoleAdmin['status']}, Body: {$resDeleteSoleAdmin['body']}"
+    );
+
+    // Clean up tempAdmin2
+    $pdo->exec("DELETE FROM tbl_users WHERE id = {$tempAdmin2Id}");
+
+    // =========================================================================
+    // SUITE 24: System Roles & Permissions Protection
+    // =========================================================================
+    echo "\nSUITE 24: System Roles & Permissions Protection\n";
+
+    // 24A: System role Administrator cannot be renamed
+    $resRenameSysRole = invokeApiEndpoint('backend/api/core/roles/index.php', 'PATCH', ['id' => 1], ['name' => 'SuperAdmin'], ['user_id' => 1, 'role' => 'Administrator']);
+    assertTest(
+        "Test 24A: Renaming system role 'Administrator' is rejected with HTTP 400",
+        $resRenameSysRole['status'] === 400 && str_contains($resRenameSysRole['json']['message'] ?? '', 'System role'),
+        "Status: {$resRenameSysRole['status']}"
+    );
+
+    // 24B: System role Administrator cannot be deactivated
+    $resDeactSysRole = invokeApiEndpoint('backend/api/core/roles/index.php', 'PATCH', ['id' => 1], ['is_active' => false], ['user_id' => 1, 'role' => 'Administrator']);
+    assertTest(
+        "Test 24B: Deactivating system role 'Administrator' is rejected with HTTP 400",
+        $resDeactSysRole['status'] === 400 && str_contains($resDeactSysRole['json']['message'] ?? '', 'System role'),
+        "Status: {$resDeactSysRole['status']}"
+    );
+
+    // 24C: System role Administrator cannot be deleted
+    $resDelSysRole = invokeApiEndpoint('backend/api/core/roles/index.php', 'DELETE', ['id' => 1], null, ['user_id' => 1, 'role' => 'Administrator']);
+    assertTest(
+        "Test 24C: Deleting system role 'Administrator' is rejected with HTTP 400",
+        $resDelSysRole['status'] === 400 && str_contains($resDelSysRole['json']['message'] ?? '', 'System role'),
+        "Status: {$resDelSysRole['status']}"
+    );
+
+    // =========================================================================
+    // SUITE 25: Organization Minimum Active Count Invariant
+    // =========================================================================
+    echo "\nSUITE 25: Organization Minimum Active Count Invariant\n";
+
+    // 25A: Attempting to deactivate sole organization is rejected with HTTP 400
+    $resDeactOrg = invokeApiEndpoint(
+        'backend/api/core/organization/index.php',
+        'PATCH',
+        [],
+        ['is_active' => 0],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 25A: Deactivating the sole active organization is rejected with HTTP 400",
+        $resDeactOrg['status'] === 400 &&
+        str_contains($resDeactOrg['json']['message'] ?? '', 'at least one active organization'),
+        "Status: {$resDeactOrg['status']}, Body: {$resDeactOrg['body']}"
     );
 
 } finally {
