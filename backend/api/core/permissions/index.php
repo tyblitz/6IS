@@ -63,15 +63,14 @@ if ($method === 'GET') {
             WHERE p.is_active = 1
             ORDER BY 
                 CASE p.module_key
-                    WHEN 'dashboard' THEN 1
-                    WHEN 'inventory' THEN 2
-                    WHEN 'communications' THEN 3
-                    WHEN 'calendar' THEN 4
-                    WHEN 'accomplishments' THEN 5
-                    WHEN 'users' THEN 6
-                    WHEN 'roles' THEN 7
-                    WHEN 'modules' THEN 8
-                    ELSE 9
+                    WHEN 'inventory' THEN 1
+                    WHEN 'communications' THEN 2
+                    WHEN 'calendar' THEN 3
+                    WHEN 'accomplishments' THEN 4
+                    WHEN 'users' THEN 5
+                    WHEN 'roles' THEN 6
+                    WHEN 'modules' THEN 7
+                    ELSE 8
                 END,
                 CASE p.permission_key
                     WHEN 'view' THEN 1

@@ -61,38 +61,42 @@ require_once __DIR__ . '/../../helpers/permissions.php';
 // GET Method - Current User Check
 if ($method === 'GET') {
     if (isset($_SESSION['user_id'])) {
-        // Verify user is still active in database and resolve active role
-        $stmt = $pdo->prepare("
-            SELECT u.id, u.username, u.role, u.role_id, u.is_active, u.deleted_at, r.name AS role_name
-            FROM tbl_users u
-            LEFT JOIN tbl_roles r ON u.role_id = r.id
-            WHERE u.id = :id
-            LIMIT 1
-        ");
-        $stmt->execute([':id' => $_SESSION['user_id']]);
-        $user = $stmt->fetch();
+        try {
+            // Verify user is still active in database and resolve active role
+            $stmt = $pdo->prepare("
+                SELECT u.id, u.username, u.role, u.role_id, u.is_active, u.deleted_at, r.name AS role_name
+                FROM tbl_users u
+                LEFT JOIN tbl_roles r ON u.role_id = r.id
+                WHERE u.id = :id
+                LIMIT 1
+            ");
+            $stmt->execute([':id' => $_SESSION['user_id']]);
+            $user = $stmt->fetch();
 
-        if ($user && (int)$user['is_active'] === 1 && empty($user['deleted_at'])) {
-            $effectiveRole = !empty($user['role_name']) ? $user['role_name'] : $user['role'];
-            $permissions = getUserPermissions((int)$user['id'], $pdo);
+            if ($user && (int)$user['is_active'] === 1 && empty($user['deleted_at'])) {
+                $effectiveRole = !empty($user['role_name']) ? $user['role_name'] : $user['role'];
+                $permissions = getUserPermissions((int)$user['id'], $pdo);
 
-            http_response_code(200);
-            echo json_encode([
-                'success' => true,
-                'authenticated' => true,
-                'user' => [
-                    'id' => (int)$user['id'],
-                    'username' => $user['username'],
-                    'role' => $effectiveRole,
-                    'role_id' => $user['role_id'] ? (int)$user['role_id'] : null,
-                    'permissions' => $permissions
-                ]
-            ], JSON_UNESCAPED_UNICODE);
-            exit();
-        } else {
-            // Account disabled or soft deleted - destroy session
-            session_unset();
-            session_destroy();
+                http_response_code(200);
+                echo json_encode([
+                    'success' => true,
+                    'authenticated' => true,
+                    'user' => [
+                        'id' => (int)$user['id'],
+                        'username' => $user['username'],
+                        'role' => $effectiveRole,
+                        'role_id' => $user['role_id'] ? (int)$user['role_id'] : null,
+                        'permissions' => $permissions
+                    ]
+                ], JSON_UNESCAPED_UNICODE);
+                exit();
+            } else {
+                // Account disabled or soft deleted - destroy session
+                session_unset();
+                session_destroy();
+            }
+        } catch (Throwable $e) {
+            sendJsonResponse(false, 'Database error retrieving user session.', null, null, 500);
         }
     }
 

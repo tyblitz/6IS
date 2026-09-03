@@ -10,12 +10,13 @@ ON DUPLICATE KEY UPDATE
     `is_system` = 1,
     `updated_at` = NOW();
 
--- 2. Seed Official Permissions Registry (Idempotent: ON DUPLICATE KEY UPDATE)
+-- 2. Clean Up Legacy Dashboard Permission (Dashboard is an open Core landing page for authenticated users)
+DELETE FROM `tbl_role_permissions` WHERE `permission_id` IN (SELECT `id` FROM `tbl_permissions` WHERE `module_key` = 'dashboard' AND `permission_key` = 'view');
+DELETE FROM `tbl_permissions` WHERE `module_key` = 'dashboard' AND `permission_key` = 'view';
+
+-- 3. Seed Official Permissions Registry (Idempotent: ON DUPLICATE KEY UPDATE without overwriting is_active)
 INSERT INTO `tbl_permissions` (`module_key`, `permission_key`, `name`, `description`, `is_active`, `created_at`, `updated_at`)
 VALUES
-    -- Dashboard
-    ('dashboard', 'view', 'View Dashboard', 'View executive dashboard and operational KPI metrics', 1, NOW(), NOW()),
-
     -- Inventory
     ('inventory', 'view', 'View Inventory', 'View ICT equipment records and JRRS target metrics', 1, NOW(), NOW()),
     ('inventory', 'create', 'Create Equipment', 'Register new ICT equipment records into inventory', 1, NOW(), NOW()),
@@ -64,10 +65,9 @@ VALUES
 ON DUPLICATE KEY UPDATE
     `name` = VALUES(`name`),
     `description` = VALUES(`description`),
-    `is_active` = 1,
     `updated_at` = NOW();
 
--- 3. Grant Administrator System Role ALL Permissions (Idempotent)
+-- 4. Grant Administrator System Role ALL Permissions (Idempotent)
 INSERT INTO `tbl_role_permissions` (`role_id`, `permission_id`, `created_at`)
 SELECT r.id, p.id, NOW()
 FROM `tbl_roles` r
@@ -75,12 +75,11 @@ CROSS JOIN `tbl_permissions` p
 WHERE r.name = 'Administrator'
 ON DUPLICATE KEY UPDATE `created_at` = VALUES(`created_at`);
 
--- 4. Grant User System Role Baseline Operational View Permissions (Idempotent)
+-- 5. Grant User System Role Baseline Operational View Permissions (Idempotent)
 INSERT INTO `tbl_role_permissions` (`role_id`, `permission_id`, `created_at`)
 SELECT r.id, p.id, NOW()
 FROM `tbl_roles` r
 JOIN `tbl_permissions` p ON (
-    (p.module_key = 'dashboard' AND p.permission_key = 'view') OR
     (p.module_key = 'inventory' AND p.permission_key = 'view') OR
     (p.module_key = 'communications' AND p.permission_key = 'view') OR
     (p.module_key = 'calendar' AND p.permission_key = 'view') OR

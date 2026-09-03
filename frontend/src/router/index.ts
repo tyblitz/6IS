@@ -468,7 +468,7 @@ router.beforeEach(async (to, _from, next) => {
   // Enforce granular route permissions if specified in route meta
   if (requiredPermission && user) {
     const userPerms = (user.permissions || []).map(p => p.toLowerCase())
-    if (!userPerms.includes(requiredPermission.toLowerCase()) && user.role !== 'Administrator') {
+    if (!userPerms.includes(requiredPermission.toLowerCase())) {
       console.warn(`[router] Direct route blocked: User lacks permission '${requiredPermission}'. Redirecting to /home.`)
       next('/home')
       return

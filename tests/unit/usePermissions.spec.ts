@@ -36,7 +36,7 @@ describe('usePermissions Composable (RBAC)', () => {
 
     expect(hasPermission('inventory', 'view')).toBe(false)
     expect(can('communications', 'view')).toBe(false)
-    expect(isPermitted('dashboard.view')).toBe(false)
+    expect(isPermitted('roles.view')).toBe(false)
     expect(isAdmin.value).toBe(false)
   })
 
@@ -50,8 +50,7 @@ describe('usePermissions Composable (RBAC)', () => {
         'inventory.view',
         'communications.view',
         'calendar.view',
-        'accomplishments.view',
-        'dashboard.view'
+        'accomplishments.view'
       ]
     }
     vi.spyOn(authService, 'activeUser', 'get').mockReturnValue(ref<AuthUser | null>(mockUser))

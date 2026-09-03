@@ -202,7 +202,9 @@ async function loadKpis() {
     if (accData.success && accData.data?.counts) {
       kpis.value.accomplishmentsThisMonth = accData.data.counts.monthly || 0
     }
-  } catch (err) {}
+  } catch (err) {
+    console.debug('[admin] Failed to load accomplishment KPI:', err)
+  }
   loadingKpi.value = false
 }
 

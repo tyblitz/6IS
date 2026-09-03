@@ -6,13 +6,17 @@ ini_set('display_errors', '1');
 error_reporting(E_ALL);
 
 echo "===============================================================\n";
-echo " 6IS Phase 0 & Phase 1 Automated Test Suite\n";
-echo " Core Authentication, Production Module API & Data Preservation\n";
+echo " 6IS Phase 0 + Phase 1 + Phase 2 Automated Test Suite\n";
+echo " Core Auth, Module Registry & RBAC Permissions Architecture\n";
 echo "===============================================================\n\n";
 
 $totalTests = 0;
 $passedTests = 0;
 $failedTests = 0;
+
+// Track dynamically created fixtures for guaranteed cleanup in finally
+$cleanupRoleIds = [];
+$cleanupUserIds = [];
 
 function assertTest(string $description, bool $condition, string $details = ''): void {
     global $totalTests, $passedTests, $failedTests;
@@ -118,6 +122,12 @@ $originalModuleStates = [];
 $stmt = $pdo->query("SELECT module_key, is_active FROM tbl_modules");
 while ($row = $stmt->fetch()) {
     $originalModuleStates[$row['module_key']] = (int)$row['is_active'];
+}
+
+$originalPermissionStates = [];
+$stmtPerm = $pdo->query("SELECT id, is_active FROM tbl_permissions");
+while ($row = $stmtPerm->fetch()) {
+    $originalPermissionStates[(int)$row['id']] = (int)$row['is_active'];
 }
 
 try {
@@ -479,11 +489,11 @@ try {
     assertTest("Test 8B: System roles 'Administrator' and 'User' exist with is_system = 1", $rolesCount === 2);
 
     $permsCount = (int)$pdo->query("SELECT COUNT(*) FROM tbl_permissions WHERE is_active = 1")->fetchColumn();
-    assertTest("Test 8C: System permissions seeded in tbl_permissions ({$permsCount} permissions)", $permsCount >= 33);
+    assertTest("Test 8C: System permissions seeded in tbl_permissions ({$permsCount} permissions)", $permsCount >= 32);
 
     $adminRoleId = (int)$pdo->query("SELECT id FROM tbl_roles WHERE name = 'Administrator'")->fetchColumn();
     $adminPermCount = (int)$pdo->query("SELECT COUNT(*) FROM tbl_role_permissions WHERE role_id = {$adminRoleId}")->fetchColumn();
-    assertTest("Test 8D: Administrator role possesses full permission suite ({$adminPermCount} assigned)", $adminPermCount >= 33);
+    assertTest("Test 8D: Administrator role possesses full permission suite ({$adminPermCount} assigned)", $adminPermCount >= 32);
 
     $usersWithRoleId = (int)$pdo->query("SELECT COUNT(*) FROM tbl_users WHERE role_id IS NOT NULL AND role_id > 0")->fetchColumn();
     $totalUsersCount = (int)$pdo->query("SELECT COUNT(*) FROM tbl_users WHERE deleted_at IS NULL")->fetchColumn();
@@ -510,6 +520,9 @@ try {
     $testRolePayload = ['name' => 'QA Auditor ' . time(), 'description' => 'Test role for automated verification', 'is_active' => true];
     $resCreateRole = invokeApiEndpoint('backend/api/core/roles/index.php', 'POST', [], $testRolePayload, ['user_id' => 1, 'role' => 'Administrator']);
     $createdRoleId = (int)($resCreateRole['json']['data']['id'] ?? 0);
+    if ($createdRoleId > 0) {
+        $cleanupRoleIds[] = $createdRoleId;
+    }
     assertTest("Test 9D: POST create custom role returns HTTP 201 Created (Role ID: {$createdRoleId})", $resCreateRole['status'] === 201 && $createdRoleId > 0);
 
     // 9E: PATCH update custom role details
@@ -537,8 +550,10 @@ try {
     // Create custom role and assign a test user to test un-deletable assigned custom role rule
     $pdo->exec("INSERT INTO tbl_roles (name, is_system, is_active, created_at, updated_at) VALUES ('AssignedCustomRole', 0, 1, NOW(), NOW())");
     $assignedCustomRoleId = (int)$pdo->lastInsertId();
+    $cleanupRoleIds[] = $assignedCustomRoleId;
     $pdo->exec("INSERT INTO tbl_users (username, full_name, password, role_id, role, is_active, created_at, updated_at) VALUES ('assigned_test_usr', 'Assigned User', 'hash', {$assignedCustomRoleId}, 'AssignedCustomRole', 1, NOW(), NOW())");
     $assignedTestUserId = (int)$pdo->lastInsertId();
+    $cleanupUserIds[] = $assignedTestUserId;
 
     $resDelAssigned = invokeApiEndpoint('backend/api/core/roles/index.php', 'DELETE', ['id' => $assignedCustomRoleId], null, ['user_id' => 1, 'role' => 'Administrator']);
     assertTest(
@@ -667,6 +682,9 @@ try {
         'role_id' => 2
     ], ['user_id' => 1, 'role' => 'Administrator']);
     $createdUserId = (int)($resCreateUser['json']['data']['id'] ?? 0);
+    if ($createdUserId > 0) {
+        $cleanupUserIds[] = $createdUserId;
+    }
 
     assertTest("Test 12A: User created with role_id = 2 binds correctly", $resCreateUser['status'] === 201 && $createdUserId > 0);
 
@@ -687,12 +705,147 @@ try {
     // Clean up temporary user
     $pdo->exec("DELETE FROM tbl_users WHERE id = {$createdUserId}");
 
+    // =========================================================================
+    // SUITE 13: Phase 2 RBAC Corrective Pass Regressions
+    // =========================================================================
+    echo "\nSUITE 13: Phase 2 RBAC Corrective Pass Regression Verification\n";
+
+    // 13A: Permission seed preserves deactivation (is_active = 0 survives re-run)
+    $testPermId = (int)$pdo->query("SELECT id FROM tbl_permissions WHERE module_key = 'inventory' AND permission_key = 'create'")->fetchColumn();
+    $pdo->exec("UPDATE tbl_permissions SET is_active = 0 WHERE id = {$testPermId}");
+    $seedSql = file_get_contents(__DIR__ . '/../../database/migrations/seed_roles_and_permissions.sql');
+    $pdo->exec($seedSql);
+    $permActiveAfterSeed = (int)$pdo->query("SELECT is_active FROM tbl_permissions WHERE id = {$testPermId}")->fetchColumn();
+    assertTest(
+        "Test 13A: Permission seed preserves deactivation (is_active remains 0 on repeated seed)",
+        $permActiveAfterSeed === 0
+    );
+    // Restore permission active
+    $pdo->exec("UPDATE tbl_permissions SET is_active = 1 WHERE id = {$testPermId}");
+
+    // 13B: Permission database failure produces HTTP 500 with controlled response
+    $outputDbFailure = runPhpSnippet('
+        session_start();
+        $_SESSION["user_id"] = 1;
+        $_SESSION["role"] = "Administrator";
+        require "backend/helpers/permissions.php";
+        
+        register_shutdown_function(function() {
+            echo "__HTTP_CODE__:" . http_response_code();
+        });
+
+        // Force an invalid DB condition using an in-memory SQLite connection lacking MySQL tables
+        try {
+            $brokenPdo = new PDO("sqlite::memory:");
+            requirePermission("inventory", "view", $brokenPdo);
+        } catch (Throwable $e) {
+            echo "UNCAUGHT_THROWABLE";
+        }
+    ');
+    
+    $httpCode = 0;
+    if (preg_match('/__HTTP_CODE__:(\d+)/', $outputDbFailure, $mCode)) {
+        $httpCode = (int)$mCode[1];
+    }
+    $jsonStart = strpos($outputDbFailure, '{');
+    $jsonDbFailure = $jsonStart !== false ? json_decode(substr($outputDbFailure, $jsonStart, strrpos($outputDbFailure, '}') - $jsonStart + 1), true) : null;
+
+    assertTest(
+        "Test 13B: Permission DB failure produces HTTP 500 with controlled JSON response",
+        $httpCode === 500 &&
+        is_array($jsonDbFailure) &&
+        ($jsonDbFailure['success'] ?? true) === false &&
+        str_contains($jsonDbFailure['message'] ?? '', 'Internal server error verifying permissions'),
+        "HTTP Code: {$httpCode}, Output: {$outputDbFailure}"
+    );
+
+    // 13C: Administrator cannot bypass a missing permission
+    $pdo->exec("INSERT INTO tbl_roles (name, is_system, is_active, created_at, updated_at) VALUES ('AdminWithoutDelete', 0, 1, NOW(), NOW())");
+    $noDelRoleId = (int)$pdo->lastInsertId();
+    $cleanupRoleIds[] = $noDelRoleId;
+    
+    // Assign all permissions EXCEPT inventory.delete
+    $pdo->exec("
+        INSERT INTO tbl_role_permissions (role_id, permission_id, created_at)
+        SELECT {$noDelRoleId}, id, NOW() 
+        FROM tbl_permissions 
+        WHERE NOT (module_key = 'inventory' AND permission_key = 'delete')
+    ");
+    
+    // Create user with role 'Administrator' in session/table, but role_id pointing to AdminWithoutDelete
+    $pdo->exec("INSERT INTO tbl_users (username, full_name, password, role_id, role, is_active, created_at, updated_at) VALUES ('admin_no_del', 'Admin No Del', 'hash', {$noDelRoleId}, 'Administrator', 1, NOW(), NOW())");
+    $noDelUserId = (int)$pdo->lastInsertId();
+    $cleanupUserIds[] = $noDelUserId;
+    
+    // Attempt inventory deletion endpoint
+    $resBypassAttempt = invokeApiEndpoint(
+        'backend/api/inventory/index.php', 
+        'POST', 
+        ['action' => 'delete_equipment'], 
+        ['id' => 99999], 
+        ['user_id' => $noDelUserId, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 13C: Administrator cannot bypass a missing permission (HTTP 403 denied)",
+        $resBypassAttempt['status'] === 403 && str_contains($resBypassAttempt['json']['message'] ?? '', 'permission'),
+        "Status: {$resBypassAttempt['status']}, Body: {$resBypassAttempt['body']}"
+    );
+
+    // 13D: Core permissions (roles, users, modules) independent of business-module activation
+    $pdo->exec("UPDATE tbl_modules SET is_active = 0 WHERE module_key IN ('inventory', 'communications', 'calendar', 'accomplishments')");
+    
+    $outputCorePermCheck = runPhpSnippet('
+        session_start();
+        $_SESSION["user_id"] = 1;
+        $_SESSION["role"] = "Administrator";
+        require "backend/helpers/permissions.php";
+        
+        $rolesView = hasPermission("roles", "view");
+        $usersView = hasPermission("users", "view");
+        $modulesView = hasPermission("modules", "view");
+        
+        echo json_encode([
+            "roles" => $rolesView,
+            "users" => $usersView,
+            "modules" => $modulesView
+        ]);
+    ');
+    $corePermData = json_decode($outputCorePermCheck, true);
+    assertTest(
+        "Test 13D: Core permissions (roles, users, modules) remain accessible when business modules disabled",
+        is_array($corePermData) &&
+        ($corePermData['roles'] ?? false) === true &&
+        ($corePermData['users'] ?? false) === true &&
+        ($corePermData['modules'] ?? false) === true,
+        "Output: {$outputCorePermCheck}"
+    );
+
 } finally {
     // =========================================================================
-    // REQUIREMENT 3: Restore Exact Original Module States
+    // GUARANTEED CLEANUP: Restore Exact Original Module & RBAC Database State
     // =========================================================================
-    echo "\nSUITE 7: Original Database State Restoration & Cleanliness (Requirement 3)\n";
+    echo "\nSUITE 7: Original Database State Restoration & Cleanliness (Guaranteed Cleanup)\n";
 
+    // 1. Delete all tracked temporary test users
+    if (!empty($cleanupUserIds)) {
+        $inUsers = implode(',', array_map('intval', array_unique($cleanupUserIds)));
+        $pdo->exec("DELETE FROM tbl_users WHERE id IN ({$inUsers})");
+    }
+
+    // 2. Delete all tracked temporary test roles and their permissions
+    if (!empty($cleanupRoleIds)) {
+        $inRoles = implode(',', array_map('intval', array_unique($cleanupRoleIds)));
+        $pdo->exec("DELETE FROM tbl_role_permissions WHERE role_id IN ({$inRoles})");
+        $pdo->exec("DELETE FROM tbl_roles WHERE id IN ({$inRoles})");
+    }
+
+    // 3. Restore all original permission states
+    foreach ($originalPermissionStates as $permId => $origActive) {
+        $upPerm = $pdo->prepare("UPDATE tbl_permissions SET is_active = :act WHERE id = :id");
+        $upPerm->execute([':act' => $origActive, ':id' => $permId]);
+    }
+
+    // 4. Restore original module activation states
     $restoredCleanly = true;
     foreach ($originalModuleStates as $moduleKey => $originalActiveState) {
         $upStmt = $pdo->prepare("UPDATE tbl_modules SET is_active = :act WHERE module_key = :k");
