@@ -176,7 +176,6 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { IonIcon } from '@ionic/vue'
 import {
   addOutline,
@@ -190,7 +189,6 @@ import {
 
 import MainLayout from '../../layouts/MainLayout.vue'
 
-const router = useRouter()
 const items = ref<any[]>([])
 const loading = ref(true)
 const saving = ref(false)
@@ -230,7 +228,7 @@ const filteredList = computed(() => {
     // Status Filter
     let matchesStatus = true
     if (filterStatus.value === 'active') matchesStatus = Boolean(item.is_active)
-    if (filterStatus.value === 'inactive') matchesStatus = !Boolean(item.is_active)
+    if (filterStatus.value === 'inactive') matchesStatus = !item.is_active
 
     return matchesSearch && matchesStatus
   })
@@ -244,8 +242,8 @@ const sortedList = computed(() => {
   const isAsc = sortDirection.value === 'asc'
 
   list.sort((a, b) => {
-    let valA: any = a[col] ?? ''
-    let valB: any = b[col] ?? ''
+    const valA: any = a[col] ?? ''
+    const valB: any = b[col] ?? ''
 
     if (typeof valA === 'string') {
       const cmp = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' })
@@ -282,7 +280,9 @@ async function loadData() {
     if (data.success && Array.isArray(data.data)) {
       items.value = data.data
     }
-  } catch (err) {}
+  } catch {
+    // ignore network error
+  }
   loading.value = false
 }
 

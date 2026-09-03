@@ -572,7 +572,7 @@ try {
     $pdo->exec("INSERT INTO tbl_roles (name, is_system, is_active, created_at, updated_at) VALUES ('AssignedCustomRole', 0, 1, NOW(), NOW())");
     $assignedCustomRoleId = (int)$pdo->lastInsertId();
     $cleanupRoleIds[] = $assignedCustomRoleId;
-    $pdo->exec("INSERT INTO tbl_users (username, full_name, password, role_id, role, is_active, created_at, updated_at) VALUES ('assigned_test_usr', 'Assigned User', 'hash', {$assignedCustomRoleId}, 'AssignedCustomRole', 1, NOW(), NOW())");
+    $pdo->exec("INSERT INTO tbl_users (username, full_name, password, role_id, role, is_active, created_at, updated_at) VALUES ('assigned_test_usr', 'Assigned User', 'hash', {$assignedCustomRoleId}, 'User', 1, NOW(), NOW())");
     $assignedTestUserId = (int)$pdo->lastInsertId();
     $cleanupUserIds[] = $assignedTestUserId;
 
@@ -617,29 +617,30 @@ try {
 
     // 10C: Configure Independence verification:
     // inventory.configure does NOT grant inventory.create, inventory.edit, inventory.delete
-    $outputConfigIndep = runPhpSnippet('
-        $cfg = require "backend/config/database.php";
-        $pdo = new PDO("mysql:host={$cfg[\'host\']};dbname={$cfg[\'database\']}", $cfg[\'username\'], $cfg[\'password\']);
+    $outputConfigIndep = runPhpSnippet(<<<'PHP'
+        $cfg = require 'backend/config/database.php';
+        $pdo = new PDO("mysql:host=" . $cfg['host'] . ";dbname=" . $cfg['database'], $cfg['username'], $cfg['password']);
         
-        // Create temp role with ONLY inventory.configure
-        $pdo->exec("INSERT INTO tbl_roles (name, is_system, is_active, created_at, updated_at) VALUES (\'TempConfigOnly\', 0, 1, NOW(), NOW())");
+        $pdo->exec("DELETE FROM tbl_users WHERE username = 'test_cfg_user'");
+        $pdo->exec("DELETE FROM tbl_roles WHERE name = 'TempConfigOnly'");
+        $pdo->exec("INSERT INTO tbl_roles (name, is_system, is_active, created_at, updated_at) VALUES ('TempConfigOnly', 0, 1, NOW(), NOW())");
         $tRoleId = (int)$pdo->lastInsertId();
-        $confPermId = (int)$pdo->query("SELECT id FROM tbl_permissions WHERE module_key = \'inventory\' AND permission_key = \'configure\'")->fetchColumn();
+        $confPermId = (int)$pdo->query("SELECT id FROM tbl_permissions WHERE module_key = 'inventory' AND permission_key = 'configure'")->fetchColumn();
         $pdo->exec("INSERT INTO tbl_role_permissions (role_id, permission_id, created_at) VALUES ({$tRoleId}, {$confPermId}, NOW())");
         
         // Create temp user assigned to TempConfigOnly
-        $pdo->exec("INSERT INTO tbl_users (username, full_name, password, role_id, role, is_active, created_at, updated_at) VALUES (\'test_cfg_user\', \'Test Cfg\', \'hash\', {$tRoleId}, \'TempConfigOnly\', 1, NOW(), NOW())");
+        $pdo->exec("INSERT INTO tbl_users (username, full_name, password, role_id, role, is_active, created_at, updated_at) VALUES ('test_cfg_user', 'Test Cfg', 'hash', {$tRoleId}, 'User', 1, NOW(), NOW())");
         $tUserId = (int)$pdo->lastInsertId();
         
         session_start();
-        $_SESSION[\'user_id\'] = $tUserId;
-        $_SESSION[\'role\'] = \'TempConfigOnly\';
+        $_SESSION['user_id'] = $tUserId;
+        $_SESSION['role'] = 'User';
         
-        require "backend/helpers/permissions.php";
-        $hasConf = hasPermission("inventory", "configure");
-        $hasCreate = hasPermission("inventory", "create");
-        $hasEdit = hasPermission("inventory", "edit");
-        $hasDelete = hasPermission("inventory", "delete");
+        require 'backend/helpers/permissions.php';
+        $hasConf = hasPermission('inventory', 'configure');
+        $hasCreate = hasPermission('inventory', 'create');
+        $hasEdit = hasPermission('inventory', 'edit');
+        $hasDelete = hasPermission('inventory', 'delete');
         
         // Clean up temp user & role
         $pdo->exec("DELETE FROM tbl_users WHERE id = {$tUserId}");
@@ -647,11 +648,13 @@ try {
         $pdo->exec("DELETE FROM tbl_roles WHERE id = {$tRoleId}");
         
         echo json_encode(["conf" => $hasConf, "create" => $hasCreate, "edit" => $hasEdit, "delete" => $hasDelete]);
-    ');
+PHP
+    );
     $indepData = json_decode($outputConfigIndep, true);
     assertTest(
         "Test 10C: Configure Independence: inventory.configure does NOT grant create, edit, or delete",
-        is_array($indepData) && $indepData['conf'] === true && $indepData['create'] === false && $indepData['edit'] === false && $indepData['delete'] === false
+        is_array($indepData) && ($indepData['conf'] ?? false) === true && ($indepData['create'] ?? true) === false && ($indepData['edit'] ?? true) === false && ($indepData['delete'] ?? true) === false,
+        "Output: " . $outputConfigIndep
     );
 
     // 10D: Module Invariant: Administrator + inventory.* when Inventory module is disabled -> HTTP 403
@@ -868,7 +871,7 @@ try {
     $noOrgRoleId = (int)$pdo->lastInsertId();
     $cleanupRoleIds[] = $noOrgRoleId;
 
-    $pdo->exec("INSERT INTO tbl_users (username, full_name, password, role, role_id, is_active, created_at, updated_at) VALUES ('no_org_user', 'No Org User', 'hash', 'NoOrgRole', {$noOrgRoleId}, 1, NOW(), NOW())");
+    $pdo->exec("INSERT INTO tbl_users (username, full_name, password, role, role_id, is_active, created_at, updated_at) VALUES ('no_org_user', 'No Org User', 'hash', 'User', {$noOrgRoleId}, 1, NOW(), NOW())");
     $noOrgUserId = (int)$pdo->lastInsertId();
     $cleanupUserIds[] = $noOrgUserId;
 
@@ -1403,7 +1406,7 @@ try {
 
     // 15M7: Transaction rollback semantics: mid-operation failure rolls back completely
     $testRollbackCode = 'TX_ROLLBACK_' . time();
-    $pdo->exec("INSERT INTO tbl_offices (organization_id, name, code, is_active, created_at, updated_at) VALUES (1, 'Rollback Test Office', '{$testRollbackCode}', 1, NOW(), NOW())");
+    $pdo->exec("INSERT INTO tbl_offices (organization_id, name, code, office_abbv, is_active, created_at, updated_at) VALUES (1, 'Rollback Test Office', '{$testRollbackCode}', 'RB_OFF', 1, NOW(), NOW())");
     $txOfficeId = (int)$pdo->lastInsertId();
     $cleanupOfficeIds[] = $txOfficeId;
 
@@ -1456,7 +1459,7 @@ try {
 
     // 15P: DELETE clean office with 0 dependencies succeeds
     $ephemeralCode = 'EPH_' . time();
-    $pdo->exec("INSERT INTO tbl_offices (organization_id, name, code, is_active, created_at, updated_at) VALUES (1, 'Ephemeral Office', '{$ephemeralCode}', 1, NOW(), NOW())");
+    $pdo->exec("INSERT INTO tbl_offices (organization_id, name, code, office_abbv, is_active, created_at, updated_at) VALUES (1, 'Ephemeral Office', '{$ephemeralCode}', 'EPH_OFF', 1, NOW(), NOW())");
     $ephemeralId = (int)$pdo->lastInsertId();
 
     $resDeleteClean = invokeApiEndpoint(
@@ -1593,7 +1596,7 @@ try {
     $pdo->exec("UPDATE tbl_offices SET is_active = 1 WHERE id = {$createdOfficeId}");
 
     $testOffice2Code = 'TEST_OFF2_' . time();
-    $pdo->exec("INSERT INTO tbl_offices (organization_id, name, code, is_active, created_at, updated_at) VALUES (1, 'Second Active Office', '{$testOffice2Code}', 1, NOW(), NOW())");
+    $pdo->exec("INSERT INTO tbl_offices (organization_id, name, code, office_abbv, is_active, created_at, updated_at) VALUES (1, 'Second Active Office', '{$testOffice2Code}', 'OFF2', 1, NOW(), NOW())");
     $secondOfficeId = (int)$pdo->lastInsertId();
     $cleanupOfficeIds[] = $secondOfficeId;
 

@@ -86,7 +86,9 @@ function getActivitiesForHour(hour: number): CalendarActivity[] {
         if (!isNaN(dt.getTime())) {
           return dt.getHours() === hour
         }
-      } catch (e) {}
+      } catch {
+        // ignore parse error
+      }
     }
     return hour === 9
   })
@@ -127,7 +129,9 @@ function formatDisplayTitle(act: CalendarActivity): string {
           const m = String(dt.getMinutes()).padStart(2, '0')
           timeStr = `${h}${m}H - `
         }
-      } catch (e) {}
+      } catch {
+        // ignore parse error
+      }
     }
   }
   const titleStr = act.title || 'Operational Activity'

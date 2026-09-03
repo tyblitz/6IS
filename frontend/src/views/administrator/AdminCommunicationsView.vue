@@ -415,8 +415,8 @@ const sortedList = computed(() => {
   const isAsc = sortDirection.value === 'asc'
 
   list.sort((a, b) => {
-    let valA: any = a[col] ?? ''
-    let valB: any = b[col] ?? ''
+    const valA: any = a[col] ?? ''
+    const valB: any = b[col] ?? ''
 
     if (typeof valA === 'string') {
       const cmp = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' })
@@ -467,7 +467,9 @@ async function loadData() {
     if (catRes.success && Array.isArray(catRes.data)) categoryList.value = catRes.data
     if (pRes.success && Array.isArray(pRes.data)) purposeList.value = pRes.data
     if (offRes.success && Array.isArray(offRes.data)) officeList.value = offRes.data
-  } catch (err) {}
+  } catch {
+    // ignore network error
+  }
   loading.value = false
 }
 

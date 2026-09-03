@@ -108,7 +108,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { IonSpinner } from '@ionic/vue'
 import MainLayout from '../../layouts/MainLayout.vue'
 import CalendarHeader from '../../components/calendar/CalendarHeader.vue'
@@ -148,7 +148,6 @@ import { fetchAccomplishmentOptions } from '../../services/accomplishmentService
 
 // Router
 const route = useRoute()
-const router = useRouter()
 
 // State
 const currentDate = ref(new Date())

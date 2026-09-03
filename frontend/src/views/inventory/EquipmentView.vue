@@ -505,7 +505,6 @@ import TablePagination from '../../components/common/TablePagination.vue'
 import {
   fetchReportingPeriods,
   fetchEquipmentList,
-  fetchEquipmentDetail,
   fetchReferenceOptions,
   fetchAttributeDefinitions,
   fetchOffices,
@@ -756,54 +755,6 @@ async function openAddModal() {
   }
 
   showModal.value = true
-}
-
-async function openEditModal(item: EquipmentItem) {
-  isEditMode.value = true
-  targetEquipment.value = item
-  modalError.value = ''
-  
-  formPayload.id = item.id
-  formPayload.office_id = item.office_id
-  formPayload.equipment_type_id = item.equipment_type_id
-  formPayload.equipment_subtype_id = item.equipment_subtype_id
-  formPayload.status_id = item.status_id
-  formPayload.description = item.description || ''
-  formPayload.serial_number = item.serial_number || ''
-  formPayload.date_acquired = item.date_acquired ? item.date_acquired.slice(0, 10) : new Date().toISOString().slice(0, 10)
-  formPayload.attributes = {}
-
-  // Fetch attribute definitions & single detail record
-  const detailRes = await fetchEquipmentDetail(item.id)
-  if (detailRes.success && detailRes.data) {
-    const fullItem = detailRes.data
-    formPayload.equipment_type_id = fullItem.equipment_type_id
-    formPayload.equipment_subtype_id = fullItem.equipment_subtype_id
-    formPayload.status_id = fullItem.status_id
-
-    const defRes = await fetchAttributeDefinitions(fullItem.equipment_subtype_id)
-    if (defRes.success) {
-      attributeDefs.value = defRes.data
-      const attrsMap = fullItem.attributes_map || {}
-      defRes.data.forEach(def => {
-        formPayload.attributes[def.id] = attrsMap[def.id] !== undefined ? attrsMap[def.id] : undefined
-      })
-    }
-  }
-
-  showModal.value = true
-}
-
-async function openDetailModal(item: EquipmentItem) {
-  loadingDetail.value = true
-  showDetailModal.value = true
-  detailItem.value = null
-
-  const res = await fetchEquipmentDetail(item.id)
-  if (res.success && res.data) {
-    detailItem.value = res.data
-  }
-  loadingDetail.value = false
 }
 
 function openDeleteModal(item: EquipmentItem) {

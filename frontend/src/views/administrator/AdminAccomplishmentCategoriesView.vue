@@ -261,7 +261,9 @@ async function loadCategories() {
     if (data.success) {
       categories.value = data.data
     }
-  } catch (err) {}
+  } catch {
+    // ignore network error
+  }
   loading.value = false
 }
 

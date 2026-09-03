@@ -251,29 +251,21 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { IonIcon } from '@ionic/vue'
 import {
-  arrowBackOutline,
   addOutline,
   searchOutline,
   swapVerticalOutline,
   arrowUpOutline,
   arrowDownOutline,
   createOutline,
-  trashOutline,
-  cubeOutline,
-  layersOutline,
-  gridOutline,
-  optionsOutline,
-  listOutline
+  trashOutline
 } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
 import { fetchEquipmentSubtypes, saveAttributeDefinition, deleteAttributeDefinition } from '../../services/inventoryService'
 import type { EquipmentSubtype, AttributeDefinition } from '../../types/inventory'
 
-const router = useRouter()
 const items = ref<AttributeDefinition[]>([])
 const subtypes = ref<EquipmentSubtype[]>([])
 const loading = ref(true)
@@ -344,8 +336,8 @@ const sortedList = computed(() => {
   const isAsc = sortDirection.value === 'asc'
 
   list.sort((a, b) => {
-    let valA: any = a[col] ?? ''
-    let valB: any = b[col] ?? ''
+    const valA: any = a[col] ?? ''
+    const valB: any = b[col] ?? ''
 
     if (typeof valA === 'string') {
       const cmp = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' })

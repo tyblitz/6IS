@@ -264,8 +264,8 @@ const sortedAccomplishments = computed(() => {
   const k = sortKey.value
   const isAsc = sortOrder.value === 'asc'
   return list.sort((a, b) => {
-    let valA = a[k] ?? ''
-    let valB = b[k] ?? ''
+    const valA = a[k] ?? ''
+    const valB = b[k] ?? ''
     const strA = String(valA).toLowerCase()
     const strB = String(valB).toLowerCase()
     if (strA < strB) return isAsc ? -1 : 1
@@ -336,7 +336,9 @@ async function loadData() {
     } else {
       accomplishments.value = []
     }
-  } catch (err) {}
+  } catch {
+    // ignore network error
+  }
   loading.value = false
 }
 

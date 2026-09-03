@@ -192,16 +192,6 @@ function openEditModal(item: Communication) {
   isFormOpen.value = true
 }
 
-async function handleSelect(item: Communication) {
-  const res = await fetchCommunicationById(item.id)
-  if (res.success && res.data) {
-    detailRecord.value = res.data
-  } else {
-    detailRecord.value = item
-  }
-  isDetailOpen.value = true
-}
-
 function openEditFromDetail(record: Communication) {
   isDetailOpen.value = false
   openEditModal(record)

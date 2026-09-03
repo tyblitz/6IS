@@ -57,7 +57,7 @@ interface AgendaDateGroup {
   activities: CalendarActivity[];
 }
 
-const groupedAgenda = computed(() => {
+const groupedAgenda = computed<AgendaDateGroup[]>(() => {
   const groupsMap: Record<string, CalendarActivity[]> = {}
 
   for (const act of props.activities) {

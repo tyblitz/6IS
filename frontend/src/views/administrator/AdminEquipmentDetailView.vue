@@ -238,7 +238,6 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { IonIcon } from '@ionic/vue'
 import {
-  arrowBackOutline,
   saveOutline
 } from 'ionicons/icons'
 
@@ -446,15 +445,6 @@ async function handleSaveEquipment() {
   } else {
     pageError.value = res.message || 'Failed to update equipment details.'
   }
-}
-
-function getStatusClass(status?: string): string {
-  if (!status) return ''
-  const s = status.toLowerCase()
-  if (s.includes('serviceable') && !s.includes('unserviceable')) return 'status-serviceable'
-  if (s.includes('repair')) return 'status-repair'
-  if (s.includes('turn-in') || s.includes('unserviceable')) return 'status-unserviceable'
-  return ''
 }
 
 onMounted(() => {

@@ -341,11 +341,7 @@ import {
   arrowUpOutline,
   arrowDownOutline,
   createOutline,
-  trashOutline,
-  layersOutline,
-  gridOutline,
-  optionsOutline,
-  listOutline
+  trashOutline
 } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
@@ -511,7 +507,7 @@ const visiblePageNumbers = computed(() => {
   const pages: number[] = []
   const maxButtons = 5
   let start = Math.max(1, currentPage.value - 2)
-  let end = Math.min(totalPages.value, start + maxButtons - 1)
+  const end = Math.min(totalPages.value, start + maxButtons - 1)
 
   if (end - start + 1 < maxButtons) {
     start = Math.max(1, end - maxButtons + 1)

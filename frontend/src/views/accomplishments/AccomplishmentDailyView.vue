@@ -328,16 +328,6 @@ function openCreateModal() {
   isFormOpen.value = true
 }
 
-function handleView(item: AccomplishmentItem) {
-  selectedRecord.value = item
-  isDetailOpen.value = true
-}
-
-function handleEdit(item: AccomplishmentItem) {
-  selectedRecord.value = item
-  isFormOpen.value = true
-}
-
 function handleEditFromDetail(record: AccomplishmentItem) {
   isDetailOpen.value = false
   selectedRecord.value = record
@@ -353,10 +343,6 @@ async function handleDeletePrompt(item: AccomplishmentItem) {
       alert(res.message || 'Failed to delete accomplishment record.')
     }
   }
-}
-
-function handlePrint() {
-  window.print()
 }
 </script>
 

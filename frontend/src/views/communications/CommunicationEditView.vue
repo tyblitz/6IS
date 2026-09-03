@@ -180,7 +180,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { IonIcon } from '@ionic/vue'
-import { saveOutline, cloudUploadOutline, trashOutline, addOutline } from 'ionicons/icons'
+import { saveOutline, cloudUploadOutline, addOutline } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
 import {

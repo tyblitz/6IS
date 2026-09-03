@@ -101,7 +101,9 @@ function formatDisplayTitle(act: CalendarActivity): string {
         const m = String(dt.getMinutes()).padStart(2, '0')
         timeStr = `${h}${m}H - `
       }
-    } catch (e) {}
+    } catch {
+      // ignore parse error
+    }
   }
   const typeCode = getTypeCode(act)
   const titleStr = act.title ? ` - ${act.title}` : ''

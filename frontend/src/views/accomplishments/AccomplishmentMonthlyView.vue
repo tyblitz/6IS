@@ -178,9 +178,7 @@ import { IonSpinner, IonIcon, onIonViewWillEnter } from '@ionic/vue'
 import { 
   checkmarkDoneCircleOutline, 
   paperPlaneOutline,
-  shieldCheckmarkOutline,
-  printOutline,
-  documentTextOutline
+  shieldCheckmarkOutline
 } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
@@ -189,12 +187,11 @@ import type {
   OutgoingCommCategorySummary,
   ClearancePurposeSummary 
 } from '../../types/accomplishment'
-import { fetchMonthlyAccomplishments, exportMonthlyReportDocx } from '../../services/accomplishmentService'
+import { fetchMonthlyAccomplishments } from '../../services/accomplishmentService'
 
 const route = useRoute()
 
 const loading = ref(true)
-const isGeneratingDocx = ref(false)
 const accomplishmentsByCategory = ref<AccomplishmentCategorySummary[]>([])
 const outgoingCommsByCategory = ref<OutgoingCommCategorySummary[]>([])
 const clearancesByPurpose = ref<ClearancePurposeSummary[]>([])
@@ -281,21 +278,6 @@ async function loadData() {
 function calculatePercentage(count: number, total: number): number {
   if (!total || total === 0) return 0
   return Math.round(((Number(count) || 0) / total) * 100)
-}
-
-function handlePrint() {
-  window.print()
-}
-
-async function handleExportDocx() {
-  isGeneratingDocx.value = true
-  try {
-    await exportMonthlyReportDocx(selectedMonth.value, selectedYear.value)
-  } catch (err) {
-    console.error('Failed to export DOCX report:', err)
-  } finally {
-    isGeneratingDocx.value = false
-  }
 }
 </script>
 

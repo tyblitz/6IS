@@ -4,7 +4,16 @@
 import type { AuditApiResponse, AuditFilterParams } from '../types/audit'
 import { getStoredCsrfToken } from './authService'
 
-const BASE_URL = '/backend/api/core/audit/index.php'
+function resolveAuditApiUrl(): string {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname || 'localhost'
+    const protocol = window.location.protocol || 'http:'
+    return `${protocol}//${host}/6IS/backend/api/core/audit/index.php`
+  }
+  return 'http://localhost/6IS/backend/api/core/audit/index.php'
+}
+
+const BASE_URL = resolveAuditApiUrl()
 
 /**
  * Fetches paginated, filtered audit logs from the Core Audit API.

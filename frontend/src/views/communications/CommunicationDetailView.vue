@@ -149,8 +149,7 @@ import {
   createOutline,
   arrowBackOutline,
   expandOutline,
-  imageOutline,
-  cloudUploadOutline
+  imageOutline
 } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'

@@ -242,7 +242,6 @@ import {
   cubeOutline,
   chatbubbleEllipsesOutline,
   clipboardOutline,
-  shieldCheckmarkOutline,
   peopleOutline
 } from 'ionicons/icons'
 
@@ -381,7 +380,9 @@ function formatTimeOnly(act: CalendarActivity): string {
         const m = String(dt.getMinutes()).padStart(2, '0')
         return `${h}:${m}`
       }
-    } catch (e) {}
+    } catch {
+      // ignore parse error
+    }
   }
   return 'All Day'
 }
@@ -396,7 +397,7 @@ function handleOpenActivityDetails(act: CalendarActivity) {
   isDetailsModalOpen.value = true
 }
 
-function handleOpenEditModal(act: CalendarActivity) {
+function handleOpenEditModal() {
   isDetailsModalOpen.value = false
   router.push('/calendar')
 }
