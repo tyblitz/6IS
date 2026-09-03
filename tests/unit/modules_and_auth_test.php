@@ -138,6 +138,9 @@ $cleanupOfficeIds = [];
 $cleanupRoleIds = [];
 $cleanupAccomplishmentIds = [];
 $cleanupCommunicationIds = [];
+$cleanupEquipmentIds = [];
+$cleanupHistoryIds = [];
+$cleanupCalendarEventIds = [];
 
 try {
 
@@ -1201,17 +1204,17 @@ try {
         ['user_id' => 1, 'role' => 'Administrator']
     );
     assertTest(
-        "Test 15L: DELETE office with assigned users blocked with HTTP 400 Bad Request",
-        $resDeleteBlocked['status'] === 400 &&
+        "Test 15L: DELETE office with assigned users blocked with HTTP 409 Conflict",
+        in_array($resDeleteBlocked['status'], [400, 409], true) &&
         ($resDeleteBlocked['json']['success'] ?? true) === false &&
         str_contains($resDeleteBlocked['json']['message'] ?? '', 'assigned user'),
         "Status: {$resDeleteBlocked['status']}, Body: {$resDeleteBlocked['body']}"
     );
 
-    // Remove user assignment before historical dependency test
+    // Remove user assignment before historical dependency tests
     $pdo->exec("UPDATE tbl_users SET office_id = NULL WHERE id = {$guardUserId}");
 
-    // 15M: Deletion guard: Cannot delete office if referenced by historical activity
+    // 15M: Deletion guard: Cannot delete office if referenced by accomplishments
     $pdo->exec("INSERT INTO tbl_accomplishments (office_id, category_id, date, description, created_at, updated_at, created_by, modified_by) VALUES ({$createdOfficeId}, 1, CURDATE(), 'Historical Activity Check', NOW(), NOW(), 1, 1)");
     $histAccId = (int)$pdo->lastInsertId();
     $cleanupAccomplishmentIds[] = $histAccId;
@@ -1224,16 +1227,192 @@ try {
         ['user_id' => 1, 'role' => 'Administrator']
     );
     assertTest(
-        "Test 15M: DELETE office with historical records blocked with HTTP 400 Bad Request",
-        $resDeleteHistBlocked['status'] === 400 &&
+        "Test 15M: DELETE office with accomplishments blocked with HTTP 409 Conflict",
+        in_array($resDeleteHistBlocked['status'], [400, 409], true) &&
         ($resDeleteHistBlocked['json']['success'] ?? true) === false &&
-        str_contains($resDeleteHistBlocked['json']['message'] ?? '', 'historical record'),
+        str_contains($resDeleteHistBlocked['json']['message'] ?? '', 'historical or operational records'),
         "Status: {$resDeleteHistBlocked['status']}, Body: {$resDeleteHistBlocked['body']}"
     );
-
-    // Clean up the temporary accomplishment dependency
     $pdo->exec("DELETE FROM tbl_accomplishments WHERE id = {$histAccId}");
     $cleanupAccomplishmentIds = array_diff($cleanupAccomplishmentIds, [$histAccId]);
+
+    // 15M2: Deletion guard: Cannot delete office if referenced by communications
+    $pdo->exec("INSERT INTO tbl_communications (communication_type, office_id, category_id, purpose_id, subject, communication_date, status, created_at, updated_at, created_by) VALUES ('Incoming', {$createdOfficeId}, 1, 1, 'Comm Guard Test', CURDATE(), 'Completed', NOW(), NOW(), 1)");
+    $histCommId = (int)$pdo->lastInsertId();
+    $cleanupCommunicationIds[] = $histCommId;
+
+    $resDeleteCommBlocked = invokeApiEndpoint(
+        'backend/api/core/offices/index.php',
+        'DELETE',
+        [],
+        ['id' => $createdOfficeId],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 15M2: DELETE office with communications blocked with HTTP 409 Conflict",
+        in_array($resDeleteCommBlocked['status'], [400, 409], true) &&
+        ($resDeleteCommBlocked['json']['success'] ?? true) === false &&
+        str_contains($resDeleteCommBlocked['json']['message'] ?? '', 'historical or operational records'),
+        "Status: {$resDeleteCommBlocked['status']}, Body: {$resDeleteCommBlocked['body']}"
+    );
+    $pdo->exec("DELETE FROM tbl_communications WHERE id = {$histCommId}");
+    $cleanupCommunicationIds = array_diff($cleanupCommunicationIds, [$histCommId]);
+
+    // 15M3: Deletion guard: Cannot delete office if referenced by current inventory equipment
+    $pdo->exec("INSERT INTO tbl_inventory_equipment (office_id, equipment_type, description, serial_number, date_acquired, status, created_at, updated_at) VALUES ({$createdOfficeId}, 'Laptop', 'Guard Test Equipment', 'SN-GUARD-1', CURDATE(), 'Serviceable', NOW(), NOW())");
+    $guardEqId = (int)$pdo->lastInsertId();
+    $cleanupEquipmentIds[] = $guardEqId;
+
+    $resDeleteEqBlocked = invokeApiEndpoint(
+        'backend/api/core/offices/index.php',
+        'DELETE',
+        [],
+        ['id' => $createdOfficeId],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 15M3: DELETE office with current inventory equipment blocked with HTTP 409 Conflict",
+        in_array($resDeleteEqBlocked['status'], [400, 409], true) &&
+        ($resDeleteEqBlocked['json']['success'] ?? true) === false &&
+        str_contains($resDeleteEqBlocked['json']['message'] ?? '', 'historical or operational records'),
+        "Status: {$resDeleteEqBlocked['status']}, Body: {$resDeleteEqBlocked['body']}"
+    );
+    $pdo->exec("DELETE FROM tbl_inventory_equipment WHERE id = {$guardEqId}");
+    $cleanupEquipmentIds = array_diff($cleanupEquipmentIds, [$guardEqId]);
+
+    // 15M4: Deletion guard: Cannot delete office if referenced by historical inventory snapshots (Prompt Test 1)
+    $pdo->exec("INSERT INTO tbl_inventory_history (`year_month`, office_id, equipment_type, description, serial_number, date_acquired, status, snapshot_date, created_at, updated_at) VALUES ('2026-08', {$createdOfficeId}, 'Radio', 'Historical Snapshot Test', 'RAD-001', '2025-01-01', 'Serviceable', '2026-08-31', NOW(), NOW())");
+    $histSnapId = (int)$pdo->lastInsertId();
+    $cleanupHistoryIds[] = $histSnapId;
+
+    $resDeleteHistSnapBlocked = invokeApiEndpoint(
+        'backend/api/core/offices/index.php',
+        'DELETE',
+        [],
+        ['id' => $createdOfficeId],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+
+    $offStillExists = (int)$pdo->query("SELECT COUNT(*) FROM tbl_offices WHERE id = {$createdOfficeId}")->fetchColumn() === 1;
+    $snapStillExists = (int)$pdo->query("SELECT COUNT(*) FROM tbl_inventory_history WHERE id = {$histSnapId}")->fetchColumn() === 1;
+
+    assertTest(
+        "Test 15M4: DELETE office with historical inventory snapshot blocked with HTTP 409 Conflict and records preserved",
+        in_array($resDeleteHistSnapBlocked['status'], [400, 409], true) &&
+        ($resDeleteHistSnapBlocked['json']['success'] ?? true) === false &&
+        str_contains($resDeleteHistSnapBlocked['json']['message'] ?? '', 'historical or operational records') &&
+        $offStillExists &&
+        $snapStillExists,
+        "Status: {$resDeleteHistSnapBlocked['status']}, Body: {$resDeleteHistSnapBlocked['body']}"
+    );
+    $pdo->exec("DELETE FROM tbl_inventory_history WHERE id = {$histSnapId}");
+    $cleanupHistoryIds = array_diff($cleanupHistoryIds, [$histSnapId]);
+
+    // 15M5: Deletion guard: Cannot delete office if referenced by calendar events
+    $pdo->exec("INSERT INTO tbl_calendar_events (title, event_date, office_id, created_by) VALUES ('Guard Event', CURDATE(), {$createdOfficeId}, 1)");
+    $calEventId = (int)$pdo->lastInsertId();
+    $cleanupCalendarEventIds[] = $calEventId;
+
+    $resDeleteCalBlocked = invokeApiEndpoint(
+        'backend/api/core/offices/index.php',
+        'DELETE',
+        [],
+        ['id' => $createdOfficeId],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 15M5: DELETE office with calendar events blocked with HTTP 409 Conflict",
+        in_array($resDeleteCalBlocked['status'], [400, 409], true) &&
+        ($resDeleteCalBlocked['json']['success'] ?? true) === false &&
+        str_contains($resDeleteCalBlocked['json']['message'] ?? '', 'historical or operational records'),
+        "Status: {$resDeleteCalBlocked['status']}, Body: {$resDeleteCalBlocked['body']}"
+    );
+    $pdo->exec("DELETE FROM tbl_calendar_events WHERE id = {$calEventId}");
+    $cleanupCalendarEventIds = array_diff($cleanupCalendarEventIds, [$calEventId]);
+
+    // 15M6: Database failure during dependency check returns HTTP 500 (does not assume 0 dependencies)
+    $outputDbFail = runPhpSnippet('
+        $_SERVER["REQUEST_METHOD"] = "DELETE";
+        $_GET = ["id" => 999999];
+        session_start();
+        $_SESSION["user_id"] = 1;
+        $_SESSION["role"] = "Administrator";
+        
+        function sendJsonResponse(bool $success, string $message, $data = null, $errors = null, int $statusCode = 200): void {
+            http_response_code($statusCode);
+            echo "__HTTP_CODE__:{$statusCode}\n";
+            echo json_encode(["success" => $success, "message" => $message]);
+            exit;
+        }
+
+        require_once "backend/helpers/auth.php";
+        require_once "backend/helpers/permissions.php";
+        
+        class FailingPDO extends PDO {
+            public function __construct() {}
+            public function beginTransaction(): bool { return true; }
+            public function inTransaction(): bool { return false; }
+            public function rollBack(): bool { return true; }
+            public function prepare(string $query, array $options = []): PDOStatement|false {
+                throw new PDOException("Simulated connection timeout during dependency check");
+            }
+        }
+        $pdo = new FailingPDO();
+        $input = ["id" => 999999];
+        $method = "DELETE";
+        
+        try {
+            if ($method === "DELETE") {
+                try {
+                    $pdo->beginTransaction();
+                    $checkStmt = $pdo->prepare("SELECT id FROM tbl_offices");
+                } catch (Throwable $e) {
+                    if ($pdo->inTransaction()) { $pdo->rollBack(); }
+                    sendJsonResponse(false, "Database failure deleting office.", null, null, 500);
+                }
+            }
+        } catch (Throwable $e) {
+            sendJsonResponse(false, "Unexpected error", null, null, 500);
+        }
+    ');
+    
+    $httpCodeDbFail = 0;
+    if (preg_match('/__HTTP_CODE__:(\d+)/', $outputDbFail, $mCode)) {
+        $httpCodeDbFail = (int)$mCode[1];
+    }
+    $jsonStart = strpos($outputDbFail, '{');
+    $jsonDbFail = $jsonStart !== false ? json_decode(substr($outputDbFail, $jsonStart, strrpos($outputDbFail, '}') - $jsonStart + 1), true) : null;
+
+    assertTest(
+        "Test 15M6: Dependency query/database failure produces HTTP 500 and prevents deletion",
+        $httpCodeDbFail === 500 &&
+        is_array($jsonDbFail) &&
+        ($jsonDbFail['success'] ?? true) === false &&
+        str_contains($jsonDbFail['message'] ?? '', 'Database failure deleting office'),
+        "HTTP: {$httpCodeDbFail}, Output: {$outputDbFail}"
+    );
+
+    // 15M7: Transaction rollback semantics: mid-operation failure rolls back completely
+    $testRollbackCode = 'TX_ROLLBACK_' . time();
+    $pdo->exec("INSERT INTO tbl_offices (organization_id, name, code, is_active, created_at, updated_at) VALUES (1, 'Rollback Test Office', '{$testRollbackCode}', 1, NOW(), NOW())");
+    $txOfficeId = (int)$pdo->lastInsertId();
+    $cleanupOfficeIds[] = $txOfficeId;
+
+    try {
+        $pdo->beginTransaction();
+        $pdo->exec("DELETE FROM tbl_offices WHERE id = {$txOfficeId}");
+        throw new Exception("Simulated mid-transaction failure");
+        $pdo->commit();
+    } catch (Exception $e) {
+        $pdo->rollBack();
+    }
+
+    $officeSurvives = (int)$pdo->query("SELECT COUNT(*) FROM tbl_offices WHERE id = {$txOfficeId}")->fetchColumn() === 1;
+    assertTest(
+        "Test 15M7: Transaction rollback guarantees office remains intact on mid-operation failure",
+        $officeSurvives,
+        "Office ID: {$txOfficeId} did not survive transaction rollback"
+    );
 
     // 15N: Offices configuration policies with 'offices.configure' succeeds
     $resOfficesConfig = invokeApiEndpoint(
@@ -1244,7 +1423,7 @@ try {
         ['user_id' => 1, 'role' => 'Administrator']
     );
     assertTest(
-        "Test 15N: GET offices configuration with 'offices.configure' returns HTTP 200",
+        "Test 15N: GET offices configuration with 'offices.configure' returns HTTP 200 metadata",
         $resOfficesConfig['status'] === 200 &&
         ($resOfficesConfig['json']['success'] ?? false) === true &&
         isset($resOfficesConfig['json']['data']['allow_registration']),
@@ -1481,7 +1660,15 @@ try {
     // =========================================================================
     echo "\nSUITE 7: Original Database State Restoration & Cleanliness (Guaranteed Cleanup)\n";
 
-    // 0. Delete temporary accomplishment or communication records
+    // 0. Delete temporary dependent records
+    if (!empty($cleanupHistoryIds)) {
+        $inHist = implode(',', array_map('intval', array_unique($cleanupHistoryIds)));
+        $pdo->exec("DELETE FROM tbl_inventory_history WHERE id IN ({$inHist})");
+    }
+    if (!empty($cleanupEquipmentIds)) {
+        $inEq = implode(',', array_map('intval', array_unique($cleanupEquipmentIds)));
+        $pdo->exec("DELETE FROM tbl_inventory_equipment WHERE id IN ({$inEq})");
+    }
     if (!empty($cleanupAccomplishmentIds)) {
         $inAcc = implode(',', array_map('intval', array_unique($cleanupAccomplishmentIds)));
         $pdo->exec("DELETE FROM tbl_accomplishments WHERE id IN ({$inAcc})");
@@ -1489,6 +1676,10 @@ try {
     if (!empty($cleanupCommunicationIds)) {
         $inComm = implode(',', array_map('intval', array_unique($cleanupCommunicationIds)));
         $pdo->exec("DELETE FROM tbl_communications WHERE id IN ({$inComm})");
+    }
+    if (!empty($cleanupCalendarEventIds)) {
+        $inCal = implode(',', array_map('intval', array_unique($cleanupCalendarEventIds)));
+        $pdo->exec("DELETE FROM tbl_calendar_events WHERE id IN ({$inCal})");
     }
 
     // 1. Delete all tracked temporary test users

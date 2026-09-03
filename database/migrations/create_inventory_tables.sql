@@ -23,7 +23,7 @@ CREATE TABLE `tbl_inventory_equipment` (
     `created_by` INT NOT NULL DEFAULT 1,
     `modified_by` INT NOT NULL DEFAULT 1,
     `deleted_at` DATETIME NULL,
-    FOREIGN KEY (`office_id`) REFERENCES `tbl_offices`(`id`) ON DELETE CASCADE
+    FOREIGN KEY (`office_id`) REFERENCES `tbl_offices`(`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 2. Approved Table of Equipment Target (JRRS)
@@ -52,7 +52,7 @@ CREATE TABLE `tbl_inventory_history` (
     `snapshot_date` DATE NOT NULL,
     `created_at` DATETIME NOT NULL,
     `updated_at` DATETIME NOT NULL,
-    FOREIGN KEY (`office_id`) REFERENCES `tbl_offices`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`office_id`) REFERENCES `tbl_offices`(`id`) ON DELETE RESTRICT,
     INDEX `idx_history_year_month` (`year_month`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

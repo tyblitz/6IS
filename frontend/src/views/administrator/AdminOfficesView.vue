@@ -265,10 +265,18 @@
 
             <div v-if="(targetOffice.user_count || 0) > 0" class="warning-alert">
               <ion-icon :icon="alertCircleOutline" />
-              <span>
-                <strong>Warning:</strong> This office currently has <strong>{{ targetOffice.user_count }}</strong> assigned user account(s). 
-                Offices with assigned users cannot be deleted. Please reassign the users or deactivate the office instead.
-              </span>
+              <div class="warning-alert-content">
+                <span>
+                  <strong>Warning:</strong> This office currently has <strong>{{ targetOffice.user_count }}</strong> assigned user account(s). 
+                  Offices with assigned users cannot be deleted. Please reassign the users or deactivate the office instead.
+                </span>
+                <div v-if="targetOffice.is_active" class="modal-deactivate-hint">
+                  <button type="button" class="btn-warning-sm" @click="handleDeactivateFromModal">
+                    <ion-icon :icon="banOutline" />
+                    <span>Deactivate Office Instead</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
             <p class="notice-muted">
@@ -277,7 +285,15 @@
 
             <div v-if="deleteError" class="modal-error">
               <ion-icon :icon="alertCircleOutline" />
-              <span>{{ deleteError }}</span>
+              <div class="delete-error-details">
+                <span class="delete-error-message">{{ deleteError }}</span>
+                <div v-if="targetOffice.is_active" class="modal-deactivate-hint">
+                  <button type="button" class="btn-warning-sm" @click="handleDeactivateFromModal">
+                    <ion-icon :icon="banOutline" />
+                    <span>Deactivate Office Instead</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -525,6 +541,13 @@ function closeDeleteModal() {
   showDeleteModal.value = false
   targetOffice.value = null
   deleteError.value = ''
+}
+
+async function handleDeactivateFromModal() {
+  if (!targetOffice.value) return
+  const off = targetOffice.value
+  closeDeleteModal()
+  await handleToggleActive(off)
 }
 
 async function confirmDelete() {
@@ -1027,6 +1050,18 @@ onMounted(() => {
   font-size: 0.8125rem;
 }
 
+.delete-error-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.delete-error-message {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
 .warning-alert {
   display: flex;
   align-items: flex-start;
@@ -1039,10 +1074,42 @@ onMounted(() => {
   font-size: 0.8125rem;
 }
 
+.warning-alert-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
 .warning-alert ion-icon {
   font-size: 1.25rem;
   flex-shrink: 0;
   color: #D97706;
+}
+
+.modal-deactivate-hint {
+  margin-top: 0.25rem;
+}
+
+.btn-warning-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #FFFBEB;
+  color: #B45309;
+  border: 1px solid #D97706;
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: fit-content;
+}
+
+.btn-warning-sm:hover {
+  background: #FEF3C7;
+  color: #92400E;
 }
 
 .notice-muted {

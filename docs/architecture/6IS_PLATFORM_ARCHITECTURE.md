@@ -202,6 +202,7 @@ Phase 3 establishes the centralized organizational backbone of 6IS, making the p
    - 6IS operates on a single organization per deployment model (e.g. `6th Infantry Division`, `6ID`).
    - Generic multi-company isolation, tenant switching, accounting multi-currency, and tenant isolation overhead are deliberately omitted.
    - Database schema: `tbl_organization` (`id`, `name`, `short_name`, `description`, `address`, `contact_number`, `email`, `logo_path`, `is_active`, `created_at`, `updated_at`).
+   - `logo_path` is reserved for future deployment branding and file assets (not required for Phase 3 core functionality).
    - Default primary record (ID = 1) is automatically seeded and preserved.
 
 2. **Organizational Offices Directory (`tbl_offices`)**:
@@ -209,7 +210,8 @@ Phase 3 establishes the centralized organizational backbone of 6IS, making the p
    - Code uniqueness enforced within the organization: `UNIQUE KEY uq_org_office_code (organization_id, code)`.
    - Backward compatibility: Preserves existing operational unit aliases (`office_name`, `office_code`, `office_abbv`) so that legacy queries in operational modules continue to function without breakage.
    - Deactivation preference: Offices can be deactivated (`is_active = 0`) to retire units while preserving all historical references.
-   - Deletion protection guard: Physical deletion of an office is strictly rejected (HTTP 400) if user accounts are assigned or if historical business module records reference the office (`tbl_accomplishments`, `tbl_communications`, `tbl_inventory_equipment`).
+   - Atomic deletion protection guard: Physical deletion of an office is strictly rejected (HTTP 409 Conflict) if user accounts are assigned or if historical or operational records reference the office (`tbl_users`, `tbl_accomplishments`, `tbl_communications`, `tbl_inventory_equipment`, `tbl_inventory_history`, `tbl_calendar_events`).
+   - Database-level historical protection: Foreign keys on `tbl_inventory_equipment` and `tbl_inventory_history` enforce `ON DELETE RESTRICT` to guarantee historical data cannot be cascaded away at the database level.
 
 3. **User-to-Office Association (`tbl_users.office_id`)**:
    - Each user account has an optional primary office assignment (`office_id INT NULL`).

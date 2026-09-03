@@ -56,26 +56,24 @@ if (empty($rawInput) && isset($GLOBALS['HTTP_RAW_POST_DATA'])) {
 $input = json_decode($rawInput, true) ?? [];
 
 // =========================================================================
-// CONFIGURE: Office Configuration Policies & Settings
+// CONFIGURE: Office Policies & Metadata Endpoint
 // =========================================================================
 if ($action === 'configure') {
     requirePermission('offices', 'configure', $pdo);
 
     if ($method === 'GET') {
-        sendJsonResponse(true, 'Offices configuration policies retrieved.', [
+        sendJsonResponse(true, 'Offices module policies and metadata retrieved.', [
             'allow_registration' => true,
             'code_unique_per_org' => true,
             'soft_deactivation_preferred' => true,
             'max_code_length' => 50,
-            'max_name_length' => 150
+            'max_name_length' => 150,
+            'is_configurable' => false,
+            'policy_type' => 'system_defined'
         ]);
     }
 
-    if ($method === 'POST' || $method === 'PATCH') {
-        sendJsonResponse(true, 'Offices configuration policies updated.', [
-            'updated_at' => date('Y-m-d H:i:s')
-        ]);
-    }
+    sendJsonResponse(false, 'Office policies are system-defined and immutable at runtime.', null, null, 400);
 }
 
 // =========================================================================
@@ -422,7 +420,7 @@ if ($method === 'PATCH') {
 }
 
 // =========================================================================
-// DELETE: Delete Office (Safety Protected)
+// DELETE: Delete Office (Safety Protected & Atomic)
 // =========================================================================
 if ($method === 'DELETE') {
     requirePermission('offices', 'delete', $pdo);
@@ -433,51 +431,82 @@ if ($method === 'DELETE') {
     }
 
     try {
-        $checkStmt = $pdo->prepare("SELECT id, name, code, office_name, office_code FROM tbl_offices WHERE id = :id LIMIT 1");
+        $pdo->beginTransaction();
+
+        // 1. Lock office row for atomic operation
+        $checkStmt = $pdo->prepare("SELECT id, name, code, office_name, office_code FROM tbl_offices WHERE id = :id FOR UPDATE");
         $checkStmt->execute([':id' => $officeId]);
         $office = $checkStmt->fetch();
 
         if (!$office) {
+            $pdo->rollBack();
             sendJsonResponse(false, 'Office not found.', null, null, 404);
         }
 
-        // 1. Cannot delete office if active users are assigned
+        // 2. Check for assigned active user accounts
         $userCountStmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_users WHERE office_id = :id AND deleted_at IS NULL");
         $userCountStmt->execute([':id' => $officeId]);
         $userCount = (int)$userCountStmt->fetchColumn();
 
         if ($userCount > 0) {
+            $pdo->rollBack();
             sendJsonResponse(
                 false, 
-                "Cannot delete office with {$userCount} assigned user account(s). Please reassign the users or deactivate the office instead.", 
+                "This office cannot be deleted because it has {$userCount} assigned user account(s). Please reassign the users or deactivate the office instead.", 
                 null, 
-                ['user_count' => $userCount], 
-                400
+                ['user_count' => $userCount, 'can_deactivate' => true], 
+                409
             );
         }
 
-        // 2. Cannot delete office if referenced by historical activity records
-        $historicalCount = 0;
+        // 3. Check ALL operational and historical dependencies atomically
+        $dependencyDetails = [
+            'accomplishments' => 0,
+            'communications' => 0,
+            'inventory_equipment' => 0,
+            'inventory_history' => 0,
+            'calendar_events' => 0
+        ];
 
+        // tbl_accomplishments
         $accStmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_accomplishments WHERE office_id = :id");
         $accStmt->execute([':id' => $officeId]);
-        $historicalCount += (int)$accStmt->fetchColumn();
+        $dependencyDetails['accomplishments'] = (int)$accStmt->fetchColumn();
 
+        // tbl_communications
         $commStmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_communications WHERE office_id = :id");
         $commStmt->execute([':id' => $officeId]);
-        $historicalCount += (int)$commStmt->fetchColumn();
+        $dependencyDetails['communications'] = (int)$commStmt->fetchColumn();
 
+        // tbl_inventory_equipment (current equipment records)
         $invStmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_inventory_equipment WHERE office_id = :id");
         $invStmt->execute([':id' => $officeId]);
-        $historicalCount += (int)$invStmt->fetchColumn();
+        $dependencyDetails['inventory_equipment'] = (int)$invStmt->fetchColumn();
 
-        if ($historicalCount > 0) {
+        // tbl_inventory_history (historical snapshot records)
+        $invHistStmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_inventory_history WHERE office_id = :id");
+        $invHistStmt->execute([':id' => $officeId]);
+        $dependencyDetails['inventory_history'] = (int)$invHistStmt->fetchColumn();
+
+        // tbl_calendar_events (calendar events assigned to office)
+        $calStmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_calendar_events WHERE office_id = :id");
+        $calStmt->execute([':id' => $officeId]);
+        $dependencyDetails['calendar_events'] = (int)$calStmt->fetchColumn();
+
+        $totalHistoricalCount = array_sum($dependencyDetails);
+
+        if ($totalHistoricalCount > 0) {
+            $pdo->rollBack();
             sendJsonResponse(
                 false,
-                "Cannot delete office with {$historicalCount} associated historical record(s). Please deactivate the office instead.",
+                "This office cannot be deleted because it has historical or operational records ({$totalHistoricalCount} record(s) found). Deactivate the office instead to preserve historical data.",
                 null,
-                ['historical_count' => $historicalCount],
-                400
+                [
+                    'historical_count' => $totalHistoricalCount,
+                    'dependencies' => $dependencyDetails,
+                    'can_deactivate' => true
+                ],
+                409
             );
         }
 
@@ -485,9 +514,14 @@ if ($method === 'DELETE') {
         $delStmt = $pdo->prepare("DELETE FROM tbl_offices WHERE id = :id");
         $delStmt->execute([':id' => $officeId]);
 
+        $pdo->commit();
+
         $code = $office['code'] ?: $office['office_code'];
         sendJsonResponse(true, "Office '{$code}' deleted successfully.", ['id' => $officeId]);
     } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         error_log('[offices] Database error: ' . $e->getMessage());
         sendJsonResponse(false, 'Database failure deleting office.', null, null, 500);
     }
