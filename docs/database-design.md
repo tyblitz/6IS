@@ -10,20 +10,94 @@ Every table in the `db_ict_system` database adheres to standard audit fields:
 - `modified_by` (INT, DEFAULT 1)
 - `deleted_at` (DATETIME, NULL - soft deletion timestamp)
 
-All soft-deleted records (`deleted_at IS NOT NULL`) are strictly excluded from normal queries and reporting logic.
+All soft-deleted records (`deleted_at IS NOT NULL`) are strictly excluded from normal queries and reporting logic. Reference tables utilize `is_active TINYINT(1)` to deactivate selectable options without breaking historical relational records.
 
 ---
 
-## Authoritative Reference & Security Tables
+## 1. Core Platform & Security Tables
+
+### `tbl_modules`
+Centralized authoritative registry of all platform and business modules.
+- `id` (INT, AUTO_INCREMENT, PK)
+- `module_key` (VARCHAR(50), NOT NULL, UNIQUE) — e.g. `dashboard`, `administrator`, `inventory`, `communications`, `accomplishments`, `calendar`
+- `name` (VARCHAR(100), NOT NULL)
+- `description` (TEXT, NULL)
+- `icon` (VARCHAR(50), NOT NULL)
+- `route` (VARCHAR(100), NULL)
+- `is_active` (TINYINT(1), NOT NULL, DEFAULT 1)
+- `is_core` (TINYINT(1), NOT NULL, DEFAULT 0) — Core modules cannot be disabled
+- `display_order` (INT, NOT NULL, DEFAULT 0)
+- `version` (VARCHAR(20), NOT NULL, DEFAULT '1.0.0')
+
+### `tbl_roles`
+Authoritative role registry.
+- `id` (INT, AUTO_INCREMENT, PK)
+- `name` (VARCHAR(50), NOT NULL, UNIQUE) — e.g. `Administrator`, `User`
+- `description` (TEXT, NULL)
+- `is_system` (TINYINT(1), NOT NULL, DEFAULT 0) — System roles cannot be renamed, deactivated, or deleted
+- `is_active` (TINYINT(1), NOT NULL, DEFAULT 1)
+
+### `tbl_permissions`
+Granular application-wide permission registry.
+- `id` (INT, AUTO_INCREMENT, PK)
+- `module_key` (VARCHAR(50), NOT NULL)
+- `permission_key` (VARCHAR(50), NOT NULL)
+- `name` (VARCHAR(100), NOT NULL)
+- `description` (TEXT, NULL)
+- `is_system` (TINYINT(1), NOT NULL, DEFAULT 0) — 40 official seeded permissions protected with `is_system = 1`
+- `is_active` (TINYINT(1), NOT NULL, DEFAULT 1)
+- *Unique Constraint*: `(module_key, permission_key)`
+
+### `tbl_role_permissions`
+Role-to-permission join table.
+- `id` (INT, AUTO_INCREMENT, PK)
+- `role_id` (INT, NOT NULL, FK to `tbl_roles(id)` ON DELETE CASCADE)
+- `permission_id` (INT, NOT NULL, FK to `tbl_permissions(id)` ON DELETE CASCADE)
+- *Unique Constraint*: `(role_id, permission_id)`
+
+### `tbl_audit_logs`
+Centralized, immutable system audit trail with JSON state snapshots and actor metadata.
+- `id` (BIGINT, AUTO_INCREMENT, PK)
+- `user_id` (INT, NULL, FK to `tbl_users(id)` ON DELETE SET NULL)
+- `action` (VARCHAR(50), NOT NULL) — e.g. `LOGIN`, `LOGIN_FAILED`, `LOGOUT`, `CREATE`, `UPDATE`, `DELETE`, `ACTIVATE`, `DEACTIVATE`, `ASSIGN`
+- `module_key` (VARCHAR(50), NOT NULL)
+- `entity_type` (VARCHAR(50), NULL)
+- `entity_id` (VARCHAR(100), NULL)
+- `description` (TEXT, NOT NULL)
+- `old_values` (JSON, NULL) — Previous record state snapshot (sanitized)
+- `new_values` (JSON, NULL) — Resulting record state snapshot (sanitized)
+- `ip_address` (VARCHAR(45), NULL)
+- `user_agent` (VARCHAR(255), NULL)
+- `created_at` (DATETIME, NOT NULL, DEFAULT CURRENT_TIMESTAMP)
+- *Indexes*: `(module_key, created_at)`, `(action, created_at)`, `(user_id, created_at)`
+
+---
+
+## 2. Organization & User Domain Tables
+
+### `tbl_organization`
+Single-tenant top-level enterprise organizational profile.
+- `id` (INT, AUTO_INCREMENT, PK)
+- `name` (VARCHAR(150), NOT NULL)
+- `code` (VARCHAR(50), NOT NULL)
+- `description` (TEXT, NULL)
+- `logo_url` (VARCHAR(255), NULL)
+- `contact_email` (VARCHAR(150), NULL)
+- `contact_phone` (VARCHAR(50), NULL)
+- `address` (TEXT, NULL)
+- `is_active` (TINYINT(1), NOT NULL, DEFAULT 1) — Minimum active count invariant enforced (cannot deactivate last active organization)
 
 ### `tbl_offices`
-Authoritative office reference table shared across all 6IS modules (Accomplishments, Communications, Inventory).
+Authoritative office directory scoped to the organization.
 - `id` (INT, AUTO_INCREMENT, PK)
-- `office_name` (VARCHAR(100), NULL)
-- `office_code` (VARCHAR(20), NULL)
+- `organization_id` (INT, NOT NULL, DEFAULT 1, FK to `tbl_organization(id)`)
+- `office_name` (VARCHAR(100), NOT NULL)
+- `office_code` (VARCHAR(20), NOT NULL)
 - `office_abbv` (VARCHAR(50), NOT NULL)
 - `office_category` (ENUM('Staff', 'Special Staff', 'Group', 'Others'), DEFAULT 'Others')
 - `is_active` (TINYINT(1), NOT NULL, DEFAULT 1)
+- *Unique Constraints*: `(organization_id, office_code)`, `(organization_id, office_name)`
+- *Foreign Key Restraints*: Deletion is blocked if referenced by users, equipment, history, accomplishments, communications, or calendar events.
 
 ### `tbl_users`
 User authentication and role-based access management table.
@@ -31,169 +105,35 @@ User authentication and role-based access management table.
 - `username` (VARCHAR(100), NOT NULL, UNIQUE)
 - `full_name` (VARCHAR(150), NOT NULL)
 - `password` (VARCHAR(255), NOT NULL, BCRYPT hashed)
-- `role` (VARCHAR(20), NOT NULL, DEFAULT 'user') — Options: `Administrator`, `User`
+- `role_id` (INT, NOT NULL, DEFAULT 2, FK to `tbl_roles(id)`) — Authoritative role binding
+- `role` (VARCHAR(20), NOT NULL, DEFAULT 'User') — Backward-compatible legacy synchronization column
+- `office_id` (INT, NULL, FK to `tbl_offices(id)` ON DELETE SET NULL)
 - `is_active` (TINYINT(1), NOT NULL, DEFAULT 1)
 
 ---
 
-## Communications Module Tables
+## 3. Business Domain Tables
 
-### `tbl_communication_categories`
-Reference lookup table for document classifications.
-- `id` (INT, AUTO_INCREMENT, PK)
-- `name` (VARCHAR(150), NOT NULL)
-- `code` (VARCHAR(50), NULL)
-- `is_active` (TINYINT(1), NOT NULL, DEFAULT 1)
+### Calendar Module
+- **`tbl_calendar_event_types`**: Event classifications (`CONF`, `PAS`, `VTC`, etc.).
+- **`tbl_calendar_events`**: Scheduled activities (`title`, `start_datetime`, `end_datetime`, `office_id`, `event_type_id`, `status`).
+- **`tbl_calendar_event_reschedules`**: Audit history of rescheduled event dates and reasons.
+- **`tbl_calendar_event_status_history`**: State transitions (`Scheduled`, `In Progress`, `Completed`, `Cancelled`).
 
-*Initial Categories*: Disposition Form (`DF`), Summary Disposition Form (`SDF`), Subject to Letter (`STL`), Memorandum (`Memo`), Standard Operating Procedure (`SOP`), Others (`NULL`).
+### Communications Module
+- **`tbl_communication_categories`**: Document classifications (`DF`, `SDF`, `STL`, `Memo`, `SOP`, `Others`).
+- **`tbl_communication_purposes`**: Processing reasons (`Access Pass`, `PAS Request`, `R&M ICT Fund Request`, etc.).
+- **`tbl_communications`**: Core communication records with explicit `communication_type` (`Incoming`, `Outgoing`), office references, and tracking dates.
+- **`tbl_communication_activities`**: Turnaround event logs and processing history.
 
-### `tbl_communication_purposes`
-Reference lookup table for processing intents/reasons.
-- `id` (INT, AUTO_INCREMENT, PK)
-- `name` (VARCHAR(150), NOT NULL)
-- `is_active` (TINYINT(1), NOT NULL, DEFAULT 1)
+### Accomplishments Module
+- **`tbl_accomplishments`**: Completed daily accomplishment records (`office_id`, `date`, `description`, `remarks`, `calendar_event_id`).
+- Consolidated dynamically on-the-fly without pre-aggregated summary tables.
 
-*Initial Purposes*: Access Pass, PAS Request, R&M ICT Fund Request, Others.
-
-### `tbl_communications`
-Core communications tracking table.
-- `id` (INT, AUTO_INCREMENT, PK)
-- `communication_type` (ENUM('Incoming', 'Outgoing'), NOT NULL, DEFAULT 'Incoming')
-- `office_id` (INT, FK -> `tbl_offices.id`)
-- `category_id` (INT, FK -> `tbl_communication_categories.id`)
-- `purpose_id` (INT, FK -> `tbl_communication_purposes.id`)
-- `subject` (VARCHAR(255), NULL)
-- `communication_date` (DATE, NULL)
-- `status` (VARCHAR(50), DEFAULT 'Pending')
-- `image_url` (VARCHAR(500), NULL)
-
-> **Note**: Communication age is **not** stored as a static field in `tbl_communications`. Age is computed dynamically from the latest `activity_date` in `tbl_communication_activities` relative to current timestamp.
-
-### `tbl_communication_activities`
-Process activity timeline and turnaround history log.
-- `id` (INT, AUTO_INCREMENT, PK)
-- `communication_id` (INT, FK -> `tbl_communications.id`)
-- `activity_type` (VARCHAR(100), NOT NULL)
-- `activity_date` (DATETIME, NOT NULL)
-- `remarks` (TEXT, NULL)
-
-### `tbl_communication_attachments`
-Multi-image upload file attachment tracking table.
-- `id` (INT, AUTO_INCREMENT, PK)
-- `communication_id` (INT, FK -> `tbl_communications.id`)
-- `image_url` (VARCHAR(500), NOT NULL)
-- `created_at` (DATETIME, DEFAULT CURRENT_TIMESTAMP)
-
----
-
-## Inventory Module Extensible EAV Tables
-
-The Inventory module uses an Extensible Entity-Attribute-Value (EAV) database architecture to support dynamic specifications across diverse equipment types.
-
-### `tbl_inventory_equipment_types`
-Primary equipment domain categories.
-- `id` (INT, AUTO_INCREMENT, PK)
-- `name` (VARCHAR(100), NOT NULL) — e.g. `ICT`, `Communications`
-- `code` (VARCHAR(50), NOT NULL, UNIQUE) — e.g. `ICT`, `COMM`
-- `is_active` (TINYINT(1), DEFAULT 1)
-
-### `tbl_inventory_equipment_subtypes`
-Specific equipment classification types.
-- `id` (INT, AUTO_INCREMENT, PK)
-- `equipment_type_id` (INT, FK -> `tbl_inventory_equipment_types.id`)
-- `name` (VARCHAR(100), NOT NULL) — e.g. `Desktop`, `Printer`, `Mixer`, `Speaker`
-- `code` (VARCHAR(50), NOT NULL)
-- `is_active` (TINYINT(1), DEFAULT 1)
-
-### `tbl_inventory_equipment_statuses`
-Operational equipment status reference table.
-- `id` (INT, AUTO_INCREMENT, PK)
-- `name` (VARCHAR(100), NOT NULL) — `Serviceable`, `For Repair`, `For Turn-in`
-- `code` (VARCHAR(50), NOT NULL, UNIQUE)
-
-### `tbl_inventory_attribute_definitions`
-Subtype-specific attribute definitions (Meta schema for key-value fields).
-- `id` (INT, AUTO_INCREMENT, PK)
-- `equipment_subtype_id` (INT, FK -> `tbl_inventory_equipment_subtypes.id`)
-- `attribute_name` (VARCHAR(100), NOT NULL) — e.g. `Processor`, `RAM`, `Storage`
-- `attribute_code` (VARCHAR(50), NOT NULL)
-- `data_type` (ENUM('text', 'number', 'decimal', 'date', 'boolean', 'select'), DEFAULT 'text')
-- `is_required` (TINYINT(1), DEFAULT 0)
-- `sort_order` (INT, DEFAULT 0)
-
-### `tbl_inventory_equipment`
-Core equipment asset master table.
-- `id` (INT, AUTO_INCREMENT, PK)
-- `office_id` (INT, FK -> `tbl_offices.id`)
-- `equipment_type_id` (INT, FK -> `tbl_inventory_equipment_types.id`)
-- `equipment_subtype_id` (INT, FK -> `tbl_inventory_equipment_subtypes.id`)
-- `status_id` (INT, FK -> `tbl_inventory_equipment_statuses.id`)
-- `serial_number` (VARCHAR(100), NULL)
-- `model` (VARCHAR(100), NULL)
-- `property_number` (VARCHAR(100), NULL)
-- `remarks` (TEXT, NULL)
-
-### `tbl_inventory_equipment_attribute_values`
-EAV storage table binding dynamic attribute values to individual equipment items.
-- `id` (INT, AUTO_INCREMENT, PK)
-- `equipment_id` (INT, FK -> `tbl_inventory_equipment.id`)
-- `attribute_definition_id` (INT, FK -> `tbl_inventory_attribute_definitions.id`)
-- `value_text` (TEXT, NULL)
-- `value_number` (INT, NULL)
-- `value_decimal` (DECIMAL(12,2), NULL)
-- `value_date` (DATE, NULL)
-- `value_boolean` (TINYINT(1), NULL)
-
-### `tbl_inventory_history`
-Equipment audit and movement history log.
-- `id` (INT, AUTO_INCREMENT, PK)
-- `equipment_id` (INT, FK -> `tbl_inventory_equipment.id`)
-- `office_id` (INT, FK -> `tbl_offices.id`)
-- `equipment_type_id` (INT, NULL)
-- `equipment_subtype_id` (INT, NULL)
-- `status_id` (INT, NULL)
-- `action_type` (VARCHAR(50), NOT NULL) — `CREATED`, `UPDATED`, `STATUS_CHANGED`, `DELETED`
-- `attributes_json` (JSON, NULL)
-
-### `tbl_inventory_jrrs`
-Joint Repair & Replacement System (JRRS) readiness target tracking table.
-- `id` (INT, AUTO_INCREMENT, PK)
-- `equipment_subtype_id` (INT, FK -> `tbl_inventory_equipment_subtypes.id`)
-- `target_quantity` (INT, NOT NULL, DEFAULT 0)
-- `equipment_type` (VARCHAR(100), NULL)
-
----
-
-## Accomplishments Module Tables
-
-### `tbl_accomplishment_categories`
-Reference lookup table for operational accomplishment categories.
-- `id` (INT, AUTO_INCREMENT, PK)
-- `category_name` (VARCHAR(150), NOT NULL)
-- `category_code` (VARCHAR(50), NULL)
-
-### `tbl_accomplishments`
-Operational daily accomplishment logging table.
-- `id` (INT, AUTO_INCREMENT, PK)
-- `office_id` (INT, FK -> `tbl_offices.id`)
-- `category_id` (INT, FK -> `tbl_accomplishment_categories.id`)
-- `date` (DATE, NOT NULL)
-- `description` (TEXT, NOT NULL)
-- `remarks` (TEXT, NULL)
-
-> **Note**: Consolidations (Monthly, Quarterly, Annual, Custom Period) are computed **dynamically on-the-fly** from `tbl_accomplishments` records. No pre-aggregated summary tables are stored.
-
----
-
-## Calendar Module Tables
-
-### `tbl_calendar_events`
-Organization calendar and activity scheduling table.
-- `id` (INT, AUTO_INCREMENT, PK)
-- `title` (VARCHAR(255), NOT NULL)
-- `description` (TEXT, NULL)
-- `start_date` (DATETIME, NOT NULL)
-- `end_date` (DATETIME, NOT NULL)
-- `location` (VARCHAR(255), NULL)
-- `office_id` (INT, NULL, FK -> `tbl_offices.id`)
-- `color_code` (VARCHAR(20), NULL, DEFAULT '#3880ff')
+### Inventory Module
+- **`tbl_inventory_equipment_types`** & **`tbl_inventory_equipment_subtypes`**: Equipment taxonomic hierarchy.
+- **`tbl_inventory_equipment_statuses`**: Status indicators (`Serviceable`, `Unserviceable`, `Disposed`).
+- **`tbl_inventory_equipment`**: Physical equipment inventory (`subtype_id`, `status_id`, `office_id`, `quantity`, `serial_number`, `model`).
+- **`tbl_inventory_attribute_definitions`** & **`tbl_inventory_equipment_attribute_values`**: Extensible EAV model for custom technical attributes.
+- **`tbl_inventory_jrrs`**: Approved equipment quota baseline targets.
+- **`tbl_inventory_history`**: Immutable monthly snapshots of equipment inventory.

@@ -258,28 +258,95 @@ Phase 3 establishes the centralized organizational backbone of 6IS, making the p
 
 ---
 
-## 8. Evolution Roadmap (Future Phases)
+## 8. Phase 4 Implementation Detail (Core Governance, Security & Audit)
+
+Phase 4 establishes foundational security hardening, enterprise governance invariants, and a tamper-evident audit logging system across the 6IS platform:
 
 ```
-Phase 0, 1, 2 & 3 (COMPLETED)
-Core Stabilization + Module Registry + Core RBAC + Organization & Offices
-   │
-   ▼
-Phase 4 (Planned)
-Declarative Module Manifests (module.json)
++------------------------------------------------------------------------------------+
+|                             PHASE 4 SECURITY & GOVERNANCE                          |
+|  +---------------------+  +------------------------+  +--------------------------+  |
+|  | Server-Side CORS    |  | Header-First CSRF      |  | Session Fixation &       |  |
+|  | Allowlist & Reject  |  | Protection (X-CSRF)    |  | Secure Cookie Flags      |  |
+|  +---------------------+  +------------------------+  +--------------------------+  |
+|  +---------------------+  +------------------------+  +--------------------------+  |
+|  | Immutable Central   |  | Atomic Transaction     |  | Recursive Sensitive-Key  |  |
+|  | Audit Trail (DB)    |  | State Coupling         |  | Data Sanitization        |  |
+|  +---------------------+  +------------------------+  +--------------------------+  |
+|  +---------------------+  +------------------------+  +--------------------------+  |
+|  | Final Administrator |  | System Role & Perm     |  | Minimum Active           |  |
+|  | Account Guard       |  | Immutability           |  | Organization Invariant   |  |
+|  +---------------------+  +------------------------+  +--------------------------+  |
++------------------------------------------------------------------------------------+
+```
+
+1. **Centralized Audit Logging System (`tbl_audit_logs`)**:
+   - Stores immutable records of administrative mutations and authentication events.
+   - Captures `user_id` (FK to `tbl_users(id)` ON DELETE SET NULL), `action`, `module_key`, `entity_type`, `entity_id`, `description`, `old_values` (JSON), `new_values` (JSON), `ip_address`, `user_agent`, and `created_at`.
+   - Indexed for high performance on `(module_key, created_at)`, `(action, created_at)`, and `(user_id, created_at)`.
+   - Read-only REST endpoint at `backend/api/core/audit/index.php` (requires `audit.view` permission; mutations return HTTP 405 Method Not Allowed).
+
+2. **Atomic Transaction Coupling**:
+   - `auditLog($entry, $pdo)` executes within the caller's active database transaction.
+   - If writing the audit record fails for any reason, `auditLog()` throws a `RuntimeException`, causing the transaction to roll back.
+   - **Guaranteed Invariant**: No state mutation can be committed without its corresponding audit trail record.
+
+3. **Recursive Sensitive Data Sanitization**:
+   - `sanitizeAuditData()` recursively inspects arbitrarily nested arrays/objects in `old_values` and `new_values`.
+   - Automatically redacts sensitive fields matching a case-insensitive denylist (`password`, `password_hash`, `new_password`, `confirm_password`, `current_password`, `token`, `access_token`, `refresh_token`, `csrf_token`, `session_id`, `cookie`, `secret`, `api_key`, `apikey`, `authorization`) into `[REDACTED]`.
+
+4. **Session Fixation & Cookie Hardening**:
+   - `session_regenerate_id(true)` executed immediately upon password verification in `backend/api/auth/index.php` before session variables are populated.
+   - `ensureSessionStarted()` sets `HttpOnly = true`, `SameSite = Lax`, and HTTPS-aware `Secure` on session cookies.
+
+5. **Server-Side CORS Hardening**:
+   - Server-side allowlist defined in `backend/config/cors.php` (`localhost`, `127.0.0.1`, and server-configured origins).
+   - Incoming `Origin` header is compared against the allowlist; unauthorized origins receive no reflection.
+   - Preflight `OPTIONS` requests from untrusted origins return HTTP 403 Forbidden. Client-controlled headers cannot expand or define the allowlist.
+
+6. **Header-First CSRF Token Validation**:
+   - 256-bit cryptographically secure token (`random_bytes(32)`) issued on login and session bootstrap.
+   - Constant-time validation using `hash_equals()` against the incoming `X-CSRF-Token` header on all mutating HTTP methods (`POST`, `PUT`, `PATCH`, `DELETE`).
+   - Standardized frontend client wrapper `apiFetch()` (`frontend/src/utils/api.ts`) automatically injects the active token into all mutating API calls.
+
+7. **System Governance Invariants**:
+   - **Final Administrator Guard**: Evaluates the resulting state of all user mutations. Rejects any deactivation, soft deletion, or role change that would leave zero active Administrator accounts.
+   - **Self-Deactivation Guard**: Active Administrators cannot deactivate their own user accounts.
+   - **System Role Immutability**: System roles (`Administrator`, `User`) cannot be renamed, deactivated, or deleted.
+   - **System Permission Protection**: 40 official seeded permissions are marked `is_system = 1` in `tbl_permissions` and cannot be stripped from the `Administrator` role.
+   - **Organization Invariant**: Deactivating an organization is rejected if fewer than 1 active organization would remain.
+
+8. **Frontend Audit UI (`AdminAuditView.vue`)**:
+   - Route `/administrator/audit` protected by `Administrator` role and `audit.view` permission.
+   - Search filter, module filter, action filter, date range filter (`date_from`, `date_to`), and pagination.
+   - Interactive Detail Inspection Modal with formatted JSON state diff viewer.
+   - **Strict Immutability**: Complete absence of edit, delete, clear, or purge buttons.
+
+---
+
+## 9. Evolution Roadmap (Future Phases)
+
+```
+Phase 0, 1, 2, 3 & 4 (COMPLETED)
+Core Stabilization + Module Registry + Core RBAC + Organization/Offices + Security & Audit
    │
    ▼
 Phase 5 (Planned)
+Declarative Module Manifests (module.json)
+   │
+   ▼
+Phase 6 (Planned)
 Modular App Store & Guided Setup Wizard
 ```
 
-### Phase 4: Declarative Module Manifests (`module.json`)
+### Phase 5: Declarative Module Manifests (`module.json`)
 - Each business module self-defines:
   - Metadata, version, and dependencies.
   - Navigation entries and icon identifiers.
   - Database schema migrations and seed scripts.
 - Core discovers and registers modules automatically without requiring manual schema updates.
 
-### Phase 5: Modular App Store & Guided Setup Wizard
+### Phase 6: Modular App Store & Guided Setup Wizard
 - Interactive graphical installer allowing administrators to enable/disable module packs on initial system setup.
 - Versioned upgrade engine running module-specific database migrations safely.
+
