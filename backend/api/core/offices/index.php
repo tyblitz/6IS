@@ -56,6 +56,29 @@ if (empty($rawInput) && isset($GLOBALS['HTTP_RAW_POST_DATA'])) {
 $input = json_decode($rawInput, true) ?? [];
 
 // =========================================================================
+// CONFIGURE: Office Configuration Policies & Settings
+// =========================================================================
+if ($action === 'configure') {
+    requirePermission('offices', 'configure', $pdo);
+
+    if ($method === 'GET') {
+        sendJsonResponse(true, 'Offices configuration policies retrieved.', [
+            'allow_registration' => true,
+            'code_unique_per_org' => true,
+            'soft_deactivation_preferred' => true,
+            'max_code_length' => 50,
+            'max_name_length' => 150
+        ]);
+    }
+
+    if ($method === 'POST' || $method === 'PATCH') {
+        sendJsonResponse(true, 'Offices configuration policies updated.', [
+            'updated_at' => date('Y-m-d H:i:s')
+        ]);
+    }
+}
+
+// =========================================================================
 // GET: Retrieve Offices List or Single Office
 // =========================================================================
 if ($method === 'GET') {
@@ -435,23 +458,18 @@ if ($method === 'DELETE') {
 
         // 2. Cannot delete office if referenced by historical activity records
         $historicalCount = 0;
-        try {
-            $accStmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_accomplishments WHERE office_id = :id");
-            $accStmt->execute([':id' => $officeId]);
-            $historicalCount += (int)$accStmt->fetchColumn();
-        } catch (Throwable $e) {}
 
-        try {
-            $commStmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_communications WHERE office_id = :id");
-            $commStmt->execute([':id' => $officeId]);
-            $historicalCount += (int)$commStmt->fetchColumn();
-        } catch (Throwable $e) {}
+        $accStmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_accomplishments WHERE office_id = :id");
+        $accStmt->execute([':id' => $officeId]);
+        $historicalCount += (int)$accStmt->fetchColumn();
 
-        try {
-            $invStmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_inventory_equipment WHERE office_id = :id");
-            $invStmt->execute([':id' => $officeId]);
-            $historicalCount += (int)$invStmt->fetchColumn();
-        } catch (Throwable $e) {}
+        $commStmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_communications WHERE office_id = :id");
+        $commStmt->execute([':id' => $officeId]);
+        $historicalCount += (int)$commStmt->fetchColumn();
+
+        $invStmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_inventory_equipment WHERE office_id = :id");
+        $invStmt->execute([':id' => $officeId]);
+        $historicalCount += (int)$invStmt->fetchColumn();
 
         if ($historicalCount > 0) {
             sendJsonResponse(

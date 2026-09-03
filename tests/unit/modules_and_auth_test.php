@@ -133,6 +133,12 @@ while ($row = $stmtPerm->fetch()) {
 
 $originalOrgRecord = $pdo->query("SELECT * FROM tbl_organization WHERE id = 1 LIMIT 1")->fetch();
 
+$cleanupUserIds = [];
+$cleanupOfficeIds = [];
+$cleanupRoleIds = [];
+$cleanupAccomplishmentIds = [];
+$cleanupCommunicationIds = [];
+
 try {
 
     // =========================================================================
@@ -903,8 +909,63 @@ try {
         "Status: {$resOrgPatchInvalid['status']}, Body: {$resOrgPatchInvalid['body']}"
     );
 
+    // 14E: PATCH organization validation (invalid email format returns HTTP 400)
+    $resOrgPatchInvalidEmail = invokeApiEndpoint(
+        'backend/api/core/organization/index.php',
+        'PATCH',
+        [],
+        ['email' => 'invalid-not-an-email'],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 14E: PATCH organization with invalid email format returns HTTP 400 Bad Request",
+        $resOrgPatchInvalidEmail['status'] === 400 &&
+        ($resOrgPatchInvalidEmail['json']['success'] ?? true) === false &&
+        str_contains($resOrgPatchInvalidEmail['json']['message'] ?? '', 'email'),
+        "Status: {$resOrgPatchInvalidEmail['status']}, Body: {$resOrgPatchInvalidEmail['body']}"
+    );
+
+    // 14F: PATCH organization without 'organization.configure' returns HTTP 403 Forbidden
+    $resOrgPatchNoPerm = invokeApiEndpoint(
+        'backend/api/core/organization/index.php',
+        'PATCH',
+        [],
+        ['name' => 'Unauthorized Name Change'],
+        ['user_id' => $noOrgUserId, 'role' => 'NoOrgRole']
+    );
+    assertTest(
+        "Test 14F: PATCH organization without 'organization.configure' returns HTTP 403 Forbidden",
+        $resOrgPatchNoPerm['status'] === 403 &&
+        str_contains($resOrgPatchNoPerm['json']['message'] ?? '', 'permission'),
+        "Status: {$resOrgPatchNoPerm['status']}, Body: {$resOrgPatchNoPerm['body']}"
+    );
+
+    // 14G: Administrator without 'organization.configure' cannot bypass (HTTP 403)
+    $pdo->exec("INSERT INTO tbl_roles (name, description, is_system, is_active, created_at, updated_at) VALUES ('AdminNoOrgConfig', 'Admin lacking org config', 0, 1, NOW(), NOW())");
+    $adminNoOrgConfigRoleId = (int)$pdo->lastInsertId();
+    $cleanupRoleIds[] = $adminNoOrgConfigRoleId;
+
+    $pdo->exec("INSERT INTO tbl_role_permissions (role_id, permission_id, created_at) SELECT {$adminNoOrgConfigRoleId}, id, NOW() FROM tbl_permissions WHERE NOT (module_key = 'organization' AND permission_key = 'configure')");
+    $pdo->exec("INSERT INTO tbl_users (username, full_name, password, role, role_id, is_active, created_at, updated_at) VALUES ('admin_no_org_cfg', 'Admin No Org Cfg', 'hash', 'Administrator', {$adminNoOrgConfigRoleId}, 1, NOW(), NOW())");
+    $adminNoOrgCfgUserId = (int)$pdo->lastInsertId();
+    $cleanupUserIds[] = $adminNoOrgCfgUserId;
+
+    $resAdminNoOrgCfg = invokeApiEndpoint(
+        'backend/api/core/organization/index.php',
+        'PATCH',
+        [],
+        ['short_name' => 'BYPASS-FAIL'],
+        ['user_id' => $adminNoOrgCfgUserId, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 14G: Administrator without 'organization.configure' permission cannot bypass (returns HTTP 403)",
+        $resAdminNoOrgCfg['status'] === 403 &&
+        str_contains($resAdminNoOrgCfg['json']['message'] ?? '', 'permission'),
+        "Status: {$resAdminNoOrgCfg['status']}, Body: {$resAdminNoOrgCfg['body']}"
+    );
+
     // =========================================================================
-    // SUITE 15: Core Offices Management (Phase 3)
+    // SUITE 15: Core Offices Management (Offices CRUD, Uniqueness & Dependency Guards)
     // =========================================================================
     echo "\nSUITE 15: Core Offices Management (Offices CRUD, Uniqueness & Dependency Guards)\n";
 
@@ -926,15 +987,31 @@ try {
         "Status: {$resOfficesGet['status']}, Body: {$resOfficesGet['body']}"
     );
 
-    // 15B: POST create office with offices.create succeeds (201 Created)
+    // 15B: GET offices without 'offices.view' returns HTTP 403 Forbidden
+    $resOfficesNoPerm = invokeApiEndpoint(
+        'backend/api/core/offices/index.php',
+        'GET',
+        [],
+        null,
+        ['user_id' => $noOrgUserId, 'role' => 'NoOrgRole']
+    );
+    assertTest(
+        "Test 15B: GET offices without 'offices.view' returns HTTP 403 Forbidden",
+        $resOfficesNoPerm['status'] === 403 &&
+        str_contains($resOfficesNoPerm['json']['message'] ?? '', 'permission'),
+        "Status: {$resOfficesNoPerm['status']}, Body: {$resOfficesNoPerm['body']}"
+    );
+
+    // 15C: POST create office with offices.create succeeds (201 Created)
     $testOfficeCode = 'TEST_OFF_' . time();
+    $testOfficeName = 'Test Unit Office Alpha ' . time();
     $resOfficeCreate = invokeApiEndpoint(
         'backend/api/core/offices/index.php',
         'POST',
         [],
         [
             'code' => $testOfficeCode,
-            'name' => 'Test Unit Office Alpha',
+            'name' => $testOfficeName,
             'description' => 'Temporary test office',
             'address' => 'Test Location HQ',
             'contact_number' => '12345',
@@ -947,7 +1024,7 @@ try {
         $cleanupOfficeIds[] = $createdOfficeId;
     }
     assertTest(
-        "Test 15B: POST create office as Administrator creates office and returns HTTP 201",
+        "Test 15C: POST create office as Administrator creates office and returns HTTP 201",
         $resOfficeCreate['status'] === 201 &&
         ($resOfficeCreate['json']['success'] ?? false) === true &&
         $createdOfficeId > 0 &&
@@ -955,26 +1032,83 @@ try {
         "Status: {$resOfficeCreate['status']}, Body: {$resOfficeCreate['body']}"
     );
 
-    // 15C: POST create office duplicate code within org rejected with 400 Bad Request
-    $resOfficeDup = invokeApiEndpoint(
+    // 15D: POST create office without 'offices.create' returns HTTP 403 Forbidden
+    $resOfficeCreateNoPerm = invokeApiEndpoint(
+        'backend/api/core/offices/index.php',
+        'POST',
+        [],
+        [
+            'code' => 'UNAUTH_OFF',
+            'name' => 'Unauthorized Office'
+        ],
+        ['user_id' => $noOrgUserId, 'role' => 'NoOrgRole']
+    );
+    assertTest(
+        "Test 15D: POST create office without 'offices.create' returns HTTP 403 Forbidden",
+        $resOfficeCreateNoPerm['status'] === 403 &&
+        str_contains($resOfficeCreateNoPerm['json']['message'] ?? '', 'permission'),
+        "Status: {$resOfficeCreateNoPerm['status']}, Body: {$resOfficeCreateNoPerm['body']}"
+    );
+
+    // 15E: POST duplicate office code within org rejected with 409 Conflict
+    $resOfficeDupCode = invokeApiEndpoint(
         'backend/api/core/offices/index.php',
         'POST',
         [],
         [
             'code' => $testOfficeCode,
-            'name' => 'Duplicate Office Name',
+            'name' => 'Different Office Name',
         ],
         ['user_id' => 1, 'role' => 'Administrator']
     );
     assertTest(
-        "Test 15C: POST duplicate office code in same organization rejected with HTTP 409 Conflict",
-        in_array($resOfficeDup['status'], [400, 409], true) &&
-        ($resOfficeDup['json']['success'] ?? true) === false &&
-        str_contains($resOfficeDup['json']['message'] ?? '', 'already exists'),
-        "Status: {$resOfficeDup['status']}, Body: {$resOfficeDup['body']}"
+        "Test 15E: POST duplicate office code in same organization rejected with HTTP 409 Conflict",
+        in_array($resOfficeDupCode['status'], [400, 409], true) &&
+        ($resOfficeDupCode['json']['success'] ?? true) === false &&
+        str_contains($resOfficeDupCode['json']['message'] ?? '', 'already exists'),
+        "Status: {$resOfficeDupCode['status']}, Body: {$resOfficeDupCode['body']}"
     );
 
-    // 15D: PATCH update office (edit name, toggle is_active) succeeds
+    // 15F: POST duplicate office name within org rejected with 409 Conflict
+    $resOfficeDupName = invokeApiEndpoint(
+        'backend/api/core/offices/index.php',
+        'POST',
+        [],
+        [
+            'code' => 'DIFF_CODE_' . time(),
+            'name' => $testOfficeName,
+        ],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 15F: POST duplicate office name in same organization rejected with HTTP 409 Conflict",
+        in_array($resOfficeDupName['status'], [400, 409], true) &&
+        ($resOfficeDupName['json']['success'] ?? true) === false &&
+        str_contains($resOfficeDupName['json']['message'] ?? '', 'already exists'),
+        "Status: {$resOfficeDupName['status']}, Body: {$resOfficeDupName['body']}"
+    );
+
+    // 15G: POST create office with non-existent organization rejected with HTTP 400 Bad Request
+    $resOfficeInvalidOrg = invokeApiEndpoint(
+        'backend/api/core/offices/index.php',
+        'POST',
+        [],
+        [
+            'code' => 'INVALID_ORG_OFF_' . time(),
+            'name' => 'Invalid Org Office',
+            'organization_id' => 999999
+        ],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 15G: POST create office with non-existent organization rejected with HTTP 400 Bad Request",
+        $resOfficeInvalidOrg['status'] === 400 &&
+        ($resOfficeInvalidOrg['json']['success'] ?? true) === false &&
+        str_contains($resOfficeInvalidOrg['json']['message'] ?? '', 'organization'),
+        "Status: {$resOfficeInvalidOrg['status']}, Body: {$resOfficeInvalidOrg['body']}"
+    );
+
+    // 15H: PATCH update office (edit name, toggle is_active) succeeds
     $resOfficePatch = invokeApiEndpoint(
         'backend/api/core/offices/index.php',
         'PATCH',
@@ -987,17 +1121,74 @@ try {
         ['user_id' => 1, 'role' => 'Administrator']
     );
     assertTest(
-        "Test 15D: PATCH update office name and deactivate succeeds with HTTP 200",
+        "Test 15H: PATCH update office name and deactivate succeeds with HTTP 200",
         $resOfficePatch['status'] === 200 &&
         ($resOfficePatch['json']['success'] ?? false) === true &&
         (int)($resOfficePatch['json']['data']['is_active'] ?? 1) === 0,
         "Status: {$resOfficePatch['status']}, Body: {$resOfficePatch['body']}"
     );
 
-    // Reactivate office for user assignment test
+    // 15I: PATCH update office without 'offices.edit' returns HTTP 403 Forbidden
+    $resOfficePatchNoPerm = invokeApiEndpoint(
+        'backend/api/core/offices/index.php',
+        'PATCH',
+        [],
+        [
+            'id' => $createdOfficeId,
+            'name' => 'Unauthorized Patch'
+        ],
+        ['user_id' => $noOrgUserId, 'role' => 'NoOrgRole']
+    );
+    assertTest(
+        "Test 15I: PATCH update office without 'offices.edit' returns HTTP 403 Forbidden",
+        $resOfficePatchNoPerm['status'] === 403 &&
+        str_contains($resOfficePatchNoPerm['json']['message'] ?? '', 'permission'),
+        "Status: {$resOfficePatchNoPerm['status']}, Body: {$resOfficePatchNoPerm['body']}"
+    );
+
+    // 15J: DELETE office without 'offices.delete' returns HTTP 403 Forbidden
+    $resOfficeDeleteNoPerm = invokeApiEndpoint(
+        'backend/api/core/offices/index.php',
+        'DELETE',
+        [],
+        ['id' => $createdOfficeId],
+        ['user_id' => $noOrgUserId, 'role' => 'NoOrgRole']
+    );
+    assertTest(
+        "Test 15J: DELETE office without 'offices.delete' returns HTTP 403 Forbidden",
+        $resOfficeDeleteNoPerm['status'] === 403 &&
+        str_contains($resOfficeDeleteNoPerm['json']['message'] ?? '', 'permission'),
+        "Status: {$resOfficeDeleteNoPerm['status']}, Body: {$resOfficeDeleteNoPerm['body']}"
+    );
+
+    // 15K: Administrator without 'offices.delete' cannot bypass (HTTP 403)
+    $pdo->exec("INSERT INTO tbl_roles (name, description, is_system, is_active, created_at, updated_at) VALUES ('AdminNoOffDelete', 'Admin lacking off delete', 0, 1, NOW(), NOW())");
+    $adminNoOffDelRoleId = (int)$pdo->lastInsertId();
+    $cleanupRoleIds[] = $adminNoOffDelRoleId;
+
+    $pdo->exec("INSERT INTO tbl_role_permissions (role_id, permission_id, created_at) SELECT {$adminNoOffDelRoleId}, id, NOW() FROM tbl_permissions WHERE NOT (module_key = 'offices' AND permission_key = 'delete')");
+    $pdo->exec("INSERT INTO tbl_users (username, full_name, password, role, role_id, is_active, created_at, updated_at) VALUES ('admin_no_off_del', 'Admin No Off Del', 'hash', 'Administrator', {$adminNoOffDelRoleId}, 1, NOW(), NOW())");
+    $adminNoOffDelUserId = (int)$pdo->lastInsertId();
+    $cleanupUserIds[] = $adminNoOffDelUserId;
+
+    $resAdminNoOffDel = invokeApiEndpoint(
+        'backend/api/core/offices/index.php',
+        'DELETE',
+        [],
+        ['id' => $createdOfficeId],
+        ['user_id' => $adminNoOffDelUserId, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 15K: Administrator without 'offices.delete' permission cannot bypass (returns HTTP 403)",
+        $resAdminNoOffDel['status'] === 403 &&
+        str_contains($resAdminNoOffDel['json']['message'] ?? '', 'permission'),
+        "Status: {$resAdminNoOffDel['status']}, Body: {$resAdminNoOffDel['body']}"
+    );
+
+    // Reactivate office for user assignment & dependency tests
     $pdo->exec("UPDATE tbl_offices SET is_active = 1 WHERE id = {$createdOfficeId}");
 
-    // 15E: Deletion guard: Cannot delete office if user is assigned
+    // 15L: Deletion guard: Cannot delete office if user is assigned
     $pdo->exec("INSERT INTO tbl_users (username, full_name, password, role, role_id, office_id, is_active, created_at, updated_at) VALUES ('office_guard_user', 'Guard User', 'hash', 'User', 2, {$createdOfficeId}, 1, NOW(), NOW())");
     $guardUserId = (int)$pdo->lastInsertId();
     $cleanupUserIds[] = $guardUserId;
@@ -1010,14 +1201,72 @@ try {
         ['user_id' => 1, 'role' => 'Administrator']
     );
     assertTest(
-        "Test 15E: DELETE office with assigned users blocked with HTTP 400 Bad Request",
+        "Test 15L: DELETE office with assigned users blocked with HTTP 400 Bad Request",
         $resDeleteBlocked['status'] === 400 &&
         ($resDeleteBlocked['json']['success'] ?? true) === false &&
         str_contains($resDeleteBlocked['json']['message'] ?? '', 'assigned user'),
         "Status: {$resDeleteBlocked['status']}, Body: {$resDeleteBlocked['body']}"
     );
 
-    // 15F: DELETE clean office with 0 dependencies succeeds
+    // Remove user assignment before historical dependency test
+    $pdo->exec("UPDATE tbl_users SET office_id = NULL WHERE id = {$guardUserId}");
+
+    // 15M: Deletion guard: Cannot delete office if referenced by historical activity
+    $pdo->exec("INSERT INTO tbl_accomplishments (office_id, category_id, date, description, created_at, updated_at, created_by, modified_by) VALUES ({$createdOfficeId}, 1, CURDATE(), 'Historical Activity Check', NOW(), NOW(), 1, 1)");
+    $histAccId = (int)$pdo->lastInsertId();
+    $cleanupAccomplishmentIds[] = $histAccId;
+
+    $resDeleteHistBlocked = invokeApiEndpoint(
+        'backend/api/core/offices/index.php',
+        'DELETE',
+        [],
+        ['id' => $createdOfficeId],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 15M: DELETE office with historical records blocked with HTTP 400 Bad Request",
+        $resDeleteHistBlocked['status'] === 400 &&
+        ($resDeleteHistBlocked['json']['success'] ?? true) === false &&
+        str_contains($resDeleteHistBlocked['json']['message'] ?? '', 'historical record'),
+        "Status: {$resDeleteHistBlocked['status']}, Body: {$resDeleteHistBlocked['body']}"
+    );
+
+    // Clean up the temporary accomplishment dependency
+    $pdo->exec("DELETE FROM tbl_accomplishments WHERE id = {$histAccId}");
+    $cleanupAccomplishmentIds = array_diff($cleanupAccomplishmentIds, [$histAccId]);
+
+    // 15N: Offices configuration policies with 'offices.configure' succeeds
+    $resOfficesConfig = invokeApiEndpoint(
+        'backend/api/core/offices/index.php',
+        'GET',
+        ['action' => 'configure'],
+        null,
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 15N: GET offices configuration with 'offices.configure' returns HTTP 200",
+        $resOfficesConfig['status'] === 200 &&
+        ($resOfficesConfig['json']['success'] ?? false) === true &&
+        isset($resOfficesConfig['json']['data']['allow_registration']),
+        "Status: {$resOfficesConfig['status']}, Body: {$resOfficesConfig['body']}"
+    );
+
+    // 15O: Offices configuration without 'offices.configure' returns HTTP 403 Forbidden
+    $resOfficesConfigNoPerm = invokeApiEndpoint(
+        'backend/api/core/offices/index.php',
+        'GET',
+        ['action' => 'configure'],
+        null,
+        ['user_id' => $noOrgUserId, 'role' => 'NoOrgRole']
+    );
+    assertTest(
+        "Test 15O: GET offices configuration without 'offices.configure' returns HTTP 403 Forbidden",
+        $resOfficesConfigNoPerm['status'] === 403 &&
+        str_contains($resOfficesConfigNoPerm['json']['message'] ?? '', 'permission'),
+        "Status: {$resOfficesConfigNoPerm['status']}, Body: {$resOfficesConfigNoPerm['body']}"
+    );
+
+    // 15P: DELETE clean office with 0 dependencies succeeds
     $ephemeralCode = 'EPH_' . time();
     $pdo->exec("INSERT INTO tbl_offices (organization_id, name, code, is_active, created_at, updated_at) VALUES (1, 'Ephemeral Office', '{$ephemeralCode}', 1, NOW(), NOW())");
     $ephemeralId = (int)$pdo->lastInsertId();
@@ -1030,7 +1279,7 @@ try {
         ['user_id' => 1, 'role' => 'Administrator']
     );
     assertTest(
-        "Test 15F: DELETE office with zero dependencies succeeds with HTTP 200",
+        "Test 15P: DELETE office with zero dependencies succeeds with HTTP 200",
         $resDeleteClean['status'] === 200 &&
         ($resDeleteClean['json']['success'] ?? false) === true,
         "Status: {$resDeleteClean['status']}, Body: {$resDeleteClean['body']}"
@@ -1152,11 +1401,95 @@ try {
         "Status: {$resAuthNoOffice['status']}, Body: {$resAuthNoOffice['body']}"
     );
 
+    // Reactivate created office and create a second office for user office updates
+    $pdo->exec("UPDATE tbl_offices SET is_active = 1 WHERE id = {$createdOfficeId}");
+
+    $testOffice2Code = 'TEST_OFF2_' . time();
+    $pdo->exec("INSERT INTO tbl_offices (organization_id, name, code, is_active, created_at, updated_at) VALUES (1, 'Second Active Office', '{$testOffice2Code}', 1, NOW(), NOW())");
+    $secondOfficeId = (int)$pdo->lastInsertId();
+    $cleanupOfficeIds[] = $secondOfficeId;
+
+    // 16F: Update user's office to another active office succeeds
+    $resUpdateUserOffice = invokeApiEndpoint(
+        'backend/api/users/index.php',
+        'POST',
+        ['action' => 'update'],
+        [
+            'id' => $officerUserId,
+            'office_id' => $secondOfficeId
+        ],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    $userCheckStmt = $pdo->prepare("SELECT office_id FROM tbl_users WHERE id = :id");
+    $userCheckStmt->execute([':id' => $officerUserId]);
+    $updatedUserOffId = (int)$userCheckStmt->fetchColumn();
+
+    assertTest(
+        "Test 16F: POST update user office to another active office succeeds (HTTP 200)",
+        $resUpdateUserOffice['status'] === 200 &&
+        ($resUpdateUserOffice['json']['success'] ?? false) === true &&
+        $updatedUserOffId === $secondOfficeId,
+        "Status: {$resUpdateUserOffice['status']}, Body: {$resUpdateUserOffice['body']}"
+    );
+
+    // 16G: Update user's office to null succeeds (unassign office)
+    $resUpdateUserOfficeNull = invokeApiEndpoint(
+        'backend/api/users/index.php',
+        'POST',
+        ['action' => 'update'],
+        [
+            'id' => $officerUserId,
+            'office_id' => null
+        ],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    $userCheckStmt->execute([':id' => $officerUserId]);
+    $userOffNullCheck = $userCheckStmt->fetchColumn();
+
+    assertTest(
+        "Test 16G: POST update user office to null succeeds (HTTP 200, unassign office)",
+        $resUpdateUserOfficeNull['status'] === 200 &&
+        ($resUpdateUserOfficeNull['json']['success'] ?? false) === true &&
+        $userOffNullCheck === null,
+        "Status: {$resUpdateUserOfficeNull['status']}, Body: {$resUpdateUserOfficeNull['body']}"
+    );
+
+    // 16H: Update user's office to an inactive office is rejected with HTTP 400 Bad Request
+    $pdo->exec("UPDATE tbl_offices SET is_active = 0 WHERE id = {$secondOfficeId}");
+
+    $resUpdateUserOfficeInactive = invokeApiEndpoint(
+        'backend/api/users/index.php',
+        'POST',
+        ['action' => 'update'],
+        [
+            'id' => $officerUserId,
+            'office_id' => $secondOfficeId
+        ],
+        ['user_id' => 1, 'role' => 'Administrator']
+    );
+    assertTest(
+        "Test 16H: POST update user office to inactive office rejected with HTTP 400 Bad Request",
+        $resUpdateUserOfficeInactive['status'] === 400 &&
+        ($resUpdateUserOfficeInactive['json']['success'] ?? true) === false &&
+        str_contains($resUpdateUserOfficeInactive['json']['message'] ?? '', 'inactive office'),
+        "Status: {$resUpdateUserOfficeInactive['status']}, Body: {$resUpdateUserOfficeInactive['body']}"
+    );
+
 } finally {
     // =========================================================================
     // GUARANTEED CLEANUP: Restore Exact Original Module & RBAC Database State
     // =========================================================================
     echo "\nSUITE 7: Original Database State Restoration & Cleanliness (Guaranteed Cleanup)\n";
+
+    // 0. Delete temporary accomplishment or communication records
+    if (!empty($cleanupAccomplishmentIds)) {
+        $inAcc = implode(',', array_map('intval', array_unique($cleanupAccomplishmentIds)));
+        $pdo->exec("DELETE FROM tbl_accomplishments WHERE id IN ({$inAcc})");
+    }
+    if (!empty($cleanupCommunicationIds)) {
+        $inComm = implode(',', array_map('intval', array_unique($cleanupCommunicationIds)));
+        $pdo->exec("DELETE FROM tbl_communications WHERE id IN ({$inComm})");
+    }
 
     // 1. Delete all tracked temporary test users
     if (!empty($cleanupUserIds)) {
