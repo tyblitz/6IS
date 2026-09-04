@@ -137,7 +137,11 @@ async function handleLogin() {
   loading.value = false
 
   if (res.success && res.user) {
-    router.replace('/home')
+    if (res.user.role === 'Administrator') {
+      router.replace('/administrator')
+    } else {
+      router.replace('/home')
+    }
   } else {
     errorMessage.value = res.message || 'Invalid username or password.'
   }

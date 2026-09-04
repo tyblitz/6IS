@@ -86,6 +86,10 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/administrator/overview',
+    redirect: '/administrator'
+  },
+  {
     path: '/administrator/inventory',
     name: 'Inventory Management',
     component: AdminInventoryView,
@@ -489,9 +493,13 @@ router.beforeEach(async (to, _from, next) => {
     return
   }
   
-  if (to.path === '/login' && user) {
-    // Authenticated user attempting to access login page -> redirect to /home
-    next('/home')
+  if ((to.path === '/login' || to.path === '/') && user) {
+    // Authenticated user attempting to access root or login -> redirect to role overview
+    if (user.role === 'Administrator') {
+      next('/administrator')
+    } else {
+      next('/home')
+    }
     return
   }
   
