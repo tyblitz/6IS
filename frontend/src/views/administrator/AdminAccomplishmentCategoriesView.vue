@@ -166,6 +166,7 @@ import {
 import MainLayout from '../../layouts/MainLayout.vue'
 import { useTablePagination } from '../../composables/useTablePagination'
 import TablePagination from '../../components/common/TablePagination.vue'
+import { apiFetch, resolveApiUrl } from '../../utils/api'
 
 interface CategoryItem {
   id: number
@@ -175,16 +176,7 @@ interface CategoryItem {
   updated_at: string
 }
 
-function resolveApiUrl(): string {
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname || 'localhost'
-    const protocol = window.location.protocol || 'http:'
-    return `${protocol}//${host}/6IS/backend/api/accomplishments/index.php`
-  }
-  return 'http://localhost/6IS/backend/api/accomplishments/index.php'
-}
-
-const API_BASE_URL = resolveApiUrl()
+const API_BASE_URL = resolveApiUrl('accomplishments/index.php')
 
 const categories = ref<CategoryItem[]>([])
 const loading = ref(true)
@@ -256,7 +248,7 @@ function getSortIcon(col: 'category_name' | 'category_code') {
 async function loadCategories() {
   loading.value = true
   try {
-    const res = await fetch(`${API_BASE_URL}?view=categories`, { credentials: 'include' })
+    const res = await apiFetch(`${API_BASE_URL}?view=categories`)
     const data = await res.json()
     if (data.success) {
       categories.value = data.data
@@ -300,10 +292,8 @@ async function handleSave() {
   }
 
   try {
-    const res = await fetch(`${API_BASE_URL}?action=${action}`, {
+    const res = await apiFetch(`${API_BASE_URL}?action=${action}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify(payload)
     })
     const data = await res.json()
@@ -324,10 +314,8 @@ async function handleDeleteCategory(cat: CategoryItem) {
   if (!confirm(`Are you sure you want to delete category '${cat.category_name}'?`)) return
 
   try {
-    const res = await fetch(`${API_BASE_URL}?action=delete_category`, {
+    const res = await apiFetch(`${API_BASE_URL}?action=delete_category`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify({ id: cat.id })
     })
     const data = await res.json()

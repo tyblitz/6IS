@@ -33,7 +33,7 @@ MySQL Database (db_ict_system)
    - `AppBreadcrumb`: Route path hierarchy navigation.
    - `ModuleSidebar`: Dynamic sidebar navigation rendered from `route.meta.module`, filtered by active module state and user permissions.
    - `AppContent`: View slot containing active page content.
-   - `AppFooter`: Footer metadata, version display (`v0.1.4`), and copyright.
+   - `AppFooter`: Footer metadata, version display (`v0.2.0`), and copyright.
 
 ---
 

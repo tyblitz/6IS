@@ -80,4 +80,67 @@ describe('Accomplishments & Operational Reporting (Phase 5)', () => {
     cy.contains('h2', 'Custom Period Accomplishment Summary').should('exist')
     cy.get('.action-btn-group .btn-print').should('exist').and('contain', 'Print Report')
   })
+
+  it('executes complete Accomplishment CRUD flow with category selection and persistence verification', () => {
+    const uniqueId = Date.now()
+    const testDesc = `E2E Verified Activity ${uniqueId}`
+    const updatedDesc = `E2E Verified Activity ${uniqueId} [UPDATED]`
+    const testDate = '2026-08-10'
+
+    // 1. Visit Daily Report
+    cy.visit(`/accomplishments/daily?date=${testDate}`)
+    cy.get('.loading-container').should('not.exist')
+
+    // 2. Open Add Activity Modal
+    cy.get('.header-action-group .add-btn').click()
+    cy.get('.modal-card').should('be.visible')
+
+    // 3. Verify category & office options are actually loaded (> 1 option)
+    cy.get('#category_id option').should('have.length.at.least', 2)
+    cy.get('#office_id option').should('have.length.at.least', 2)
+
+    // 4. Fill form with specific category (Category ID 2: ICT Repair)
+    cy.get('#office_id').select(1)
+    cy.get('#category_id').select(2)
+    cy.get('#date').clear().type(testDate)
+    cy.get('#description').type(testDesc)
+    cy.get('#remarks').type('E2E Audit Remarks')
+
+    // 5. Submit Form
+    cy.get('.modal-footer .btn-save').click()
+    cy.get('.modal-backdrop').should('not.exist')
+
+    // 6. Verify created record appears in table with category
+    cy.contains('.desc-cell', testDesc).should('exist')
+    cy.contains('tr', testDesc).within(() => {
+      cy.get('.category-tag').should('not.be.empty')
+    })
+
+    // 7. Open Edit modal for the newly created record
+    cy.contains('tr', testDesc).within(() => {
+      cy.get('.edit-btn').click({ force: true })
+    })
+    cy.get('.modal-card').should('be.visible')
+    cy.get('#description').should('have.value', testDesc)
+
+    // 8. Update description and change category (to Category ID 1: PAS)
+    cy.get('#category_id').select(1)
+    cy.get('#description').clear().type(updatedDesc)
+    cy.get('.modal-footer .btn-save').click()
+    cy.get('.modal-backdrop').should('not.exist')
+
+    // 9. Verify updated description and category persist in the table
+    cy.contains('.desc-cell', updatedDesc).should('exist')
+    cy.contains('tr', updatedDesc).within(() => {
+      cy.get('.category-tag').should('contain', 'PAS')
+    })
+
+    // 10. Clean up: Delete the test record
+    cy.contains('tr', updatedDesc).within(() => {
+      cy.get('.delete-btn').click({ force: true })
+    })
+
+    // 11. Confirm deletion from table
+    cy.contains('.desc-cell', updatedDesc).should('not.exist')
+  })
 })

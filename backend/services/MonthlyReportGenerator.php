@@ -72,9 +72,9 @@ class MonthlyReportGenerator {
         $xpath = new DOMXPath($dom);
         $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
 
-        // Replace text placeholders / month string references
-        $this->replaceTextInNode($xpath, 'April 2026', "{$monthName} {$year}");
-        $this->replaceTextInNode($xpath, '01-30 April 2026', $periodStr);
+        // Replace text placeholders / month string references across runs
+        $this->replacePhraseInParagraphs($xpath, '01-30 April 2026', $periodStr);
+        $this->replacePhraseInParagraphs($xpath, 'April 2026', "{$monthName} {$year}");
 
         $tables = $xpath->query('//w:tbl');
 
@@ -114,9 +114,12 @@ class MonthlyReportGenerator {
                         a.description,
                         a.remarks,
                         o.office_name,
-                        o.office_code
+                        o.office_code,
+                        ac.category_name,
+                        ac.category_code
                     FROM tbl_accomplishments a
                     LEFT JOIN tbl_offices o ON a.office_id = o.id
+                    LEFT JOIN tbl_accomplishment_categories ac ON a.category_id = ac.id
                     WHERE MONTH(a.date) = :month 
                       AND YEAR(a.date) = :year 
                       AND a.deleted_at IS NULL
@@ -129,13 +132,7 @@ class MonthlyReportGenerator {
             }
         }
 
-        // Fallback sample dataset when DB is empty / offline
-        return [
-            ['description' => 'Installation of Public Address System (PAS)', 'remarks' => 'All activities that required PAS were supported such as conferences, board interviews, seminars, and social activities in coordination with CEISSAFP.'],
-            ['description' => 'Conducted Repair and Maintenance of ICT Equipment', 'remarks' => 'All requests for repairs were acted on by OG6. OG6 also assisted units and offices during procurement of printers, keyboards, power supply, video sound cards; HUB and desktop computer reformat/reprogram.'],
-            ['description' => 'Supervised/Assisted TELCO Personnel', 'remarks' => 'Supervised TELCO personnel during the installation, restoration and relocation of internet lines, clearing unserviceable wires, bunching, lifting and splicing of cable wires inside Camp General Emilio Aguinaldo.'],
-            ['description' => 'LED Board Support', 'remarks' => 'Display of backdrop and announcement at Gate 1, LLGS, and AFPCOC Entrance Led Board.']
-        ];
+        return [];
     }
 
     private function fetchOutgoingCommunicationsStats(int $month, int $year): array {
@@ -162,11 +159,7 @@ class MonthlyReportGenerator {
             }
         }
 
-        // Fallback sample statistics
-        return [
-            ['category_name' => 'Subject to Letter', 'category_code' => 'STL', 'total' => 12],
-            ['category_name' => 'Disposition Form', 'category_code' => 'DF', 'total' => 24]
-        ];
+        return [];
     }
 
     private function fetchClearanceStats(int $month, int $year): array {
@@ -192,14 +185,51 @@ class MonthlyReportGenerator {
             }
         }
 
-        return ['Access Pass' => 26];
+        return ['Access Pass' => 0];
     }
 
-    private function replaceTextInNode(DOMXPath $xpath, string $search, string $replace): void {
-        $nodes = $xpath->query('//w:t');
-        foreach ($nodes as $node) {
-            if (strpos($node->nodeValue, $search) !== false) {
-                $node->nodeValue = str_replace($search, $replace, $node->nodeValue);
+    private function replacePhraseInParagraphs(DOMXPath $xpath, string $search, string $replace): void {
+        $paragraphs = $xpath->query('//w:p');
+        foreach ($paragraphs as $p) {
+            $tNodes = $xpath->query('.//w:t', $p);
+            if ($tNodes->length === 0) continue;
+
+            $fullText = '';
+            $nodeMap = [];
+            for ($n = 0; $n < $tNodes->length; $n++) {
+                $node = $tNodes->item($n);
+                $val = $node->nodeValue;
+                $len = strlen($val);
+                for ($c = 0; $c < $len; $c++) {
+                    $nodeMap[strlen($fullText) + $c] = ['node' => $node, 'offset' => $c, 'nodeIdx' => $n];
+                }
+                $fullText .= $val;
+            }
+
+            $pos = strpos($fullText, $search);
+            if ($pos !== false) {
+                $searchLen = strlen($search);
+                $startNodeIdx = $nodeMap[$pos]['nodeIdx'];
+                $endNodeIdx = $nodeMap[$pos + $searchLen - 1]['nodeIdx'];
+
+                if ($startNodeIdx === $endNodeIdx) {
+                    $node = $tNodes->item($startNodeIdx);
+                    $node->nodeValue = str_replace($search, $replace, $node->nodeValue);
+                } else {
+                    $startOffset = $nodeMap[$pos]['offset'];
+                    $startNode = $tNodes->item($startNodeIdx);
+                    $startPrefix = substr($startNode->nodeValue, 0, $startOffset);
+                    $startNode->nodeValue = $startPrefix . $replace;
+
+                    $endOffset = $nodeMap[$pos + $searchLen - 1]['offset'];
+                    $endNode = $tNodes->item($endNodeIdx);
+                    $endSuffix = substr($endNode->nodeValue, $endOffset + 1);
+                    $endNode->nodeValue = $endSuffix;
+
+                    for ($m = $startNodeIdx + 1; $m < $endNodeIdx; $m++) {
+                        $tNodes->item($m)->nodeValue = '';
+                    }
+                }
             }
         }
     }
@@ -232,6 +262,9 @@ class MonthlyReportGenerator {
             $cells = $xpath->query('.//w:tc', $newRow);
             if ($cells->length >= 3) {
                 $desc = $acc['description'];
+                if (!empty($acc['category_code'])) {
+                    $desc = "[{$acc['category_code']}] " . $desc;
+                }
                 $remarks = !empty($acc['remarks']) ? $acc['remarks'] : $acc['description'];
                 $this->setCellText($xpath, $cells->item(0), $desc);
                 $this->setCellText($xpath, $cells->item(1), '1');
@@ -290,20 +323,39 @@ class MonthlyReportGenerator {
     }
 
     private function setCellText(DOMXPath $xpath, DOMNode $cellNode, string $text): void {
+        $dom = $cellNode->ownerDocument;
         $pNodes = $xpath->query('.//w:p', $cellNode);
-        if ($pNodes->length === 0) return;
-
-        $firstP = $pNodes->item(0);
-        for ($i = $pNodes->length - 1; $i >= 1; $i--) {
-            $cellNode->removeChild($pNodes->item($i));
-        }
-
-        $tNodes = $xpath->query('.//w:t', $firstP);
-        if ($tNodes->length > 0) {
-            $tNodes->item(0)->nodeValue = htmlspecialchars($text, ENT_QUOTES | ENT_XML1, 'UTF-8');
-            for ($j = $tNodes->length - 1; $j >= 1; $j--) {
-                $tNodes->item($j)->parentNode->removeChild($tNodes->item($j));
+        if ($pNodes->length === 0) {
+            $p = $dom->createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:p');
+            $cellNode->appendChild($p);
+        } else {
+            $p = $pNodes->item(0);
+            for ($i = $pNodes->length - 1; $i >= 1; $i--) {
+                $cellNode->removeChild($pNodes->item($i));
             }
         }
+
+        $rNodes = $xpath->query('.//w:r', $p);
+        $rPr = null;
+        if ($rNodes->length > 0) {
+            $firstR = $rNodes->item(0);
+            $rPrNodes = $xpath->query('.//w:rPr', $firstR);
+            if ($rPrNodes->length > 0) {
+                $rPr = $rPrNodes->item(0)->cloneNode(true);
+            }
+            for ($i = $rNodes->length - 1; $i >= 0; $i--) {
+                $p->removeChild($rNodes->item($i));
+            }
+        }
+
+        $newR = $dom->createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:r');
+        if ($rPr) {
+            $newR->appendChild($rPr);
+        }
+        $newT = $dom->createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:t');
+        $newT->setAttribute('xml:space', 'preserve');
+        $newT->nodeValue = htmlspecialchars($text, ENT_QUOTES | ENT_XML1, 'UTF-8');
+        $newR->appendChild($newT);
+        $p->appendChild($newR);
     }
 }

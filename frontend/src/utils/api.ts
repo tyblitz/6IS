@@ -15,22 +15,30 @@ import { getStoredCsrfToken } from '../services/authService'
  */
 export async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const method = (options.method || 'GET').toUpperCase()
-  const headers = new Headers(options.headers || {})
+  const headersObj: Record<string, string> = {}
 
-  if (!headers.has('Accept')) {
-    headers.set('Accept', 'application/json')
+  if (options.headers instanceof Headers) {
+    options.headers.forEach((v, k) => { headersObj[k] = v })
+  } else if (Array.isArray(options.headers)) {
+    options.headers.forEach(([k, v]) => { headersObj[k] = v })
+  } else if (options.headers) {
+    Object.assign(headersObj, options.headers)
+  }
+
+  if (!headersObj['Accept'] && !headersObj['accept']) {
+    headersObj['Accept'] = 'application/json'
   }
 
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
     const token = getStoredCsrfToken()
-    if (token && !headers.has('X-CSRF-Token')) {
-      headers.set('X-CSRF-Token', token)
+    if (token && !headersObj['X-CSRF-Token'] && !headersObj['x-csrf-token']) {
+      headersObj['X-CSRF-Token'] = token
     }
   }
 
   return fetch(url, {
     ...options,
-    headers,
+    headers: headersObj,
     credentials: 'include'
   })
 }

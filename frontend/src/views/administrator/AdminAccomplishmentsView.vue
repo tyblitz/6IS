@@ -214,17 +214,9 @@ import {
 
 import MainLayout from '../../layouts/MainLayout.vue'
 import TablePagination from '../../components/common/TablePagination.vue'
+import { apiFetch, resolveApiUrl } from '../../utils/api'
 
-function resolveApiUrl(): string {
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname || 'localhost'
-    const protocol = window.location.protocol || 'http:'
-    return `${protocol}//${host}/6IS/backend/api/accomplishments/index.php`
-  }
-  return 'http://localhost/6IS/backend/api/accomplishments/index.php'
-}
-
-const API_BASE_URL = resolveApiUrl()
+const API_BASE_URL = resolveApiUrl('accomplishments/index.php')
 
 const accomplishments = ref<any[]>([])
 const categories = ref<any[]>([])
@@ -317,7 +309,7 @@ const hasActiveFilters = computed(() => {
 async function loadData() {
   loading.value = true
   try {
-    const optRes = await fetch(`${API_BASE_URL}?view=options`, { credentials: 'include' })
+    const optRes = await apiFetch(`${API_BASE_URL}?view=options`)
     const optData = await optRes.json()
     if (optData.success && optData.data) {
       categories.value = optData.data.categories || []
@@ -329,7 +321,7 @@ async function loadData() {
     if (filterCategoryId.value > 0) params.append('category_id', filterCategoryId.value.toString())
     if (filterOfficeId.value > 0) params.append('office_id', filterOfficeId.value.toString())
 
-    const accRes = await fetch(`${API_BASE_URL}?${params.toString()}`, { credentials: 'include' })
+    const accRes = await apiFetch(`${API_BASE_URL}?${params.toString()}`)
     const accData = await accRes.json()
     if (accData.success && accData.data?.records) {
       accomplishments.value = accData.data.records
@@ -380,10 +372,8 @@ async function handleSaveAccomplishment() {
   saving.value = true
   modalError.value = ''
   try {
-    const res = await fetch(`${API_BASE_URL}?id=${editId.value}`, {
+    const res = await apiFetch(`${API_BASE_URL}?id=${editId.value}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify(form.value)
     })
     const data = await res.json()
@@ -403,9 +393,8 @@ async function handleSaveAccomplishment() {
 async function handleDelete(item: any) {
   if (!confirm(`Are you sure you want to delete accomplishment '${item.description}'?`)) return
   try {
-    const res = await fetch(`${API_BASE_URL}?id=${item.id}`, {
-      method: 'DELETE',
-      credentials: 'include'
+    const res = await apiFetch(`${API_BASE_URL}?id=${item.id}`, {
+      method: 'DELETE'
     })
     const data = await res.json()
     if (data.success) {

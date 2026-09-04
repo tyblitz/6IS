@@ -11,6 +11,7 @@ import type {
   CreateAccomplishmentFromEventPayload,
   CalendarEventTypeOption
 } from '../types/calendar';
+import { apiFetch } from '../utils/api';
 
 function resolveApiUrl(): string {
   if (typeof window !== 'undefined') {
@@ -148,10 +149,9 @@ export async function createAccomplishmentFromEvent(
   payload: CreateAccomplishmentFromEventPayload
 ): Promise<{ success: boolean; message?: string; accomplishment_id?: number }> {
   try {
-    const res = await fetch(`${API_BASE}?action=create_accomplishment`, {
+    const res = await apiFetch(`${API_BASE}?action=create_accomplishment`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify(payload)
     });
     return await res.json();

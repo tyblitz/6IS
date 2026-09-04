@@ -9,7 +9,7 @@ import type {
   OfficeOption
 } from '../types/accomplishment'
 
-import { resolveApiUrl as resolveCentralApiUrl } from '../utils/api'
+import { apiFetch, resolveApiUrl as resolveCentralApiUrl } from '../utils/api'
 
 const API_BASE_URL = resolveCentralApiUrl('accomplishments/index.php')
 
@@ -21,7 +21,7 @@ const FALLBACK_OFFICES: OfficeOption[] = [
 
 const todayStr = new Date().toISOString().substring(0, 10)
 
-let fallbackAccomplishmentsStore: AccomplishmentItem[] = [
+const fallbackAccomplishmentsStore: AccomplishmentItem[] = [
   {
     id: 1,
     office_id: 1,
@@ -204,11 +204,11 @@ let fallbackAccomplishmentsStore: AccomplishmentItem[] = [
   }
 ]
 
-async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 500): Promise<Response> {
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 15000): Promise<Response> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    const response = await fetch(url, {
+    const response = await apiFetch(url, {
       ...options,
       signal: controller.signal
     })
@@ -538,79 +538,42 @@ export async function fetchCustomPeriodAccomplishments(
 
 export async function createAccomplishment(payload: AccomplishmentFormPayload): Promise<ApiResponse> {
   try {
-    const res = await fetchWithTimeout(API_BASE_URL, {
+    const res = await apiFetch(API_BASE_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify(payload)
     })
     const data = await res.json()
-    if (data.success) return data
+    return data
   } catch (err: any) {
-    // Fallback insert
+    return { success: false, message: err.message || 'Failed to create accomplishment.', data: null, errors: null }
   }
-
-  const office = FALLBACK_OFFICES.find(o => o.id === payload.office_id)
-  const newRecord: AccomplishmentItem = {
-    id: Date.now(),
-    office_id: payload.office_id,
-    office_name: office?.office_name || 'ICT Office',
-    office_code: office?.office_code || 'ICT',
-    date: payload.date,
-    description: payload.description,
-    remarks: payload.remarks || null
-  }
-
-  fallbackAccomplishmentsStore.unshift(newRecord)
-  return { success: true, message: 'Accomplishment created successfully.', data: { id: newRecord.id }, errors: null }
 }
 
 export async function updateAccomplishment(id: number, payload: AccomplishmentFormPayload): Promise<ApiResponse> {
   try {
-    const res = await fetchWithTimeout(`${API_BASE_URL}?id=${id}`, {
+    const res = await apiFetch(`${API_BASE_URL}?id=${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify(payload)
     })
     const data = await res.json()
-    if (data.success) return data
+    return data
   } catch (err: any) {
-    // Fallback update
+    return { success: false, message: err.message || 'Failed to update accomplishment.', data: null, errors: null }
   }
-
-  const index = fallbackAccomplishmentsStore.findIndex(item => item.id === id)
-  if (index !== -1) {
-    const item = fallbackAccomplishmentsStore[index]
-    const office = FALLBACK_OFFICES.find(o => o.id === payload.office_id)
-    item.office_id = payload.office_id
-    if (office) {
-      item.office_name = office.office_name
-      item.office_code = office.office_code
-    }
-    item.date = payload.date
-    item.description = payload.description
-    item.remarks = payload.remarks || null
-    return { success: true, message: 'Accomplishment updated successfully.', data: { id }, errors: null }
-  }
-
-  return { success: false, message: 'Accomplishment record not found.', data: null, errors: null }
 }
 
 export async function deleteAccomplishment(id: number): Promise<ApiResponse> {
   try {
-    const res = await fetchWithTimeout(`${API_BASE_URL}?id=${id}`, {
-      method: 'DELETE',
-      credentials: 'include'
+    const res = await apiFetch(`${API_BASE_URL}?id=${id}`, {
+      method: 'DELETE'
     })
     const data = await res.json()
-    if (data.success) return data
+    return data
   } catch (err: any) {
-    // Fallback soft delete
+    return { success: false, message: err.message || 'Failed to delete accomplishment.', data: null, errors: null }
   }
-
-  fallbackAccomplishmentsStore = fallbackAccomplishmentsStore.filter(item => item.id !== id)
-  return { success: true, message: 'Accomplishment deleted successfully.', data: { id }, errors: null }
 }
 
 export function generateClientSideWordDoc(month: number, year: number): void {
