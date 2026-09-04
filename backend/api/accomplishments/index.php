@@ -195,13 +195,14 @@ function handleGet(PDO $pdo) {
     $commParams = [];
 
     if ($view === 'daily') {
-        if (!empty($_GET['date'])) {
-            $targetDate = trim($_GET['date']);
-            $where[] = "a.date = :target_date";
-            $params[':target_date'] = $targetDate;
-            $commWhere[] = "c.communication_date = :target_date";
-            $commParams[':target_date'] = $targetDate;
+        $targetDate = !empty($_GET['date']) ? trim($_GET['date']) : date('Y-m-d');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $targetDate)) {
+            sendResponse(false, 'Valid date (YYYY-MM-DD) is required.', null, null, 400);
         }
+        $where[] = "a.date = :target_date";
+        $params[':target_date'] = $targetDate;
+        $commWhere[] = "c.communication_date = :target_date";
+        $commParams[':target_date'] = $targetDate;
     } elseif ($view === 'monthly') {
         $year = !empty($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
         $month = !empty($_GET['month']) ? (int)$_GET['month'] : (int)date('m');
@@ -229,6 +230,12 @@ function handleGet(PDO $pdo) {
     } elseif ($view === 'custom') {
         $startDate = !empty($_GET['start_date']) ? trim($_GET['start_date']) : date('Y-m-01');
         $endDate = !empty($_GET['end_date']) ? trim($_GET['end_date']) : date('Y-m-d');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDate) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $endDate)) {
+            sendResponse(false, 'Valid start_date and end_date (YYYY-MM-DD) are required.', null, null, 400);
+        }
+        if ($startDate > $endDate) {
+            sendResponse(false, 'Start date must be before or equal to end date.', null, null, 400);
+        }
         $where[] = "a.date >= :start_date AND a.date <= :end_date";
         $params[':start_date'] = $startDate;
         $params[':end_date'] = $endDate;
@@ -282,18 +289,24 @@ function handleGet(PDO $pdo) {
         $stmt->execute($params);
         $records = $stmt->fetchAll();
 
-        // 1. Aggregate Accomplishments By Category
+        // 1. Aggregate Accomplishments By Category (via derived table to support all search & office filters safely)
         $accByCatStmt = $pdo->prepare("
             SELECT 
-                ac.id as category_id,
-                ac.category_name,
-                ac.category_code,
+                cat.id as category_id,
+                cat.category_name,
+                cat.category_code,
                 COUNT(a.id) as count
-            FROM tbl_accomplishment_categories ac
-            LEFT JOIN tbl_accomplishments a ON a.category_id = ac.id AND {$whereSql}
-            WHERE ac.deleted_at IS NULL
-            GROUP BY ac.id, ac.category_name, ac.category_code
-            ORDER BY ac.id ASC
+            FROM tbl_accomplishment_categories cat
+            LEFT JOIN (
+                SELECT a.id, a.category_id
+                FROM tbl_accomplishments a
+                LEFT JOIN tbl_offices o ON a.office_id = o.id
+                LEFT JOIN tbl_accomplishment_categories ac ON a.category_id = ac.id
+                WHERE {$whereSql}
+            ) a ON a.category_id = cat.id
+            WHERE cat.deleted_at IS NULL
+            GROUP BY cat.id, cat.category_name, cat.category_code
+            ORDER BY cat.id ASC
         ");
         $accByCatStmt->execute($params);
         $accByCat = $accByCatStmt->fetchAll();
@@ -329,12 +342,17 @@ function handleGet(PDO $pdo) {
         $clearancesStmt->execute($commParams);
         $clearances = $clearancesStmt->fetchAll();
 
-        sendResponse(true, 'Accomplishments list fetched successfully.', [
+        $responseData = [
             'records' => $records,
             'accomplishments_by_category' => $accByCat,
             'outgoing_comms_by_category' => $outComms,
             'clearances_by_purpose' => $clearances
-        ]);
+        ];
+        if ($view === 'daily') {
+            $responseData['date'] = $targetDate;
+        }
+
+        sendResponse(true, 'Accomplishments list fetched successfully.', $responseData);
     } catch (Exception $e) {
         sendResponse(false, 'Failed to fetch accomplishment records.', null, ['error' => $e->getMessage()], 500);
     }
@@ -481,7 +499,9 @@ function handlePost(PDO $pdo) {
             sendResponse(false, 'Accomplishment category not found.', null, null, 404);
         }
 
-        $usageCount = (int)$pdo->query("SELECT COUNT(*) FROM tbl_accomplishments WHERE category_id = {$id} AND deleted_at IS NULL")->fetchColumn();
+        $usageStmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_accomplishments WHERE category_id = :cat_id AND deleted_at IS NULL");
+        $usageStmt->execute([':cat_id' => $id]);
+        $usageCount = (int)$usageStmt->fetchColumn();
         if ($usageCount > 0) {
             sendResponse(false, "Cannot delete category '{$oldCategory['category_name']}' because {$usageCount} accomplishment record(s) reference it.", null, null, 409);
         }
@@ -696,7 +716,12 @@ function handleDelete(PDO $pdo) {
         sendResponse(false, 'Record ID is required for deletion.', null, null, 400);
     }
 
-    requireCsrf();
+    $rawInput = file_get_contents('php://input');
+    if (empty($rawInput) && isset($GLOBALS['HTTP_RAW_POST_DATA'])) {
+        $rawInput = $GLOBALS['HTTP_RAW_POST_DATA'];
+    }
+    $data = !empty($rawInput) ? json_decode($rawInput, true) : null;
+    requireCsrf($data);
 
     $checkStmt = $pdo->prepare("SELECT * FROM tbl_accomplishments WHERE id = :id AND deleted_at IS NULL");
     $checkStmt->execute([':id' => $id]);
@@ -758,8 +783,16 @@ function validatePayload(PDO $pdo, $data, $isUpdate = false) {
         }
     }
 
-    if (empty($data['date']) || strlen(trim($data['date'])) === 0) {
-        $errors['date'] = 'Date is required.';
+    if (!empty($data['category_id'])) {
+        $checkCat = $pdo->prepare("SELECT id FROM tbl_accomplishment_categories WHERE id = :cat_id AND deleted_at IS NULL");
+        $checkCat->execute([':cat_id' => (int)$data['category_id']]);
+        if (!$checkCat->fetch()) {
+            $errors['category_id'] = 'Selected category does not exist.';
+        }
+    }
+
+    if (empty($data['date']) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', trim($data['date']))) {
+        $errors['date'] = 'Valid date (YYYY-MM-DD) is required.';
     }
 
     if (empty($data['description']) || strlen(trim($data['description'])) === 0) {

@@ -123,12 +123,9 @@ class MonthlyReportGenerator {
                     ORDER BY a.date ASC, a.id ASC
                 ");
                 $stmt->execute([':month' => $month, ':year' => $year]);
-                $results = $stmt->fetchAll();
-                if (!empty($results)) {
-                    return $results;
-                }
+                return $stmt->fetchAll() ?: [];
             } catch (Exception $e) {
-                // Fallback on database query error
+                return [];
             }
         }
 
@@ -159,12 +156,9 @@ class MonthlyReportGenerator {
                     ORDER BY total DESC
                 ");
                 $stmt->execute([':month' => $month, ':year' => $year]);
-                $results = $stmt->fetchAll();
-                if (!empty($results)) {
-                    return $results;
-                }
+                return $stmt->fetchAll() ?: [];
             } catch (Exception $e) {
-                // Fallback
+                return [];
             }
         }
 
@@ -192,11 +186,9 @@ class MonthlyReportGenerator {
                 ");
                 $stmt->execute([':month' => $month, ':year' => $year]);
                 $row = $stmt->fetch();
-                if ($row) {
-                    return ['Access Pass' => (int)$row['total']];
-                }
+                return ['Access Pass' => $row ? (int)$row['total'] : 0];
             } catch (Exception $e) {
-                // Fallback
+                return ['Access Pass' => 0];
             }
         }
 
@@ -221,6 +213,18 @@ class MonthlyReportGenerator {
         // Remove existing sample rows except header
         for ($i = $rows->length - 1; $i >= 1; $i--) {
             $tableNode->removeChild($rows->item($i));
+        }
+
+        if (empty($accomplishments)) {
+            $emptyRow = $templateRow->cloneNode(true);
+            $cells = $xpath->query('.//w:tc', $emptyRow);
+            if ($cells->length >= 3) {
+                $this->setCellText($xpath, $cells->item(0), 'No accomplishment activities recorded for this period.');
+                $this->setCellText($xpath, $cells->item(1), '0');
+                $this->setCellText($xpath, $cells->item(2), 'None');
+            }
+            $tableNode->appendChild($emptyRow);
+            return;
         }
 
         foreach ($accomplishments as $acc) {

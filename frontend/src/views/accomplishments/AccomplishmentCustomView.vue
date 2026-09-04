@@ -16,6 +16,13 @@
         </div>
       </div>
 
+      <!-- Printable Document Header (Visible in print) -->
+      <div class="printable-header print-only">
+        <div class="print-org-title">6IS INTEGRATED INFORMATION SYSTEM</div>
+        <div class="print-report-title">CUSTOM PERIOD ACCOMPLISHMENT & OPERATIONAL REPORT</div>
+        <div class="print-meta">Period: {{ formatDate(startDate) }} to {{ formatDate(endDate) }} | Generated: {{ formatDateTime(new Date()) }}</div>
+      </div>
+
       <!-- Toolbar / Selectors (Start Date & End Date ONLY) -->
       <div class="toolbar-card print-hide">
         <div class="toolbar-grid">
@@ -185,7 +192,7 @@ import {
 } from 'ionicons/icons'
 
 import MainLayout from '../../layouts/MainLayout.vue'
-import { formatDate } from '../../utils/dateUtils'
+import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import type { 
   AccomplishmentCategorySummary, 
   OutgoingCommCategorySummary,
@@ -611,5 +618,46 @@ input[type="date"] {
 
 .print-hide {
   display: block;
+}
+
+.print-only {
+  display: none;
+}
+
+@media print {
+  .print-hide { display: none !important; }
+  .print-only { display: block !important; }
+
+  .report-page-container {
+    padding: 0;
+    max-width: 100%;
+  }
+
+  .printable-header {
+    margin-bottom: 20px;
+    text-align: center;
+    border-bottom: 2px solid #000;
+    padding-bottom: 10px;
+  }
+
+  .print-org-title { font-size: 14pt; font-weight: bold; }
+  .print-report-title { font-size: 16pt; font-weight: bold; margin-top: 4px; }
+  .print-meta { font-size: 10pt; color: #555; margin-top: 4px; }
+
+  .dashboard-grid-layout {
+    display: block !important;
+  }
+
+  .main-column, .sidebar-column {
+    display: block !important;
+    margin-bottom: 20px;
+  }
+
+  .summary-card-group {
+    border: 1px solid #000 !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+    margin-bottom: 20px;
+  }
 }
 </style>

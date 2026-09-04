@@ -37,6 +37,7 @@ describe('Accomplishments & Operational Reporting (Phase 5)', () => {
     cy.get('.modal-card').should('be.visible')
     cy.get('.modal-header h3').should('contain', 'Add Daily Accomplishment')
     cy.get('#office_id').should('exist')
+    cy.get('#category_id').should('exist')
     cy.get('#date').should('exist')
     cy.get('#description').should('exist')
     cy.get('.btn-cancel').click()

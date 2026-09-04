@@ -34,6 +34,22 @@
             <span v-if="errors.office_id" class="error-msg">{{ errors.office_id }}</span>
           </div>
 
+          <!-- Category Field -->
+          <div class="form-group">
+            <label for="category_id">Category <span class="required">*</span></label>
+            <select
+              id="category_id"
+              v-model.number="form.category_id"
+              :class="{ 'input-error': errors.category_id }"
+            >
+              <option :value="0" disabled>Select Category</option>
+              <option v-for="cat in options.categories || []" :key="cat.id" :value="cat.id">
+                {{ cat.category_name }}{{ cat.category_code ? ` (${cat.category_code})` : '' }}
+              </option>
+            </select>
+            <span v-if="errors.category_id" class="error-msg">{{ errors.category_id }}</span>
+          </div>
+
           <!-- Date Field -->
           <div class="form-group">
             <label for="date">Date <span class="required">*</span></label>
@@ -125,6 +141,7 @@ const isEdit = computed(() => !!props.editData?.id)
 
 const form = reactive<AccomplishmentFormPayload & { calendar_event_id?: number }>({
   office_id: 0,
+  category_id: 1,
   date: new Date().toISOString().split('T')[0],
   description: '',
   remarks: '',
@@ -137,6 +154,7 @@ watch(() => props.isOpen, (newVal) => {
     if (props.editData) {
       form.id = props.editData.id
       form.office_id = props.editData.office_id
+      form.category_id = props.editData.category_id || (props.options.categories?.length ? props.options.categories[0].id : 1)
       form.date = props.editData.date
       form.description = props.editData.description
       form.remarks = props.editData.remarks || ''
@@ -144,6 +162,7 @@ watch(() => props.isOpen, (newVal) => {
     } else if (props.calendarPrefillData) {
       form.id = undefined
       form.office_id = props.options.offices.length > 0 ? props.options.offices[0].id : 1
+      form.category_id = props.options.categories?.length ? props.options.categories[0].id : 1
       form.date = props.calendarPrefillData.date || new Date().toISOString().split('T')[0]
       form.description = props.calendarPrefillData.title + (props.calendarPrefillData.description ? ' - ' + props.calendarPrefillData.description : '')
       form.remarks = props.calendarPrefillData.location ? `Location: ${props.calendarPrefillData.location}` : ''
@@ -151,6 +170,7 @@ watch(() => props.isOpen, (newVal) => {
     } else {
       form.id = undefined
       form.office_id = props.options.offices.length > 0 ? props.options.offices[0].id : 0
+      form.category_id = props.options.categories?.length ? props.options.categories[0].id : 1
       form.date = new Date().toISOString().split('T')[0]
       form.description = ''
       form.remarks = ''
@@ -169,6 +189,11 @@ function validate() {
 
   if (!form.office_id || form.office_id <= 0) {
     errors.office_id = 'Please select an office.'
+    valid = false
+  }
+
+  if (!form.category_id || form.category_id <= 0) {
+    errors.category_id = 'Please select a category.'
     valid = false
   }
 

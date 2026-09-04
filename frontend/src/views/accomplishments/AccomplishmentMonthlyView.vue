@@ -21,6 +21,13 @@
         </div>
       </div>
 
+      <!-- Printable Document Header (Visible in print) -->
+      <div class="printable-header print-only">
+        <div class="print-org-title">6IS INTEGRATED INFORMATION SYSTEM</div>
+        <div class="print-report-title">MONTHLY ACCOMPLISHMENT SUMMARY</div>
+        <div class="print-meta">Period: {{ selectedMonthName }} {{ selectedYear }} | Generated: {{ formatDateTime(new Date()) }}</div>
+      </div>
+
       <!-- Toolbar / Selectors (Year & Month ONLY) -->
       <div class="toolbar-card print-hide">
         <div class="toolbar-grid">
@@ -201,6 +208,7 @@ import type {
   ClearancePurposeSummary 
 } from '../../types/accomplishment'
 import { fetchMonthlyAccomplishments, exportMonthlyReportDocx } from '../../services/accomplishmentService'
+import { formatDateTime } from '../../utils/dateUtils'
 
 const route = useRoute()
 
@@ -668,13 +676,32 @@ select {
   font-weight: 600;
 }
 
-.print-hide {
-  display: block;
+.print-only {
+  display: none;
 }
 
 @media print {
   .print-hide {
     display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .report-page-container {
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+  .printable-header {
+    margin-bottom: 20px;
+    text-align: center;
+    border-bottom: 2px solid #000;
+    padding-bottom: 10px;
+  }
+  .print-org-title { font-size: 14pt; font-weight: bold; }
+  .print-report-title { font-size: 16pt; font-weight: bold; margin-top: 4px; }
+  .print-meta { font-size: 10pt; color: #555; margin-top: 4px; }
+  .summary-card-group, .summary-category-table {
+    page-break-inside: avoid;
   }
 }
 </style>

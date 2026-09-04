@@ -131,3 +131,34 @@ ion-item {
 
     --ripple-color: transparent;
 }
+
+/* ==========================
+   GLOBAL PRINT SPECIFICATION
+========================== */
+@media print {
+    .app-header,
+    .app-breadcrumb,
+    .module-sidebar,
+    .app-footer,
+    .print-hide,
+    ion-header,
+    ion-toolbar,
+    .ion-page > ion-header {
+        display: none !important;
+    }
+
+    .app-body {
+        display: block !important;
+    }
+
+    .app-content {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+    }
+
+    body, html {
+        background: #ffffff !important;
+        color: #000000 !important;
+    }
+}

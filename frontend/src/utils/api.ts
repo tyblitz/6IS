@@ -36,28 +36,39 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
 }
 
 /**
- * Resolves the full API URL for a given endpoint path.
+ * Resolves the full API URL for a given endpoint path in a deployment-neutral manner.
  * Supports:
- * 1. Explicit environment variable: VITE_API_BASE_URL
- * 2. Window location derivation with '/6IS/backend/api' for standard deployment
- * 3. Default fallback for SSR / unit testing environments
+ * 1. Explicit environment variable: VITE_API_BASE_URL (highest priority)
+ * 2. Dynamic deployment prefix (root domain, custom subdirectory, or local XAMPP subpath)
+ * 3. Fallback for headless / unit test / SSR environments
  * 
  * @param relativePath Endpoint path (e.g., 'accomplishments/index.php')
  * @returns Fully resolved API URL
  */
 export function resolveApiUrl(relativePath: string): string {
   const cleanPath = relativePath.startsWith('/') ? relativePath.slice(1) : relativePath
-  
+
+  // 1. Explicit environment variable configuration
   if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL) {
     const base = (import.meta.env.VITE_API_BASE_URL as string).replace(/\/+$/, '')
     return `${base}/${cleanPath}`
   }
 
+  // 2. Dynamic Browser Location Resolution
   if (typeof window !== 'undefined') {
-    const host = window.location.hostname || 'localhost'
-    const protocol = window.location.protocol || 'http:'
-    return `${protocol}//${host}/6IS/backend/api/${cleanPath}`
+    const origin = window.location.origin || `${window.location.protocol}//${window.location.host}`
+    
+    // Determine subdirectory prefix if deployed under subfolder (e.g., /6IS or custom subfolder)
+    let pathPrefix = ''
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL && import.meta.env.BASE_URL !== '/') {
+      pathPrefix = import.meta.env.BASE_URL.replace(/\/+$/, '')
+    } else if (window.location.pathname.startsWith('/6IS')) {
+      pathPrefix = '/6IS'
+    }
+
+    return `${origin}${pathPrefix}/backend/api/${cleanPath}`
   }
 
-  return `http://localhost/6IS/backend/api/${cleanPath}`
+  // 3. Fallback for SSR / Node test execution
+  return `http://localhost/backend/api/${cleanPath}`
 }

@@ -12,6 +12,10 @@ export default defineConfig({
   ],
   server: {
     proxy: {
+      '/backend': {
+        target: 'http://localhost/6IS',
+        changeOrigin: true
+      },
       '/6IS/backend': {
         target: 'http://localhost',
         changeOrigin: true

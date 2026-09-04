@@ -24,7 +24,7 @@
       <div class="printable-header print-only">
         <div class="print-org-title">6IS INTEGRATED INFORMATION SYSTEM</div>
         <div class="print-report-title">DAILY ACCOMPLISHMENT REPORT</div>
-        <div class="print-meta">Date: {{ formatDate(filterDate) }} | Generated: {{ new Date().toLocaleString() }}</div>
+        <div class="print-meta">Date: {{ formatDate(filterDate) }} | Generated: {{ formatDateTime(new Date()) }}</div>
       </div>
 
       <!-- Filter Toolbar -->
@@ -227,7 +227,7 @@ import {
   fetchAccomplishmentOptions,
   deleteAccomplishment
 } from '../../services/accomplishmentService'
-import { formatDate } from '../../utils/dateUtils'
+import { formatDate, formatDateTime } from '../../utils/dateUtils'
 
 const route = useRoute()
 const router = useRouter()

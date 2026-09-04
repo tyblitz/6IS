@@ -78,7 +78,8 @@ const isDetailOpen = ref(false)
 const selectedRecord = ref<AccomplishmentItem | null>(null)
 
 const options = reactive<AccomplishmentOptions>({
-  offices: []
+  offices: [],
+  categories: []
 })
 
 onMounted(() => {
@@ -108,6 +109,7 @@ async function loadOptions() {
   const res = await fetchAccomplishmentOptions()
   if (res.success && res.data) {
     options.offices = res.data.offices || []
+    options.categories = res.data.categories || []
   }
 }
 
