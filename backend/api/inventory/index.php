@@ -135,13 +135,15 @@ if ($method === 'POST') {
         $statusName = $sNameStmt->fetchColumn() ?: 'Serviceable';
 
         $userId = $_SESSION['user_id'] ?? 1;
+        $propertyNumber = isset($input['property_number']) ? trim($input['property_number']) : null;
+        if ($propertyNumber === '') $propertyNumber = null;
 
         try {
             $pdo->beginTransaction();
             $stmt = $pdo->prepare("
                 INSERT INTO tbl_inventory_equipment 
-                (office_id, equipment_type_id, equipment_subtype_id, status_id, equipment_type, description, serial_number, date_acquired, status, created_by, modified_by, created_at, updated_at) 
-                VALUES (:office_id, :type_id, :subtype_id, :status_id, :equipment_type, :description, :serial_number, :date_acquired, :status, :created_by, :modified_by, NOW(), NOW())
+                (office_id, equipment_type_id, equipment_subtype_id, status_id, equipment_type, description, serial_number, property_number, date_acquired, status, created_by, modified_by, created_at, updated_at) 
+                VALUES (:office_id, :type_id, :subtype_id, :status_id, :equipment_type, :description, :serial_number, :property_number, :date_acquired, :status, :created_by, :modified_by, NOW(), NOW())
             ");
             $stmt->execute([
                 ':office_id' => $officeId,
@@ -151,6 +153,7 @@ if ($method === 'POST') {
                 ':equipment_type' => $subtypeName,
                 ':description' => $description,
                 ':serial_number' => $serialNumber,
+                ':property_number' => $propertyNumber,
                 ':date_acquired' => $dateAcquired,
                 ':status' => $statusName,
                 ':created_by' => $userId,
@@ -230,13 +233,15 @@ if ($method === 'POST') {
         $statusName = $sNameStmt->fetchColumn() ?: 'Serviceable';
 
         $userId = $_SESSION['user_id'] ?? 1;
+        $propertyNumber = isset($input['property_number']) ? trim($input['property_number']) : null;
+        if ($propertyNumber === '') $propertyNumber = null;
 
         try {
             $pdo->beginTransaction();
             $stmt = $pdo->prepare("
                 UPDATE tbl_inventory_equipment 
                 SET office_id = :office_id, equipment_type_id = :type_id, equipment_subtype_id = :subtype_id, status_id = :status_id,
-                    equipment_type = :equipment_type, description = :description, serial_number = :serial_number,
+                    equipment_type = :equipment_type, description = :description, serial_number = :serial_number, property_number = :property_number,
                     date_acquired = :date_acquired, status = :status, modified_by = :modified_by, updated_at = NOW()
                 WHERE id = :id AND deleted_at IS NULL
             ");
@@ -248,6 +253,7 @@ if ($method === 'POST') {
                 ':equipment_type' => $subtypeName,
                 ':description' => $description,
                 ':serial_number' => $serialNumber,
+                ':property_number' => $propertyNumber,
                 ':date_acquired' => $dateAcquired,
                 ':status' => $statusName,
                 ':modified_by' => $userId,
@@ -321,21 +327,43 @@ if ($method === 'POST') {
         $input = json_decode(file_get_contents('php://input'), true);
         $ym = trim($input['year_month'] ?? date('Y-m'));
 
+        if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $ym)) {
+            sendJsonResponse(false, 'Invalid reporting period format. Expected YYYY-MM.', null, null, 400);
+        }
+
+        // Safety Guard 1: Protect locked official historical baselines
+        if (in_array($ym, ['2026-06', '2026-07'], true)) {
+            sendJsonResponse(false, "Historical snapshot for period {$ym} is a locked official baseline and cannot be overwritten.", null, null, 400);
+        }
+
+        // Safety Guard 2: Protect against silent duplicate snapshot overwrite
+        $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_inventory_history WHERE `year_month` = :ym");
+        $checkStmt->execute([':ym' => $ym]);
+        $existingCount = (int)$checkStmt->fetchColumn();
+
+        $allowOverwrite = !empty($input['overwrite']);
+        if ($existingCount > 0 && !$allowOverwrite) {
+            sendJsonResponse(false, "A historical snapshot for period {$ym} already exists ({$existingCount} records). Pass overwrite=true to replace it.", null, null, 409);
+        }
+
         try {
             $pdo->beginTransaction();
-            $del = $pdo->prepare("DELETE FROM tbl_inventory_history WHERE year_month = :ym");
-            $del->execute([':ym' => $ym]);
+            if ($existingCount > 0) {
+                $del = $pdo->prepare("DELETE FROM tbl_inventory_history WHERE `year_month` = :ym");
+                $del->execute([':ym' => $ym]);
+            }
 
             $ins = $pdo->prepare("
                 INSERT INTO tbl_inventory_history 
-                (year_month, equipment_id, office_id, equipment_type_id, equipment_subtype_id, status_id, equipment_type, description, serial_number, date_acquired, status, snapshot_date, created_at, updated_at)
-                SELECT :ym, id, office_id, equipment_type_id, equipment_subtype_id, status_id, equipment_type, description, serial_number, date_acquired, status, NOW(), NOW(), NOW()
+                (`year_month`, equipment_id, office_id, equipment_type_id, equipment_subtype_id, status_id, equipment_type, description, serial_number, property_number, date_acquired, status, snapshot_date, created_at, updated_at)
+                SELECT :ym, id, office_id, equipment_type_id, equipment_subtype_id, status_id, equipment_type, description, serial_number, property_number, date_acquired, status, NOW(), NOW(), NOW()
                 FROM tbl_inventory_equipment
                 WHERE deleted_at IS NULL
             ");
             $ins->execute([':ym' => $ym]);
+            $insertedCount = $ins->rowCount();
             $pdo->commit();
-            sendJsonResponse(true, "Historical snapshot for period {$ym} generated successfully.");
+            sendJsonResponse(true, "Historical snapshot for period {$ym} generated successfully.", ['year_month' => $ym, 'records_captured' => $insertedCount]);
         } catch (Exception $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();
             sendJsonResponse(false, 'Failed to generate historical snapshot.', null, ['db' => $e->getMessage()], 500);
@@ -829,6 +857,20 @@ if ($method === 'GET') {
         ]);
     }
 
+    // 9B. G6 Equipment Readiness Reporting Engine
+    if ($view === 'g6_readiness') {
+        requirePermission('inventory', 'view', $pdo);
+        require_once __DIR__ . '/../../services/G6ReadinessService.php';
+
+        $periodParam = isset($_GET['period']) ? trim($_GET['period']) : null;
+        try {
+            $reportData = G6ReadinessService::calculate($pdo, $periodParam);
+            sendJsonResponse(true, 'G6 Equipment Readiness Report retrieved.', $reportData);
+        } catch (Exception $e) {
+            sendJsonResponse(false, 'Failed to calculate G6 Equipment Readiness Report.', null, ['error' => $e->getMessage()], 500);
+        }
+    }
+
     // 10. Equipment Retrieval (Single Item with Dynamic Attributes OR List)
     if ($view === 'equipment') {
         $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -843,7 +885,7 @@ if ($method === 'GET') {
                            COALESCE(st.name, e.equipment_type) AS equipment_subtype_name,
                            COALESCE(e.status_id, s.id, 1) AS status_id,
                            COALESCE(s.name, e.status) AS status_name,
-                           e.description, e.serial_number, e.date_acquired,
+                           e.description, e.serial_number, e.property_number, e.date_acquired,
                            COALESCE(t.name, 'ICT') AS equipment_type,
                            COALESCE(st.name, e.equipment_type) AS equipment_subtype,
                            COALESCE(s.name, e.status) AS status
@@ -906,7 +948,7 @@ if ($method === 'GET') {
                                COALESCE(st.name, e.equipment_type) AS equipment_subtype_name,
                                COALESCE(e.status_id, s.id, 1) AS status_id,
                                COALESCE(s.name, e.status) AS status_name,
-                               e.description, e.serial_number, e.date_acquired,
+                               e.description, e.serial_number, e.property_number, e.date_acquired,
                                COALESCE(t.name, 'ICT') AS equipment_type,
                                COALESCE(st.name, e.equipment_type) AS equipment_subtype,
                                COALESCE(s.name, e.status) AS status
@@ -937,7 +979,7 @@ if ($method === 'GET') {
                                COALESCE(st.name, h.equipment_type) AS equipment_subtype_name,
                                COALESCE(h.status_id, s.id, 1) AS status_id,
                                COALESCE(s.name, h.status) AS status_name,
-                               h.description, h.serial_number, h.date_acquired,
+                               h.description, h.serial_number, h.property_number, h.date_acquired,
                                COALESCE(t.name, 'ICT') AS equipment_type,
                                COALESCE(st.name, h.equipment_type) AS equipment_subtype,
                                COALESCE(s.name, h.status) AS status

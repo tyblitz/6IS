@@ -36,6 +36,7 @@ import InventoryView from '../views/inventory/InventoryView.vue'
 import EquipmentView from '../views/inventory/EquipmentView.vue'
 import EquipmentDetailView from '../views/inventory/EquipmentDetailView.vue'
 import JRRSView from '../views/inventory/JRRS.vue'
+import G6ReadinessReportView from '../views/inventory/G6ReadinessReportView.vue'
 import AccomplishmentView from '../views/accomplishments/AccomplishmentView.vue'
 import AccomplishmentDailyView from '../views/accomplishments/AccomplishmentDailyView.vue'
 import AccomplishmentDetailView from '../views/accomplishments/AccomplishmentDetailView.vue'
@@ -389,6 +390,15 @@ const routes: Array<RouteRecordRaw> = [
     component: JRRSView,
     meta: {
       module: ModuleName.Equipment,
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/inventory/readiness',
+    name: 'G6 Readiness Report',
+    component: G6ReadinessReportView,
+    meta: {
+      module: ModuleName.Inventory,
       requiresAuth: true
     }
   },

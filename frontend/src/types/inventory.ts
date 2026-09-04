@@ -65,6 +65,7 @@ export interface EquipmentItem {
   status_code?: string
   description: string
   serial_number: string | null
+  property_number?: string | null
   date_acquired: string | null
   // Legacy string aliases for backwards compatibility
   equipment_type?: string
@@ -82,6 +83,7 @@ export interface EquipmentFormPayload {
   status_id: number
   description?: string
   serial_number: string
+  property_number?: string
   date_acquired: string
   attributes: Record<number, any> // attribute_definition_id => value
 }
@@ -138,4 +140,66 @@ export interface ApiResponse<T = any> {
   message: string
   data: T
   errors?: Record<string, string> | null
+}
+
+export interface G6ReadinessLine {
+  equipment_subtype_id: number
+  nomenclature: string
+  equipment_type_id: number
+  equipment_type_name: string
+  required: number
+  operational: number
+  repair: number
+  ber: number
+  on_hand: number
+  deficit: number
+  equipment_rating: number | null
+  maintenance_rating: number | null
+  equipment_redcon: string
+  maintenance_redcon: string
+}
+
+export interface G6ReadinessTotals {
+  required: number
+  operational: number
+  repair: number
+  ber: number
+  on_hand: number
+  deficit: number
+}
+
+export interface G6ReadinessGroup {
+  group_id: number
+  group_name: string
+  lines: G6ReadinessLine[]
+  totals: G6ReadinessTotals
+  equipment_rating: number | null
+  maintenance_rating: number | null
+  equipment_redcon: string
+  maintenance_redcon: string
+}
+
+export interface G6ReadinessSummary {
+  totals: G6ReadinessTotals
+  equipment_rating: number | null
+  maintenance_rating: number | null
+  equipment_redcon: string
+  maintenance_redcon: string
+}
+
+export interface G6ReadinessScope {
+  equipment_type_ids: number[]
+  description: string
+}
+
+export interface G6ReadinessReport {
+  period: string
+  period_label: string
+  mode: 'current' | 'historical'
+  has_snapshot: boolean
+  message?: string
+  scope?: G6ReadinessScope
+  lines?: G6ReadinessLine[]
+  groups?: G6ReadinessGroup[]
+  summary?: G6ReadinessSummary
 }

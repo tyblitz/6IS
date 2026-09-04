@@ -13,7 +13,8 @@ import type {
   EquipmentStatusOption,
   AttributeDefinition,
   ReferenceOptions,
-  ApiResponse
+  ApiResponse,
+  G6ReadinessReport
 } from '../types/inventory'
 
 function resolveApiUrl(): string {
@@ -561,3 +562,32 @@ export async function deleteAttributeDefinition(id: number): Promise<ApiResponse
     return { success: false, message: 'Failed to delete attribute definition.', data: null, errors: { network: err.message } }
   }
 }
+
+/**
+ * Fetches G6 Equipment Readiness Report data (optionally for a specific period YYYY-MM)
+ */
+export async function fetchG6Readiness(period?: string): Promise<ApiResponse<G6ReadinessReport>> {
+  try {
+    const url = period
+      ? `${API_BASE_URL}?view=g6_readiness&period=${encodeURIComponent(period)}`
+      : `${API_BASE_URL}?view=g6_readiness`
+    const res = await fetch(url, {
+      method: 'GET',
+      credentials: 'include'
+    })
+    return await res.json()
+  } catch (err: any) {
+    return {
+      success: false,
+      message: 'Failed to fetch G6 Equipment Readiness Report.',
+      data: {
+        period: period || '',
+        period_label: period || '',
+        mode: 'current',
+        has_snapshot: false
+      },
+      errors: { network: err.message }
+    }
+  }
+}
+

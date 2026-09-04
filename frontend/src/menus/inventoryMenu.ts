@@ -2,7 +2,8 @@ import {
   gridOutline,
   desktopOutline,
   clipboardOutline,
-  radioOutline
+  radioOutline,
+  statsChartOutline
 } from 'ionicons/icons'
 
 import type { SidebarItem } from '../types/SidebarItem'
@@ -46,5 +47,10 @@ export const inventoryMenu: SidebarItem[] = [
         route: '/inventory/jrrs/communications'
       }
     ]
+  },
+  {
+    label: 'G6 Readiness Report',
+    icon: statsChartOutline,
+    route: '/inventory/readiness'
   }
 ]

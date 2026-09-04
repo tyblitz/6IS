@@ -45,7 +45,8 @@ try {
         __DIR__ . '/migrations/alter_inventory_foreign_keys_to_restrict.sql',
         __DIR__ . '/migrations/create_audit_tables.sql',
         __DIR__ . '/migrations/add_is_system_to_permissions.sql',
-        __DIR__ . '/migrations/seed_roles_and_permissions.sql'
+        __DIR__ . '/migrations/seed_roles_and_permissions.sql',
+        __DIR__ . '/migrations/add_property_number_and_snapshot_ids.sql'
     ];
 
     echo "4. Executing SQL migration scripts...\n";
@@ -224,6 +225,38 @@ try {
         echo "SUCCESS: Verified tbl_inventory_equipment extensible architecture columns.\n";
     } catch (Exception $e) {
         echo "tbl_inventory_equipment columns note: " . $e->getMessage() . "\n";
+    }
+
+    // Ensure tbl_inventory_equipment has property_number column & index
+    try {
+        if (!columnExists($pdo, 'tbl_inventory_equipment', 'property_number')) {
+            $pdo->exec("ALTER TABLE `tbl_inventory_equipment` ADD COLUMN `property_number` VARCHAR(100) NULL AFTER `serial_number`;");
+            $pdo->exec("ALTER TABLE `tbl_inventory_equipment` ADD INDEX `idx_equipment_property_number` (`property_number`);");
+        }
+        echo "SUCCESS: Verified tbl_inventory_equipment property_number column.\n";
+    } catch (Exception $e) {
+        echo "tbl_inventory_equipment property_number note: " . $e->getMessage() . "\n";
+    }
+
+    // Ensure tbl_inventory_history has property_number, equipment_type_id, equipment_subtype_id, status_id columns
+    try {
+        if (!columnExists($pdo, 'tbl_inventory_history', 'property_number')) {
+            $pdo->exec("ALTER TABLE `tbl_inventory_history` ADD COLUMN `property_number` VARCHAR(100) NULL AFTER `serial_number`;");
+            $pdo->exec("ALTER TABLE `tbl_inventory_history` ADD INDEX `idx_history_property_number` (`property_number`);");
+        }
+        if (!columnExists($pdo, 'tbl_inventory_history', 'equipment_type_id')) {
+            $pdo->exec("ALTER TABLE `tbl_inventory_history` ADD COLUMN `equipment_type_id` INT(11) NULL AFTER `office_id`;");
+        }
+        if (!columnExists($pdo, 'tbl_inventory_history', 'equipment_subtype_id')) {
+            $pdo->exec("ALTER TABLE `tbl_inventory_history` ADD COLUMN `equipment_subtype_id` INT(11) NULL AFTER `equipment_type_id`;");
+            $pdo->exec("ALTER TABLE `tbl_inventory_history` ADD INDEX `idx_history_subtype` (`equipment_subtype_id`);");
+        }
+        if (!columnExists($pdo, 'tbl_inventory_history', 'status_id')) {
+            $pdo->exec("ALTER TABLE `tbl_inventory_history` ADD COLUMN `status_id` INT(11) NULL AFTER `equipment_subtype_id`;");
+        }
+        echo "SUCCESS: Verified tbl_inventory_history snapshot alignment columns.\n";
+    } catch (Exception $e) {
+        echo "tbl_inventory_history columns note: " . $e->getMessage() . "\n";
     }
 
     // Ensure tbl_inventory_jrrs has equipment_subtype_id column
