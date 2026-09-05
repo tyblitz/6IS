@@ -400,8 +400,15 @@ describe('G6ReadinessReportView.vue — G6 Equipment Readiness Report', () => {
     expect(printSpy).toHaveBeenCalled()
   })
 
-  // 13. Export button triggers CSV download
-  it('13. renders export button and triggers CSV download when clicked', async () => {
+  // 13. Export button triggers CSV download and validates CSV content
+  it('13. renders export button, triggers CSV download, and validates CSV content', async () => {
+    let capturedCsvText = ''
+    const origBlob = global.Blob
+    vi.spyOn(global, 'Blob').mockImplementation(function (parts: any[], opts?: any) {
+      capturedCsvText = parts && parts[0] ? String(parts[0]) : ''
+      return new origBlob(parts, opts)
+    })
+
     const createObjectURLMock = vi.fn().mockReturnValue('blob:http://localhost/mock-csv-blob')
     const revokeObjectURLMock = vi.fn()
     window.URL.createObjectURL = createObjectURLMock
@@ -420,10 +427,72 @@ describe('G6ReadinessReportView.vue — G6 Equipment Readiness Report', () => {
     expect(createObjectURLMock).toHaveBeenCalled()
     expect(clickSpy).toHaveBeenCalled()
     expect(revokeObjectURLMock).toHaveBeenCalled()
+
+    // Validate actual CSV content
+    expect(capturedCsvText).not.toBe('')
+
+    // Metadata validation
+    expect(capturedCsvText).toContain('6IS INTEGRATED INFORMATION SYSTEM')
+    expect(capturedCsvText).toContain('EQUIPMENT & MAINTENANCE READINESS REPORT')
+    expect(capturedCsvText).toContain('CAMP GENERAL EMILIO AGUINALDO, QUEZON CITY')
+    expect(capturedCsvText).toContain('AC OF S FOR COMMAND AND CONTROL, COMMUNICATIONS, CYBER INTELLIGENCE AND SURVEILLANCE, G6')
+    expect(capturedCsvText).toContain('PERIOD COVERED:,SEPTEMBER CY 2026')
+    expect(capturedCsvText).toContain('READINESS REPORT:,EQUIPMENT & MAINTENANCE READINESS REPORT')
+
+    // Column headers validation
+    expect(capturedCsvText).toContain('Group / Equipment Category,Required (TOE),OPL,For RPR,For TI/BER,On-Hand,Deficit,Equipment Rating,Eq REDCON,Maintenance Rating,Maint REDCON')
+    expect(capturedCsvText).toContain('Group,Nomenclature,Required (TOE),OPL,For RPR,For TI/BER,On-Hand,Deficit,Equipment Rating,Eq REDCON,Maintenance Rating,Maint REDCON')
+
+    // Representative data rows validation
+    expect(capturedCsvText).toContain('ICT Equipment,58,13,2,2,17,41,30.58%,R4,80.42%,R2')
+    expect(capturedCsvText).toContain('Communications Equipment,5,3,0,0,3,2,60.00%,R3,100.00%,R1')
+    expect(capturedCsvText).toContain('ICT,Desktop,25,4,1,1,6,19,24.00%,R4,66.67%,R3')
+
+    // Grand total validation
+    expect(capturedCsvText).toContain('OVERALL G6 READINESS (UNWEIGHTED),63,16,2,2,20,43,45.29%,R4,90.21%,R1')
   })
 
-  // 14. Export button is disabled when snapshot is missing
-  it('14. disables export button when report has no snapshot', async () => {
+  // 14. Export CSV handles null ratings by rendering N/A
+  it('14. exports N/A for null ratings in CSV output', async () => {
+    let capturedCsvText = ''
+    const origBlob = global.Blob
+    vi.spyOn(global, 'Blob').mockImplementation(function (parts: any[], opts?: any) {
+      capturedCsvText = parts && parts[0] ? String(parts[0]) : ''
+      return new origBlob(parts, opts)
+    })
+
+    window.URL.createObjectURL = vi.fn().mockReturnValue('blob:http://localhost/mock-csv-blob')
+    window.URL.revokeObjectURL = vi.fn()
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+    const dataWithNulls: G6ReadinessReport = {
+      ...mockReportData,
+      summary: {
+        totals: { required: 0, operational: 0, repair: 0, ber: 0, on_hand: 0, deficit: 0 },
+        equipment_rating: null,
+        maintenance_rating: null,
+        equipment_redcon: 'R4',
+        maintenance_redcon: 'R4'
+      }
+    }
+    vi.spyOn(inventoryService, 'fetchG6Readiness').mockResolvedValue({
+      success: true,
+      message: 'Retrieved',
+      data: dataWithNulls
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const exportBtn = wrapper.find('[data-testid="export-report-button"]')
+    await exportBtn.trigger('click')
+
+    expect(capturedCsvText).not.toBe('')
+    expect(capturedCsvText).toContain('OVERALL G6 READINESS (UNWEIGHTED),0,0,0,0,0,0,N/A,R4,N/A,R4')
+  })
+
+  // 15. Export button is disabled when snapshot is missing
+  it('15. disables export button when report has no snapshot', async () => {
     vi.spyOn(inventoryService, 'fetchG6Readiness').mockResolvedValue({
       success: true,
       message: 'Retrieved',
@@ -444,8 +513,8 @@ describe('G6ReadinessReportView.vue — G6 Equipment Readiness Report', () => {
     expect(exportBtn.attributes('disabled')).toBeDefined()
   })
 
-  // 15. Printable document header contains JRRS reference metadata
-  it('15. renders printable document header with JRRS reference metadata', async () => {
+  // 16. Printable document header contains JRRS reference metadata
+  it('16. renders printable document header with JRRS reference metadata', async () => {
     const wrapper = mountView()
     await flushPromises()
 
@@ -457,10 +526,11 @@ describe('G6ReadinessReportView.vue — G6 Equipment Readiness Report', () => {
     expect(printHeader.text()).toContain('CAMP GENERAL EMILIO AGUINALDO, QUEZON CITY')
     expect(printHeader.text()).toContain('AC OF S FOR COMMAND AND CONTROL, COMMUNICATIONS, CYBER INTELLIGENCE AND SURVEILLANCE, G6')
     expect(printHeader.text()).toContain('PERIOD COVERED: SEPTEMBER CY 2026')
+    expect(printHeader.text()).toContain('READINESS REPORT: EQUIPMENT & MAINTENANCE READINESS REPORT')
   })
 
-  // 16. Grand total row renders unweighted overall readiness and totals
-  it('16. renders grand total row with unweighted overall readiness and totals', async () => {
+  // 17. Grand total row renders unweighted overall readiness and totals
+  it('17. renders grand total row with unweighted overall readiness and totals', async () => {
     const wrapper = mountView()
     await flushPromises()
 
@@ -478,8 +548,8 @@ describe('G6ReadinessReportView.vue — G6 Equipment Readiness Report', () => {
     expect(grandTotalRow.text()).toContain('R1')
   })
 
-  // 17. Operational footnotes render and are visible for print
-  it('17. renders operational explanatory footnotes without print-hide class', async () => {
+  // 18. Operational footnotes render and are visible for print
+  it('18. renders operational explanatory footnotes without print-hide class', async () => {
     const wrapper = mountView()
     await flushPromises()
 

@@ -63,6 +63,7 @@
           <div><strong>UNIT/OFFICE LOCATION:</strong> CAMP GENERAL EMILIO AGUINALDO, QUEZON CITY</div>
           <div><strong>DESIGNATION:</strong> AC OF S FOR COMMAND AND CONTROL, COMMUNICATIONS, CYBER INTELLIGENCE AND SURVEILLANCE, G6</div>
           <div><strong>PERIOD COVERED:</strong> {{ printPeriodCovered }}</div>
+          <div><strong>READINESS REPORT:</strong> EQUIPMENT &amp; MAINTENANCE READINESS REPORT</div>
           <div class="print-generated">Generated: {{ generatedDateTimeFormatted }}</div>
         </div>
       </div>
@@ -561,6 +562,7 @@ function handleExport() {
     ['UNIT/OFFICE LOCATION:', 'CAMP GENERAL EMILIO AGUINALDO, QUEZON CITY'],
     ['DESIGNATION:', 'AC OF S FOR COMMAND AND CONTROL, COMMUNICATIONS, CYBER INTELLIGENCE AND SURVEILLANCE, G6'],
     ['PERIOD COVERED:', printPeriodCovered.value],
+    ['READINESS REPORT:', 'EQUIPMENT & MAINTENANCE READINESS REPORT'],
     ['GENERATED:', generatedDateTimeFormatted],
     ['STATUS:', data.mode === 'historical' ? `HISTORICAL SNAPSHOT (${data.period_label || data.period})` : 'CURRENT READINESS'],
     [],
