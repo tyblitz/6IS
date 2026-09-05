@@ -40,24 +40,38 @@
             <ion-icon :icon="printOutline" />
             <span>Print Report</span>
           </button>
+
+          <!-- Export CSV Button -->
+          <button
+            class="btn-export"
+            type="button"
+            @click="handleExport"
+            :disabled="!reportData || !reportData.has_snapshot"
+            data-testid="export-report-button"
+          >
+            <ion-icon :icon="downloadOutline" />
+            <span>Export CSV</span>
+          </button>
         </div>
       </div>
 
       <!-- Printable Document Header (Visible only in print) -->
-      <div class="printable-header print-only">
+      <div class="printable-header print-only" data-testid="print-header">
         <div class="print-org-title">6IS INTEGRATED INFORMATION SYSTEM</div>
-        <div class="print-report-title">G6 EQUIPMENT READINESS REPORT</div>
-        <div class="print-meta">
-          Reporting Period: <strong>{{ activePeriodLabel }}</strong> &bull;
-          G6 Responsibility: <strong>ICT and Communications Equipment</strong> &bull;
-          Generated: <strong>{{ currentDateFormatted }} {{ currentTimeFormatted }}</strong>
+        <div class="print-report-title">EQUIPMENT &amp; MAINTENANCE READINESS REPORT</div>
+        <div class="print-meta-block">
+          <div><strong>UNIT/OFFICE LOCATION:</strong> CAMP GENERAL EMILIO AGUINALDO, QUEZON CITY</div>
+          <div><strong>DESIGNATION:</strong> AC OF S FOR COMMAND AND CONTROL, COMMUNICATIONS, CYBER INTELLIGENCE AND SURVEILLANCE, G6</div>
+          <div><strong>PERIOD COVERED:</strong> {{ printPeriodCovered }}</div>
+          <div class="print-generated">Generated: {{ generatedDateTimeFormatted }}</div>
         </div>
       </div>
 
       <!-- Historical Snapshot Indicator Banner -->
-      <div v-if="reportData && reportData.mode === 'historical' && reportData.has_snapshot" class="historical-banner print-hide">
-        <ion-icon :icon="timeOutline" class="banner-icon" />
-        <span>Viewing Historical G6 Equipment Readiness Snapshot for <strong>{{ reportData.period_label }}</strong>. Historical data is immutable.</span>
+      <div v-if="reportData && reportData.mode === 'historical' && reportData.has_snapshot" class="historical-banner" data-testid="historical-banner">
+        <ion-icon :icon="timeOutline" class="banner-icon print-hide" />
+        <span class="print-hide">Viewing Historical G6 Equipment Readiness Snapshot for <strong>{{ reportData.period_label }}</strong>. Historical data is immutable.</span>
+        <span class="print-only historical-print-label">HISTORICAL SNAPSHOT — IMMUTABLE REPORTING DATA ({{ reportData.period_label }})</span>
       </div>
 
       <!-- Loading State -->
@@ -178,10 +192,10 @@
               <thead>
                 <tr>
                   <th class="text-left">Group / Equipment Category</th>
-                  <th class="text-right">Required</th>
-                  <th class="text-right">Operational</th>
-                  <th class="text-right">For Repair</th>
-                  <th class="text-right">BER / Turn-In</th>
+                  <th class="text-right">Required (TOE)</th>
+                  <th class="text-right">OPL</th>
+                  <th class="text-right">For RPR</th>
+                  <th class="text-right">For TI/BER</th>
                   <th class="text-right">On-Hand</th>
                   <th class="text-right">Deficit</th>
                   <th class="text-right">Equipment Rating</th>
@@ -240,10 +254,10 @@
               <thead>
                 <tr>
                   <th class="text-left">Nomenclature</th>
-                  <th class="text-right">Required</th>
-                  <th class="text-right">Operational</th>
-                  <th class="text-right">For Repair</th>
-                  <th class="text-right">BER / Turn-In</th>
+                  <th class="text-right">Required (TOE)</th>
+                  <th class="text-right">OPL</th>
+                  <th class="text-right">For RPR</th>
+                  <th class="text-right">For TI/BER</th>
                   <th class="text-right">On-Hand</th>
                   <th class="text-right">Deficit</th>
                   <th class="text-right">Equipment Rating</th>
@@ -361,8 +375,8 @@
         </div>
 
         <!-- Section 4: Operational Explanatory Footnotes -->
-        <div class="report-footnotes-card print-hide">
-          <h4>Reporting & REDCON Criteria</h4>
+        <div class="report-footnotes-card" data-testid="report-footnotes">
+          <h4>Reporting &amp; REDCON Criteria</h4>
           <div class="footnotes-grid">
             <div class="footnote-item">
               <strong>Hierarchical Unweighted Rollup:</strong> Group ratings represent the unweighted arithmetic mean of applicable subtype lines; overall readiness represents the unweighted arithmetic mean of applicable groups.
@@ -373,6 +387,12 @@
               <span class="pill-preview redcon-r2">R2 &ge; 75%</span>
               <span class="pill-preview redcon-r3">R3 &gt; 50%</span>
               <span class="pill-preview redcon-r4">R4 &le; 50% / N/A</span>
+            </div>
+            <div class="footnote-item">
+              <strong>Equipment Rating:</strong> On-Hand / Required (TOE), capped at 1.00 (100%). <strong>Maintenance Rating:</strong> OPL / On-Hand. N/A indicates zero denominator (no items on-hand or no required quantity).
+            </div>
+            <div class="footnote-item">
+              <strong>Historical Snapshots:</strong> Historical period data reflects the inventory snapshot preserved at the end of the reporting month. Historical data is immutable and cannot be modified.
             </div>
           </div>
         </div>
@@ -391,6 +411,7 @@ import {
 } from '@ionic/vue'
 import {
   printOutline,
+  downloadOutline,
   calendarOutline,
   timeOutline,
   alertCircleOutline,
@@ -401,7 +422,7 @@ import {
 import MainLayout from '@/layouts/MainLayout.vue'
 import { fetchG6Readiness, fetchReportingPeriods } from '@/services/inventoryService'
 import type { G6ReadinessReport, ReportingPeriod } from '@/types/inventory'
-import { formatDate, formatTime } from '@/utils/dateUtils'
+import { formatDate, formatTime, formatDateTime } from '@/utils/dateUtils'
 
 // State
 const loading = ref(true)
@@ -410,7 +431,8 @@ const reportData = ref<G6ReadinessReport | null>(null)
 const periods = ref<ReportingPeriod[]>([])
 const selectedPeriod = ref<string>('')
 
-// Current generation timestamp
+// Current generation timestamp (DD HHmmH MMM YYYY per AGENTS.md)
+const generatedDateTimeFormatted = formatDateTime(new Date())
 const currentDateFormatted = formatDate(new Date())
 const currentTimeFormatted = formatTime(new Date())
 
@@ -421,6 +443,15 @@ const activePeriodLabel = computed(() => {
   }
   const match = periods.value.find(p => p.year_month === selectedPeriod.value)
   return match?.label || selectedPeriod.value || 'Current'
+})
+
+// Print period covered label matching JRRS reference
+const printPeriodCovered = computed(() => {
+  const label = activePeriodLabel.value
+  if (label && /\b(20\d\d)\b/.test(label) && !label.includes('CY')) {
+    return label.replace(/\b(20\d\d)\b/, 'CY $1').toUpperCase()
+  }
+  return (label || 'CURRENT').toUpperCase()
 })
 
 /**
@@ -503,6 +534,134 @@ function returnToCurrent() {
  */
 function handlePrint() {
   window.print()
+}
+
+/**
+ * Helper to escape CSV cell content
+ */
+function escapeCsv(val: any): string {
+  if (val === null || val === undefined) return ''
+  const str = String(val)
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+    return `"${str.replace(/"/g, '""')}"`
+  }
+  return str
+}
+
+/**
+ * Export readiness report data to CSV
+ */
+function handleExport() {
+  if (!reportData.value || !reportData.value.has_snapshot) return
+
+  const data = reportData.value
+  const rows: string[][] = [
+    ['6IS INTEGRATED INFORMATION SYSTEM'],
+    ['EQUIPMENT & MAINTENANCE READINESS REPORT'],
+    ['UNIT/OFFICE LOCATION:', 'CAMP GENERAL EMILIO AGUINALDO, QUEZON CITY'],
+    ['DESIGNATION:', 'AC OF S FOR COMMAND AND CONTROL, COMMUNICATIONS, CYBER INTELLIGENCE AND SURVEILLANCE, G6'],
+    ['PERIOD COVERED:', printPeriodCovered.value],
+    ['GENERATED:', generatedDateTimeFormatted],
+    ['STATUS:', data.mode === 'historical' ? `HISTORICAL SNAPSHOT (${data.period_label || data.period})` : 'CURRENT READINESS'],
+    [],
+    ['EXECUTIVE SUMMARY'],
+    ['Metric', 'Readiness Rating', 'REDCON Level', 'Criteria'],
+    ['Equipment Readiness', formatPercent(data.summary?.equipment_rating), data.summary?.equipment_redcon || 'N/A', 'On-Hand vs Required (TOE)'],
+    ['Maintenance Readiness', formatPercent(data.summary?.maintenance_rating), data.summary?.maintenance_redcon || 'N/A', 'Operational vs On-Hand'],
+    [],
+    ['GROUP SUMMARY ROLLUP'],
+    ['Group / Equipment Category', 'Required (TOE)', 'OPL', 'For RPR', 'For TI/BER', 'On-Hand', 'Deficit', 'Equipment Rating', 'Eq REDCON', 'Maintenance Rating', 'Maint REDCON']
+  ]
+
+  if (data.groups) {
+    for (const g of data.groups) {
+      rows.push([
+        `${g.group_name} Equipment`,
+        String(g.totals.required),
+        String(g.totals.operational),
+        String(g.totals.repair),
+        String(g.totals.ber),
+        String(g.totals.on_hand),
+        String(g.totals.deficit),
+        formatPercent(g.equipment_rating),
+        g.equipment_redcon || 'N/A',
+        formatPercent(g.maintenance_rating),
+        g.maintenance_redcon || 'N/A'
+      ])
+    }
+  }
+
+  if (data.summary) {
+    rows.push([
+      'OVERALL G6 READINESS (UNWEIGHTED)',
+      String(data.summary.totals.required),
+      String(data.summary.totals.operational),
+      String(data.summary.totals.repair),
+      String(data.summary.totals.ber),
+      String(data.summary.totals.on_hand),
+      String(data.summary.totals.deficit),
+      formatPercent(data.summary.equipment_rating),
+      data.summary.equipment_redcon || 'N/A',
+      formatPercent(data.summary.maintenance_rating),
+      data.summary.maintenance_redcon || 'N/A'
+    ])
+  }
+
+  rows.push([])
+  rows.push(['EQUIPMENT SUBTYPE READINESS DETAILS'])
+  rows.push(['Group', 'Nomenclature', 'Required (TOE)', 'OPL', 'For RPR', 'For TI/BER', 'On-Hand', 'Deficit', 'Equipment Rating', 'Eq REDCON', 'Maintenance Rating', 'Maint REDCON'])
+
+  if (data.groups) {
+    for (const g of data.groups) {
+      if (g.lines) {
+        for (const line of g.lines) {
+          rows.push([
+            g.group_name,
+            line.nomenclature,
+            String(line.required),
+            String(line.operational),
+            String(line.repair),
+            String(line.ber),
+            String(line.on_hand),
+            String(line.deficit),
+            formatPercent(line.equipment_rating),
+            line.equipment_redcon || 'N/A',
+            formatPercent(line.maintenance_rating),
+            line.maintenance_redcon || 'N/A'
+          ])
+        }
+      }
+    }
+  } else if (data.lines) {
+    for (const line of data.lines) {
+      rows.push([
+        line.equipment_type_name || '',
+        line.nomenclature,
+        String(line.required),
+        String(line.operational),
+        String(line.repair),
+        String(line.ber),
+        String(line.on_hand),
+        String(line.deficit),
+        formatPercent(line.equipment_rating),
+        line.equipment_redcon || 'N/A',
+        formatPercent(line.maintenance_rating),
+        line.maintenance_redcon || 'N/A'
+      ])
+    }
+  }
+
+  const csvContent = rows.map(r => r.map(escapeCsv).join(',')).join('\r\n')
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.setAttribute('href', url)
+  const filename = `G6_Readiness_Report_${data.period || 'current'}.csv`
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
 }
 
 /**
@@ -628,6 +787,35 @@ onMounted(async () => {
 
 .btn-print:active {
   transform: translateY(1px);
+}
+
+.btn-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #334155;
+  background-color: var(--color-surface, #FFFFFF);
+  border: 1px solid var(--color-border, #CBD5E1);
+  border-radius: var(--radius-sm, 6px);
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, transform 0.1s;
+}
+
+.btn-export:hover:not(:disabled) {
+  background-color: var(--color-surface-hover, #F8FAFC);
+  border-color: #94A3B8;
+}
+
+.btn-export:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn-export:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Banners */
@@ -1023,6 +1211,11 @@ onMounted(async () => {
   display: none;
 }
 
+@page {
+  size: landscape;
+  margin: 10mm 12mm;
+}
+
 @media print {
   .print-hide {
     display: none !important;
@@ -1052,15 +1245,40 @@ onMounted(async () => {
   }
 
   .print-report-title {
-    font-size: 15pt;
+    font-size: 14pt;
     font-weight: 800;
     color: #000000;
-    margin: 4px 0;
+    margin: 4px 0 8px 0;
   }
 
-  .print-meta {
-    font-size: 8.5pt;
-    color: #444444;
+  .print-meta-block {
+    font-size: 8pt;
+    color: #111111;
+    line-height: 1.45;
+  }
+
+  .print-generated {
+    font-size: 7.5pt;
+    color: #555555;
+    margin-top: 4px;
+  }
+
+  .historical-banner {
+    border: 1px dashed #000000 !important;
+    background: #F8FAFC !important;
+    color: #000000 !important;
+    padding: 6px 12px !important;
+    margin-bottom: 12px !important;
+    font-weight: 700 !important;
+    font-size: 8.5pt !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .historical-print-label {
+    display: block;
+    text-align: center;
+    font-weight: 800;
   }
 
   .report-section-card {
@@ -1079,6 +1297,14 @@ onMounted(async () => {
 
   .report-table {
     font-size: 7.5pt;
+  }
+
+  .report-table thead {
+    display: table-header-group;
+  }
+
+  .report-table tr {
+    page-break-inside: avoid;
   }
 
   .report-table th {
@@ -1107,6 +1333,23 @@ onMounted(async () => {
   .kpi-card {
     border: 1px solid #000000;
     box-shadow: none;
+  }
+
+  .report-footnotes-card {
+    border: 1px solid #000000 !important;
+    page-break-inside: avoid;
+    margin-top: 12px;
+    padding: 10px 14px !important;
+  }
+
+  .report-footnotes-card h4 {
+    font-size: 7.5pt;
+    margin-bottom: 6px;
+  }
+
+  .footnote-item {
+    font-size: 7pt;
+    color: #333333;
   }
 }
 </style>

@@ -399,4 +399,97 @@ describe('G6ReadinessReportView.vue — G6 Equipment Readiness Report', () => {
 
     expect(printSpy).toHaveBeenCalled()
   })
+
+  // 13. Export button triggers CSV download
+  it('13. renders export button and triggers CSV download when clicked', async () => {
+    const createObjectURLMock = vi.fn().mockReturnValue('blob:http://localhost/mock-csv-blob')
+    const revokeObjectURLMock = vi.fn()
+    window.URL.createObjectURL = createObjectURLMock
+    window.URL.revokeObjectURL = revokeObjectURLMock
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const exportBtn = wrapper.find('[data-testid="export-report-button"]')
+    expect(exportBtn.exists()).toBe(true)
+    expect(exportBtn.attributes('disabled')).toBeUndefined()
+
+    await exportBtn.trigger('click')
+
+    expect(createObjectURLMock).toHaveBeenCalled()
+    expect(clickSpy).toHaveBeenCalled()
+    expect(revokeObjectURLMock).toHaveBeenCalled()
+  })
+
+  // 14. Export button is disabled when snapshot is missing
+  it('14. disables export button when report has no snapshot', async () => {
+    vi.spyOn(inventoryService, 'fetchG6Readiness').mockResolvedValue({
+      success: true,
+      message: 'Retrieved',
+      data: {
+        period: '2026-08',
+        period_label: 'August 2026',
+        mode: 'historical',
+        has_snapshot: false,
+        message: 'No snapshot data recorded.'
+      }
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const exportBtn = wrapper.find('[data-testid="export-report-button"]')
+    expect(exportBtn.exists()).toBe(true)
+    expect(exportBtn.attributes('disabled')).toBeDefined()
+  })
+
+  // 15. Printable document header contains JRRS reference metadata
+  it('15. renders printable document header with JRRS reference metadata', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    const printHeader = wrapper.find('[data-testid="print-header"]')
+    expect(printHeader.exists()).toBe(true)
+    expect(printHeader.classes()).toContain('print-only')
+    expect(printHeader.text()).toContain('6IS INTEGRATED INFORMATION SYSTEM')
+    expect(printHeader.text()).toContain('EQUIPMENT & MAINTENANCE READINESS REPORT')
+    expect(printHeader.text()).toContain('CAMP GENERAL EMILIO AGUINALDO, QUEZON CITY')
+    expect(printHeader.text()).toContain('AC OF S FOR COMMAND AND CONTROL, COMMUNICATIONS, CYBER INTELLIGENCE AND SURVEILLANCE, G6')
+    expect(printHeader.text()).toContain('PERIOD COVERED: SEPTEMBER CY 2026')
+  })
+
+  // 16. Grand total row renders unweighted overall readiness and totals
+  it('16. renders grand total row with unweighted overall readiness and totals', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    const grandTotalRow = wrapper.find('[data-testid="grand-total-row"]')
+    expect(grandTotalRow.exists()).toBe(true)
+    expect(grandTotalRow.text()).toContain('Overall G6 Readiness (Unweighted)')
+    expect(grandTotalRow.text()).toContain('63') // required
+    expect(grandTotalRow.text()).toContain('16') // operational
+    expect(grandTotalRow.text()).toContain('2')  // repair
+    expect(grandTotalRow.text()).toContain('20') // on_hand
+    expect(grandTotalRow.text()).toContain('43') // deficit
+    expect(grandTotalRow.text()).toContain('45.29%') // equipment_rating
+    expect(grandTotalRow.text()).toContain('90.21%') // maintenance_rating
+    expect(grandTotalRow.text()).toContain('R4')
+    expect(grandTotalRow.text()).toContain('R1')
+  })
+
+  // 17. Operational footnotes render and are visible for print
+  it('17. renders operational explanatory footnotes without print-hide class', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    const footnotes = wrapper.find('[data-testid="report-footnotes"]')
+    expect(footnotes.exists()).toBe(true)
+    expect(footnotes.classes()).not.toContain('print-hide')
+    expect(footnotes.text()).toContain('Reporting & REDCON Criteria')
+    expect(footnotes.text()).toContain('Hierarchical Unweighted Rollup')
+    expect(footnotes.text()).toContain('Equipment Rating: On-Hand / Required (TOE)')
+    expect(footnotes.text()).toContain('Historical Snapshots')
+  })
 })
+

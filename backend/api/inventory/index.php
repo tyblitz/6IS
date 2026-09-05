@@ -134,7 +134,10 @@ if ($method === 'POST') {
         $sNameStmt->execute([':id' => $statusId]);
         $statusName = $sNameStmt->fetchColumn() ?: 'Serviceable';
 
-        $userId = $_SESSION['user_id'] ?? 1;
+        $userId = $_SESSION['user_id'] ?? null;
+        if (!$userId) {
+            sendJsonResponse(false, 'Authenticated user context is missing.', null, null, 401);
+        }
         $propertyNumber = isset($input['property_number']) ? trim($input['property_number']) : null;
         if ($propertyNumber === '') $propertyNumber = null;
 
@@ -232,7 +235,10 @@ if ($method === 'POST') {
         $sNameStmt->execute([':id' => $statusId]);
         $statusName = $sNameStmt->fetchColumn() ?: 'Serviceable';
 
-        $userId = $_SESSION['user_id'] ?? 1;
+        $userId = $_SESSION['user_id'] ?? null;
+        if (!$userId) {
+            sendJsonResponse(false, 'Authenticated user context is missing.', null, null, 401);
+        }
         $propertyNumber = isset($input['property_number']) ? trim($input['property_number']) : null;
         if ($propertyNumber === '') $propertyNumber = null;
 
