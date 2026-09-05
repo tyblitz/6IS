@@ -297,8 +297,8 @@ describe('G6ReadinessReportView.vue — G6 Equipment Readiness Report', () => {
     expect(r1Badge.text()).toBe('R1')
   })
 
-  // 7. NULL rating renders as N/A / — rather than 0%
-  it('7. renders null ratings as "—" rather than 0%', async () => {
+  // 7. NULL rating renders as N/A rather than 0%
+  it('7. renders null ratings as "N/A" rather than 0%', async () => {
     const dataWithNulls: G6ReadinessReport = {
       ...mockReportData,
       summary: {
@@ -319,12 +319,12 @@ describe('G6ReadinessReportView.vue — G6 Equipment Readiness Report', () => {
     await flushPromises()
 
     const eqVal = wrapper.find('[data-testid="kpi-equipment-value"]')
-    expect(eqVal.text()).toBe('—')
+    expect(eqVal.text()).toBe('N/A')
     expect(eqVal.text()).not.toBe('0%')
     expect(eqVal.text()).not.toBe('0.00%')
 
     const maintVal = wrapper.find('[data-testid="kpi-maintenance-value"]')
-    expect(maintVal.text()).toBe('—')
+    expect(maintVal.text()).toBe('N/A')
     expect(maintVal.text()).not.toBe('0%')
   })
 

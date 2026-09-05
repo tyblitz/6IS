@@ -429,7 +429,7 @@ const activePeriodLabel = computed(() => {
  */
 function formatPercent(val: number | null | undefined): string {
   if (val === null || val === undefined) {
-    return '—'
+    return 'N/A'
   }
   const pct = val * 100
   return `${pct.toFixed(2)}%`

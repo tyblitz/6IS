@@ -174,9 +174,15 @@ class G6ReadinessService {
      */
     public static function calculate(PDO $pdo, ?string $period = null): array {
         $currentYearMonth = date('Y-m');
-        $selectedPeriod = (!empty($period) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $period))
-            ? $period
-            : $currentYearMonth;
+
+        if ($period !== null && $period !== '') {
+            if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $period)) {
+                throw new InvalidArgumentException("Invalid reporting period format: '{$period}'. Expected YYYY-MM.");
+            }
+            $selectedPeriod = $period;
+        } else {
+            $selectedPeriod = $currentYearMonth;
+        }
 
         $isCurrent = ($selectedPeriod === $currentYearMonth);
 

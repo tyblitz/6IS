@@ -401,6 +401,82 @@ runTest("Test 8D: tbl_inventory_equipment_subtypes count unchanged (11)", functi
     return $cnt === 11;
 });
 
+// SUITE 9: Reporting Period Validation & API Error Hardening (Corrective Pass)
+echo "\nSUITE 9: Reporting Period Validation & API Error Hardening (Corrective Pass)\n";
+
+$invalidPeriods = ['garbage', '2026-13', '2026-00', '2026-1', '2026/07', '26-07'];
+
+foreach ($invalidPeriods as $idx => $inv) {
+    runTest("Test 9A" . ($idx + 1) . ": Service throws InvalidArgumentException on invalid period '{$inv}'", function() use ($pdo, $inv) {
+        try {
+            G6ReadinessService::calculate($pdo, $inv);
+            return false; // Expected exception was not thrown
+        } catch (InvalidArgumentException $e) {
+            return str_contains($e->getMessage(), 'Invalid reporting period format');
+        } catch (Throwable $e) {
+            return false;
+        }
+    });
+}
+
+runTest("Test 9B: Service succeeds on valid historical period '2026-07'", function() use ($pdo) {
+    $res = G6ReadinessService::calculate($pdo, '2026-07');
+    return $res['period'] === '2026-07' && $res['mode'] === 'historical' && $res['has_snapshot'] === true;
+});
+
+runTest("Test 9C: Service succeeds on null period (defaults to current period)", function() use ($pdo) {
+    $res = G6ReadinessService::calculate($pdo, null);
+    return $res['period'] === date('Y-m') && $res['mode'] === 'current';
+});
+
+runTest("Test 9D: Service succeeds on empty string period (defaults to current period)", function() use ($pdo) {
+    $res = G6ReadinessService::calculate($pdo, '');
+    return $res['period'] === date('Y-m') && $res['mode'] === 'current';
+});
+
+$apiSession = [
+    'user_id' => 1,
+    'user_role' => 'Administrator',
+    'role' => 'Administrator',
+    'role_id' => 1,
+    'permissions' => ['inventory.view' => true]
+];
+
+foreach ($invalidPeriods as $idx => $inv) {
+    runTest("Test 9E" . ($idx + 1) . ": API returns HTTP 400 on invalid period '{$inv}' rather than falling back to current", function() use ($apiSession, $inv) {
+        $res = invokeApiEndpoint('backend/api/inventory/index.php', 'GET', ['view' => 'g6_readiness', 'period' => $inv], null, $apiSession);
+        return $res['status'] === 400
+            && ($res['json']['success'] ?? true) === false
+            && str_contains($res['json']['message'] ?? '', 'Invalid reporting period format');
+    });
+}
+
+runTest("Test 9F: API returns HTTP 200 on valid historical period '2026-07'", function() use ($apiSession) {
+    $res = invokeApiEndpoint('backend/api/inventory/index.php', 'GET', ['view' => 'g6_readiness', 'period' => '2026-07'], null, $apiSession);
+    return $res['status'] === 200
+        && ($res['json']['success'] ?? false) === true
+        && ($res['json']['data']['period'] ?? '') === '2026-07'
+        && ($res['json']['data']['has_snapshot'] ?? false) === true;
+});
+
+runTest("Test 9G: API returns HTTP 200 on omitted period (calculates current period)", function() use ($apiSession) {
+    $res = invokeApiEndpoint('backend/api/inventory/index.php', 'GET', ['view' => 'g6_readiness'], null, $apiSession);
+    return $res['status'] === 200
+        && ($res['json']['success'] ?? false) === true
+        && ($res['json']['data']['period'] ?? '') === date('Y-m')
+        && ($res['json']['data']['mode'] ?? '') === 'current';
+});
+
+runTest("Test 9H: API does not expose raw database/exception details in error responses", function() use ($apiSession) {
+    // Calling invalid period
+    $res = invokeApiEndpoint('backend/api/inventory/index.php', 'GET', ['view' => 'g6_readiness', 'period' => 'malformed'], null, $apiSession);
+    $rawBody = $res['body'] ?? '';
+    return !str_contains($rawBody, 'SQLSTATE')
+        && !str_contains($rawBody, 'PDOException')
+        && !str_contains($rawBody, 'Stack trace')
+        && ($res['json']['errors'] ?? null) === null;
+});
+
 echo "\n===============================================================\n";
 echo " G6 READINESS SUITE: {$passedTests} passed, {$failedTests} failed out of {$totalTests} tests.\n";
 echo "===============================================================\n";

@@ -863,11 +863,18 @@ if ($method === 'GET') {
         require_once __DIR__ . '/../../services/G6ReadinessService.php';
 
         $periodParam = isset($_GET['period']) ? trim($_GET['period']) : null;
+        if ($periodParam === '') {
+            $periodParam = null;
+        }
+
         try {
             $reportData = G6ReadinessService::calculate($pdo, $periodParam);
             sendJsonResponse(true, 'G6 Equipment Readiness Report retrieved.', $reportData);
+        } catch (InvalidArgumentException $e) {
+            sendJsonResponse(false, $e->getMessage(), null, null, 400);
         } catch (Exception $e) {
-            sendJsonResponse(false, 'Failed to calculate G6 Equipment Readiness Report.', null, ['error' => $e->getMessage()], 500);
+            error_log('G6 Readiness calculation error: ' . $e->getMessage());
+            sendJsonResponse(false, 'Failed to calculate G6 Equipment Readiness Report.', null, null, 500);
         }
     }
 
