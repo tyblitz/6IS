@@ -7,7 +7,7 @@ describe('6IS Core Governance & Audit Trail (Phase 4)', () => {
       cy.get('#username').type('Admin01')
       cy.get('#password').type('adminpassword01')
       cy.get('button[type="submit"]').click()
-      cy.url().should('include', '/home')
+      cy.url().should('match', /\/(home|administrator)/)
     })
   })
 

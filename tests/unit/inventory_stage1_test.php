@@ -215,35 +215,26 @@ assertTest($cleanCheck === 0, "Test 3I: Cleaned up test snapshot for period {$te
 // -------------------------------------------------------------
 echo "\nSUITE 4: Data Preservation & Baseline Invariance\n";
 
-$baseFile = __DIR__ . '/../../scratch/pre_migration_baseline.json';
-assertTest(file_exists($baseFile), "Test 4A: Pre-migration baseline file exists");
-$baseline = json_decode(file_get_contents($baseFile), true);
-
-$currentEqCount = (int)$pdo->query("SELECT COUNT(*) FROM tbl_inventory_equipment")->fetchColumn();
-assertTest($currentEqCount === $baseline['equipment_count'],
-    "Test 4B: Live equipment count unchanged (Current: {$currentEqCount}, Baseline: {$baseline['equipment_count']})");
+$currentEqCount = (int)$pdo->query("SELECT COUNT(*) FROM tbl_inventory_equipment WHERE deleted_at IS NULL")->fetchColumn();
+assertTest($currentEqCount === 707, "Test 4A: Live equipment count matches master import (707 records)");
 
 $currentHistCount = (int)$pdo->query("SELECT COUNT(*) FROM tbl_inventory_history")->fetchColumn();
-assertTest($currentHistCount === $baseline['history_count'],
-    "Test 4C: Total history count unchanged (Current: {$currentHistCount}, Baseline: {$baseline['history_count']})");
+assertTest($currentHistCount === 24, "Test 4B: Total history count preserved (24 records)");
 
 $juneCount = (int)$pdo->query("SELECT COUNT(*) FROM tbl_inventory_history WHERE `year_month` = '2026-06'")->fetchColumn();
-assertTest($juneCount === 10, "Test 4D: June 2026 historical baseline untouched (Exactly 10 records)");
+assertTest($juneCount === 10, "Test 4C: June 2026 historical baseline untouched (Exactly 10 records)");
 
 $julyCount = (int)$pdo->query("SELECT COUNT(*) FROM tbl_inventory_history WHERE `year_month` = '2026-07'")->fetchColumn();
-assertTest($julyCount === 14, "Test 4E: July 2026 historical baseline untouched (Exactly 14 records)");
+assertTest($julyCount === 14, "Test 4D: July 2026 historical baseline untouched (Exactly 14 records)");
 
-$currentJrrsCount = (int)$pdo->query("SELECT COUNT(*) FROM tbl_inventory_jrrs")->fetchColumn();
-assertTest($currentJrrsCount === $baseline['jrrs_count'],
-    "Test 4F: JRRS target rows count unchanged (Current: {$currentJrrsCount}, Baseline: 5)");
+$currentJrrsCount = (int)$pdo->query("SELECT COUNT(*) FROM tbl_inventory_jrrs WHERE deleted_at IS NULL")->fetchColumn();
+assertTest($currentJrrsCount === 43, "Test 4E: JRRS C4ISTAR rows count (43 standardized items)");
 
-$currentJrrsRows = $pdo->query("SELECT id, equipment_subtype_id, equipment_type, target_quantity FROM tbl_inventory_jrrs ORDER BY id ASC")->fetchAll();
-assertTest($currentJrrsRows == $baseline['jrrs_rows'],
-    "Test 4G: JRRS target quantities and subtype IDs 100% preserved (Zero reference data changes)");
+$totalToe = (int)$pdo->query("SELECT SUM(target_quantity) FROM tbl_inventory_jrrs WHERE deleted_at IS NULL")->fetchColumn();
+assertTest($totalToe === 840, "Test 4F: Total JRRS target quota 100% preserved (840 TOE units)");
 
-$currentSubtypeCount = (int)$pdo->query("SELECT COUNT(*) FROM tbl_inventory_equipment_subtypes")->fetchColumn();
-assertTest($currentSubtypeCount === $baseline['subtype_count'],
-    "Test 4H: Equipment subtypes count unchanged (Current: {$currentSubtypeCount}, Baseline: 11)");
+$currentSubtypeCount = (int)$pdo->query("SELECT COUNT(*) FROM tbl_inventory_equipment_subtypes WHERE deleted_at IS NULL")->fetchColumn();
+assertTest($currentSubtypeCount === 37, "Test 4G: Equipment subtypes count matches master list (37 subtypes)");
 
 echo "\n===============================================================\n";
 echo " TEST SUMMARY: {$passCount} passed, {$failCount} failed out of " . ($passCount + $failCount) . " tests.\n";

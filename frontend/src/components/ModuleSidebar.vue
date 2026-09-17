@@ -88,6 +88,7 @@ function getModuleKeyForRoute(path: string): string | null {
   if (path.startsWith('/communications') || path.startsWith('/administrator/communications')) return 'communications'
   if (path.startsWith('/calendar')) return 'calendar'
   if (path.startsWith('/accomplishments') || path.startsWith('/administrator/accomplishments')) return 'accomplishments'
+  if (path.startsWith('/edfs')) return 'edfs'
   if (path.startsWith('/performance')) return 'performance'
   if (path.startsWith('/finances')) return 'finances'
   return null

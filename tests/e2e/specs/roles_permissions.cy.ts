@@ -7,7 +7,7 @@ describe('6IS Roles & Permissions Management (Phase 2)', () => {
       cy.get('#username').type('Admin01')
       cy.get('#password').type('adminpassword01')
       cy.get('button[type="submit"]').click()
-      cy.url().should('include', '/home')
+      cy.url().should('match', /\/(home|administrator)/)
     })
   })
 

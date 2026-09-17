@@ -8,6 +8,7 @@ export enum ModuleName {
   Accomplishments = 'accomplishments',
   Calendar = 'calendar',
   Administrator = 'administrator',
+  EDFS = 'edfs',
 
   // Feature identifiers mapped to Inventory
   Equipment = 'equipment',

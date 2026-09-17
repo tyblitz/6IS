@@ -85,19 +85,19 @@ if ($method === 'POST') {
     if ($action === 'update_jrrs') {
         requirePermission('inventory', 'configure', $pdo);
         $input = json_decode(file_get_contents('php://input'), true);
-        $subtypeId = (int)($input['equipment_subtype_id'] ?? 0);
-        $targetQty = (int)($input['target_quantity'] ?? 0);
+        $targetId = (int)($input['jrrs_id'] ?? $input['id'] ?? $input['equipment_subtype_id'] ?? 0);
+        $targetQty = (int)($input['target_quantity'] ?? -1);
 
-        if ($subtypeId <= 0 || $targetQty < 0) {
+        if ($targetId <= 0 || $targetQty < 0) {
             sendJsonResponse(false, 'Invalid target parameters.', null, null, 400);
         }
 
         try {
-            $stmt = $pdo->prepare("UPDATE tbl_inventory_jrrs SET target_quantity = :qty, updated_at = NOW() WHERE equipment_subtype_id = :st_id AND deleted_at IS NULL");
-            $stmt->execute([':qty' => $targetQty, ':st_id' => $subtypeId]);
-            if ($stmt->rowCount() === 0) {
-                $stmt = $pdo->prepare("UPDATE tbl_inventory_jrrs SET target_quantity = :qty, updated_at = NOW() WHERE id = :st_id AND deleted_at IS NULL");
-                $stmt->execute([':qty' => $targetQty, ':st_id' => $subtypeId]);
+            $stmt = $pdo->prepare("UPDATE tbl_inventory_jrrs SET target_quantity = :qty, updated_at = NOW() WHERE id = :id AND deleted_at IS NULL");
+            $stmt->execute([':qty' => $targetQty, ':id' => $targetId]);
+            if ($stmt->rowCount() === 0 && columnExists($pdo, 'tbl_inventory_jrrs', 'equipment_subtype_id')) {
+                $stmt = $pdo->prepare("UPDATE tbl_inventory_jrrs SET target_quantity = :qty, updated_at = NOW() WHERE equipment_subtype_id = :st_id AND deleted_at IS NULL");
+                $stmt->execute([':qty' => $targetQty, ':st_id' => $targetId]);
             }
             sendJsonResponse(true, 'JRRS target quantity updated.');
         } catch (Exception $e) {
@@ -696,92 +696,36 @@ if ($method === 'GET') {
             $turnInStmt->execute([':period' => $selectedPeriod]);
             $unserviceableCount = (int)$turnInStmt->fetchColumn();
         }
-
         $maintenanceReadinessPct = $totalEquipment > 0
             ? round(($serviceableCount / $totalEquipment) * 100, 1)
             : 0.0;
 
+        require_once __DIR__ . '/../../services/G6ReadinessService.php';
         try {
-            $jrrsStmt = $pdo->query("
-                SELECT j.id, j.equipment_subtype_id, st.name AS equipment_subtype_name, t.name AS equipment_type_name, j.target_quantity
-                FROM tbl_inventory_jrrs j
-                JOIN tbl_inventory_equipment_subtypes st ON j.equipment_subtype_id = st.id
-                JOIN tbl_inventory_equipment_types t ON st.equipment_type_id = t.id
-                WHERE j.deleted_at IS NULL AND st.deleted_at IS NULL
-                ORDER BY t.name ASC, st.name ASC
-            ");
-            $jrrsTargets = $jrrsStmt->fetchAll();
+            $g6Report = G6ReadinessService::calculate($pdo, $selectedPeriod);
+            $typeBreakdown = $g6Report['lines'];
+            $totalTargetQty = $g6Report['summary']['totals']['required'];
+            $totalCurrentQty = $g6Report['summary']['totals']['on_hand'];
+            $equipmentReadinessPct = $totalTargetQty > 0
+                ? round(($totalCurrentQty / $totalTargetQty) * 100, 1)
+                : 0.0;
         } catch (Exception $e) {
-            $jrrsTargets = [];
+            $typeBreakdown = [];
+            $totalTargetQty = 0;
+            $totalCurrentQty = 0;
+            $equipmentReadinessPct = 0.0;
         }
-
-        $totalTargetQty = 0;
-        $totalCurrentQty = 0;
-        $typeBreakdown = [];
-
-        foreach ($jrrsTargets as $jrrs) {
-            $subtypeId = (int)$jrrs['equipment_subtype_id'];
-            $subtypeName = $jrrs['equipment_subtype_name'];
-            $typeName = $jrrs['equipment_type_name'];
-            $target = (int)$jrrs['target_quantity'];
-            $totalTargetQty += $target;
-
-            if ($isCurrentMonth) {
-                $cStmt = $pdo->prepare("
-                    SELECT COUNT(*) FROM tbl_inventory_equipment e
-                    LEFT JOIN tbl_inventory_equipment_subtypes st ON (
-                        e.equipment_subtype_id = st.id OR LOWER(e.equipment_type) = LOWER(st.name)
-                        OR (e.equipment_type LIKE '%Desktop%' AND st.name = 'Desktop')
-                        OR (e.equipment_type LIKE '%PA%' AND st.name = 'Public Address System')
-                        OR (e.equipment_type LIKE '%Public Address%' AND st.name = 'Public Address System')
-                    )
-                    WHERE st.id = :st_id AND e.deleted_at IS NULL
-                ");
-                $cStmt->execute([':st_id' => $subtypeId]);
-                $currentQty = (int)$cStmt->fetchColumn();
-            } else {
-                $cStmt = $pdo->prepare("
-                    SELECT COUNT(*) FROM tbl_inventory_history h
-                    LEFT JOIN tbl_inventory_equipment_subtypes st ON (
-                        h.equipment_subtype_id = st.id OR LOWER(h.equipment_type) = LOWER(st.name)
-                        OR (h.equipment_type LIKE '%Desktop%' AND st.name = 'Desktop')
-                        OR (h.equipment_type LIKE '%PA%' AND st.name = 'Public Address System')
-                        OR (h.equipment_type LIKE '%Public Address%' AND st.name = 'Public Address System')
-                    )
-                    WHERE h.`year_month` = :period AND st.id = :st_id
-                ");
-                $cStmt->execute([':period' => $selectedPeriod, ':st_id' => $subtypeId]);
-                $currentQty = (int)$cStmt->fetchColumn();
-            }
-            $totalCurrentQty += $currentQty;
-
-            $shortage = max(0, $target - $currentQty);
-            $typeReadinessPct = $target > 0 ? round(($currentQty / $target) * 100, 1) : 0.0;
-
-            $typeBreakdown[] = [
-                'equipment_subtype_id' => $subtypeId,
-                'equipment_subtype' => $subtypeName,
-                'equipment_type' => $typeName,
-                'target_quantity' => $target,
-                'current_quantity' => $currentQty,
-                'shortage' => $shortage,
-                'readiness_pct' => $typeReadinessPct
-            ];
-        }
-
-        $equipmentReadinessPct = $totalTargetQty > 0
-            ? round(($totalCurrentQty / $totalTargetQty) * 100, 1)
-            : 0.0;
 
         $overviewData = [
             'period' => $selectedPeriod,
             'period_label' => formatPeriodLabel($selectedPeriod),
             'is_current' => $isCurrentMonth,
-            'maintenance_readiness_pct' => $maintenanceReadinessPct,
-            'equipment_readiness_pct' => $equipmentReadinessPct,
             'total_equipment' => $totalEquipment,
+            'total_target_quota' => $totalTargetQty,
+            'equipment_readiness_pct' => $equipmentReadinessPct,
+            'maintenance_readiness_pct' => $maintenanceReadinessPct,
             'serviceable_count' => $serviceableCount,
-            'for_repair_count' => $forRepairCount,
+            'repair_count' => $forRepairCount,
             'unserviceable_count' => $unserviceableCount,
             'type_breakdown' => $typeBreakdown
         ];
@@ -791,76 +735,23 @@ if ($method === 'GET') {
 
     // 9. JRRS Target List Endpoint
     if ($view === 'jrrs') {
+        require_once __DIR__ . '/../../services/G6ReadinessService.php';
         try {
-            $jrrsStmt = $pdo->query("
-                SELECT j.id, j.equipment_subtype_id, st.name AS equipment_subtype, t.name AS equipment_type, j.target_quantity
-                FROM tbl_inventory_jrrs j
-                JOIN tbl_inventory_equipment_subtypes st ON j.equipment_subtype_id = st.id
-                JOIN tbl_inventory_equipment_types t ON st.equipment_type_id = t.id
-                WHERE j.deleted_at IS NULL AND st.deleted_at IS NULL
-                ORDER BY t.name ASC, st.name ASC
-            ");
-            $jrrsTargets = $jrrsStmt->fetchAll();
+            $reportData = G6ReadinessService::calculate($pdo, $selectedPeriod);
+            sendJsonResponse(true, 'JRRS list retrieved.', [
+                'period' => $selectedPeriod,
+                'period_label' => formatPeriodLabel($selectedPeriod),
+                'is_current' => $isCurrentMonth,
+                'items' => $reportData['lines'],
+                'groups' => $reportData['groups'],
+                'summary' => $reportData['summary']
+            ]);
+        } catch (InvalidArgumentException $e) {
+            sendJsonResponse(false, $e->getMessage(), null, null, 400);
         } catch (Exception $e) {
-            $jrrsTargets = [];
+            error_log('JRRS calculation error: ' . $e->getMessage());
+            sendJsonResponse(false, 'Failed to calculate JRRS data.', null, null, 500);
         }
-
-        $items = [];
-        foreach ($jrrsTargets as $jrrs) {
-            $subtypeId = (int)$jrrs['equipment_subtype_id'];
-            $subtypeName = $jrrs['equipment_subtype'];
-            $typeName = $jrrs['equipment_type'];
-            $target = (int)$jrrs['target_quantity'];
-
-            if ($isCurrentMonth) {
-                $cStmt = $pdo->prepare("
-                    SELECT COUNT(*) FROM tbl_inventory_equipment e
-                    LEFT JOIN tbl_inventory_equipment_subtypes st ON (
-                        e.equipment_subtype_id = st.id OR LOWER(e.equipment_type) = LOWER(st.name)
-                        OR (e.equipment_type LIKE '%Desktop%' AND st.name = 'Desktop')
-                        OR (e.equipment_type LIKE '%PA%' AND st.name = 'Public Address System')
-                        OR (e.equipment_type LIKE '%Public Address%' AND st.name = 'Public Address System')
-                    )
-                    WHERE st.id = :st_id AND e.deleted_at IS NULL
-                ");
-                $cStmt->execute([':st_id' => $subtypeId]);
-                $currentQty = (int)$cStmt->fetchColumn();
-            } else {
-                $cStmt = $pdo->prepare("
-                    SELECT COUNT(*) FROM tbl_inventory_history h
-                    LEFT JOIN tbl_inventory_equipment_subtypes st ON (
-                        h.equipment_subtype_id = st.id OR LOWER(h.equipment_type) = LOWER(st.name)
-                        OR (h.equipment_type LIKE '%Desktop%' AND st.name = 'Desktop')
-                        OR (h.equipment_type LIKE '%PA%' AND st.name = 'Public Address System')
-                        OR (h.equipment_type LIKE '%Public Address%' AND st.name = 'Public Address System')
-                    )
-                    WHERE h.`year_month` = :period AND st.id = :st_id
-                ");
-                $cStmt->execute([':period' => $selectedPeriod, ':st_id' => $subtypeId]);
-                $currentQty = (int)$cStmt->fetchColumn();
-            }
-
-            $shortage = max(0, $target - $currentQty);
-            $readinessPct = $target > 0 ? round(($currentQty / $target) * 100, 1) : 0.0;
-
-            $items[] = [
-                'id' => (int)$jrrs['id'],
-                'equipment_subtype_id' => $subtypeId,
-                'equipment_subtype' => $subtypeName,
-                'equipment_type' => $typeName,
-                'target_quantity' => $target,
-                'current_quantity' => $currentQty,
-                'shortage' => $shortage,
-                'readiness_pct' => $readinessPct
-            ];
-        }
-
-        sendJsonResponse(true, 'JRRS list retrieved.', [
-            'period' => $selectedPeriod,
-            'period_label' => formatPeriodLabel($selectedPeriod),
-            'is_current' => $isCurrentMonth,
-            'items' => $items
-        ]);
     }
 
     // 9B. G6 Equipment Readiness Reporting Engine

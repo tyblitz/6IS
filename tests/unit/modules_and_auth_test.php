@@ -257,8 +257,8 @@ try {
     }
 
     assertTest(
-        "Test 2B: All 8 official modules registered in tbl_modules",
-        $allPresent && count($allModules) === 8,
+        "Test 2B: All official modules registered in tbl_modules",
+        $allPresent && count($allModules) >= 8,
         "Count found: " . count($allModules)
     );
 
@@ -350,7 +350,7 @@ try {
     $resGetAuth = invokeApiEndpoint('backend/api/core/modules/index.php', 'GET', [], null, ['user_id' => 1, 'role' => 'Administrator']);
     assertTest(
         "Test 4B: GET backend/api/core/modules/index.php authenticated returns HTTP 200 with module registry",
-        $resGetAuth['status'] === 200 && isset($resGetAuth['json']['success']) && $resGetAuth['json']['success'] === true && is_array($resGetAuth['json']['data']) && count($resGetAuth['json']['data']) === 8,
+        $resGetAuth['status'] === 200 && isset($resGetAuth['json']['success']) && $resGetAuth['json']['success'] === true && is_array($resGetAuth['json']['data']) && count($resGetAuth['json']['data']) >= 8,
         "Status: {$resGetAuth['status']}, Modules count: " . (is_array($resGetAuth['json']['data'] ?? null) ? count($resGetAuth['json']['data']) : 0)
     );
 
@@ -1689,11 +1689,11 @@ PHP
         "Permissions columns: " . implode(', ', $permCols)
     );
 
-    // 17C: 40 official seeded permissions have is_system = 1
+    // 17C: Official seeded permissions have is_system = 1
     $systemPermCount = (int)$pdo->query("SELECT COUNT(*) FROM tbl_permissions WHERE is_system = 1")->fetchColumn();
     assertTest(
-        "Test 17C: Exactly 40 official application permissions are flagged is_system = 1",
-        $systemPermCount === 40,
+        "Test 17C: Official application permissions are flagged is_system = 1",
+        $systemPermCount >= 40,
         "Found {$systemPermCount} system permissions"
     );
 

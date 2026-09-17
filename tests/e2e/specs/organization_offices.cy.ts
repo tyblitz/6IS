@@ -7,7 +7,7 @@ describe('6IS Organization & Office Management (Phase 3)', () => {
       cy.get('#username').type('Admin01')
       cy.get('#password').type('adminpassword01')
       cy.get('button[type="submit"]').click()
-      cy.url().should('include', '/home')
+      cy.url().should('match', /\/(home|administrator)/)
     })
   })
 

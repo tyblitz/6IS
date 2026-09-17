@@ -26,16 +26,33 @@ CREATE TABLE `tbl_inventory_equipment` (
     FOREIGN KEY (`office_id`) REFERENCES `tbl_offices`(`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 2. Approved Table of Equipment Target (JRRS)
+-- 2. Approved Table of Equipment Target (JRRS - Section III. C4ISTAR)
 CREATE TABLE `tbl_inventory_jrrs` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `equipment_type` VARCHAR(100) NOT NULL UNIQUE,
+    `category` VARCHAR(100) NOT NULL DEFAULT 'OTHER C2 SYSTEM',
+    `sub_category` VARCHAR(100) NULL,
+    `sort_order` INT NOT NULL DEFAULT 0,
+    `equipment_type` VARCHAR(150) NOT NULL,
     `target_quantity` INT NOT NULL DEFAULT 0,
     `created_at` DATETIME NOT NULL,
     `updated_at` DATETIME NOT NULL,
     `created_by` INT NOT NULL DEFAULT 1,
     `modified_by` INT NOT NULL DEFAULT 1,
-    `deleted_at` DATETIME NULL
+    `deleted_at` DATETIME NULL,
+    INDEX `idx_jrrs_category` (`category`),
+    INDEX `idx_jrrs_sort` (`sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 2b. Junction mapping for many-to-one inventory subtype rollup into JRRS
+CREATE TABLE `tbl_inventory_jrrs_subtypes` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `jrrs_id` INT NOT NULL,
+    `equipment_subtype_id` INT NOT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_jrrs_subtype` (`jrrs_id`, `equipment_subtype_id`),
+    INDEX `idx_jrrs` (`jrrs_id`),
+    INDEX `idx_subtype` (`equipment_subtype_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 3. Immutable Historical Monthly Inventory Snapshots Table

@@ -374,14 +374,16 @@ export async function fetchJrrsList(period: string): Promise<ApiResponse<{ perio
 /**
  * Updates JRRS target quantity for an equipment subtype (Administrator only)
  */
-export async function updateJrrsTarget(subtypeId: number, targetQuantity: number): Promise<ApiResponse<null>> {
+export async function updateJrrsTarget(targetId: number, targetQuantity: number): Promise<ApiResponse<null>> {
   try {
     const res = await fetch(`${API_BASE_URL}?action=update_jrrs`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({
-        equipment_subtype_id: subtypeId,
+        id: targetId,
+        jrrs_id: targetId,
+        equipment_subtype_id: targetId,
         target_quantity: targetQuantity
       })
     })

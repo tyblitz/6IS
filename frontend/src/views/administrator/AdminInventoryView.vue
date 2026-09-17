@@ -72,13 +72,13 @@
           <table class="data-table">
             <thead>
               <tr>
-                <!-- Column 1: Serial Number (Sortable) -->
-                <th class="sortable-th" @click="toggleSort('serial_number')">
+                <!-- Column 1: Property No. (Sortable) -->
+                <th class="sortable-th" @click="toggleSort('property_number')">
                   <div class="th-content">
-                    <span>Serial Number</span>
+                    <span>Property No.</span>
                     <span class="sort-icon">
-                      <ion-icon v-if="sortColumn === 'serial_number' && sortDirection === 'asc'" :icon="arrowUpOutline" />
-                      <ion-icon v-else-if="sortColumn === 'serial_number' && sortDirection === 'desc'" :icon="arrowDownOutline" />
+                      <ion-icon v-if="sortColumn === 'property_number' && sortDirection === 'asc'" :icon="arrowUpOutline" />
+                      <ion-icon v-else-if="sortColumn === 'property_number' && sortDirection === 'desc'" :icon="arrowDownOutline" />
                       <ion-icon v-else :icon="swapVerticalOutline" class="inactive-sort" />
                     </span>
                   </div>
@@ -141,7 +141,7 @@
             </thead>
             <tbody>
               <tr v-for="item in paginatedList" :key="item.id">
-                <!-- Serial Number as Link to Dedicated Page -->
+                <!-- Property Number as Link to Dedicated Page -->
                 <td>
                   <a
                     href="#"
@@ -149,7 +149,7 @@
                     title="Click to view & edit equipment details"
                     @click.prevent="openEquipmentDetail(item)"
                   >
-                    {{ item.serial_number || 'N/A' }}
+                    {{ item.property_number || 'N/A' }}
                   </a>
                 </td>
                 <!-- Office Tag -->
@@ -375,7 +375,7 @@ const loading = ref(true)
 const saving = ref(false)
 
 const searchQuery = ref('')
-const sortColumn = ref<'serial_number' | 'office' | 'subtype' | 'date_acquired' | 'status' | null>(null)
+const sortColumn = ref<'property_number' | 'serial_number' | 'office' | 'subtype' | 'date_acquired' | 'status' | null>(null)
 const sortDirection = ref<'asc' | 'desc'>('asc')
 
 const currentPage = ref(1)
@@ -429,13 +429,15 @@ const searchedList = computed(() => {
   if (!query) return tabFilteredList.value
 
   return tabFilteredList.value.filter(item => {
+    const propNo = (item.property_number || '').toLowerCase()
     const sn = (item.serial_number || '').toLowerCase()
     const offAbbv = (item.office_abbv || '').toLowerCase()
     const offName = (item.office_name || '').toLowerCase()
     const subtype = (item.equipment_subtype_name || item.equipment_subtype || '').toLowerCase()
     const desc = (item.description || '').toLowerCase()
 
-    return sn.includes(query) ||
+    return propNo.includes(query) ||
+           sn.includes(query) ||
            offAbbv.includes(query) ||
            offName.includes(query) ||
            subtype.includes(query) ||
@@ -456,6 +458,10 @@ const sortedList = computed(() => {
     let valB = ''
 
     switch (col) {
+      case 'property_number':
+        valA = a.property_number || ''
+        valB = b.property_number || ''
+        break
       case 'serial_number':
         valA = a.serial_number || ''
         valB = b.serial_number || ''
@@ -519,7 +525,7 @@ const visiblePageNumbers = computed(() => {
   return pages
 })
 
-function toggleSort(col: 'serial_number' | 'office' | 'subtype' | 'date_acquired' | 'status') {
+function toggleSort(col: 'property_number' | 'serial_number' | 'office' | 'subtype' | 'date_acquired' | 'status') {
   if (sortColumn.value === col) {
     if (sortDirection.value === 'asc') {
       sortDirection.value = 'desc'

@@ -48,6 +48,9 @@ import AccomplishmentCustomView from '../views/accomplishments/AccomplishmentCus
 // Calendar Module Views
 import CalendarView from '../views/calendar/CalendarView.vue'
 
+// EDFS Module Views
+import EdfsView from '../views/edfs/EdfsView.vue'
+
 import { ModuleName } from '../types/module'
 import { fetchCurrentUser } from '../services/authService'
 import { useModules } from '../composables/useModules'
@@ -482,6 +485,18 @@ const routes: Array<RouteRecordRaw> = [
       path: '/calendar',
       query: { view: 'day', date: to.params.date }
     })
+  },
+
+  // EDFS MODULE ROUTES
+  {
+    path: '/edfs',
+    name: 'EDFS Accounts',
+    component: EdfsView,
+    meta: {
+      module: ModuleName.EDFS,
+      requiresAuth: true,
+      permission: 'edfs.view'
+    }
   }
 ]
 

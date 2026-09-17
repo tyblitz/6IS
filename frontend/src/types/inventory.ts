@@ -97,14 +97,29 @@ export interface OfficeItem {
 
 export interface JrrsItem {
   id: number
-  equipment_subtype_id: number
+  jrrs_id?: number
+  equipment_subtype_id?: number
   equipment_subtype: string
-  equipment_type_id: number
+  equipment_type_id?: number
   equipment_type: string
+  category?: string
+  sub_category?: string | null
+  sort_order?: number
+  nomenclature?: string
   target_quantity: number
+  required?: number
+  operational?: number
+  repair?: number
+  ber?: number
+  on_hand?: number
   current_quantity: number
   shortage: number
+  deficit?: number
   readiness_pct: number
+  equipment_rating?: number | null
+  maintenance_rating?: number | null
+  equipment_redcon?: string
+  maintenance_redcon?: string
 }
 
 export interface ReportingPeriod {

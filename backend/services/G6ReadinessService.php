@@ -112,7 +112,11 @@ class G6ReadinessService {
         int $required,
         int $operational,
         int $repair,
-        int $ber
+        int $ber,
+        ?string $category = null,
+        ?string $subCategory = null,
+        int $sortOrder = 0,
+        int $jrrsId = 0
     ): array {
         $onHand = $operational + $repair + $ber;
         $deficit = max(0, $required - $onHand);
@@ -121,18 +125,29 @@ class G6ReadinessService {
         $maintRating = ($onHand > 0) ? min(1.0, $operational / $onHand) : null;
 
         return [
+            'id' => $jrrsId ?: $subtypeId,
+            'jrrs_id' => $jrrsId ?: $subtypeId,
             'equipment_subtype_id' => $subtypeId,
             'nomenclature' => $nomenclature,
+            'equipment_subtype' => $nomenclature,
             'equipment_type_id' => $typeId,
             'equipment_type_name' => $typeName,
+            'equipment_type' => $category ?: $typeName,
+            'category' => $category ?: $typeName,
+            'sub_category' => $subCategory,
+            'sort_order' => $sortOrder,
             'required' => $required,
+            'target_quantity' => $required,
             'operational' => $operational,
             'repair' => $repair,
             'ber' => $ber,
             'on_hand' => $onHand,
+            'current_quantity' => $onHand,
             'deficit' => $deficit,
+            'shortage' => $deficit,
             'equipment_rating' => $eqRating !== null ? round($eqRating, 4) : null,
             'maintenance_rating' => $maintRating !== null ? round($maintRating, 4) : null,
+            'readiness_pct' => $eqRating !== null ? round($eqRating * 100, 1) : 0.0,
             'equipment_redcon' => self::calculateRedcon($eqRating),
             'maintenance_redcon' => self::calculateRedcon($maintRating)
         ];
@@ -186,26 +201,33 @@ class G6ReadinessService {
 
         $isCurrent = ($selectedPeriod === $currentYearMonth);
 
-        // Fetch JRRS target definitions in G6 scope (ICT and Communications)
+        // Fetch JRRS target definitions (Section III. C4ISTAR)
         $jrrsStmt = $pdo->prepare("
-            SELECT j.id, j.equipment_subtype_id, st.name AS subtype_name,
-                   st.equipment_type_id, t.name AS type_name, j.target_quantity
+            SELECT j.id, j.category, j.sub_category, j.sort_order, j.equipment_type, j.target_quantity
             FROM tbl_inventory_jrrs j
-            JOIN tbl_inventory_equipment_subtypes st ON j.equipment_subtype_id = st.id
-            JOIN tbl_inventory_equipment_types t ON st.equipment_type_id = t.id
-            WHERE j.deleted_at IS NULL 
-              AND st.deleted_at IS NULL 
-              AND st.equipment_type_id IN (1, 2)
-            ORDER BY t.id ASC, st.id ASC
+            WHERE j.deleted_at IS NULL
+            ORDER BY j.sort_order ASC, j.id ASC
         ");
         $jrrsStmt->execute();
         $jrrsTargets = $jrrsStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Track equipment counts indexed by subtype_id: [subtype_id => ['operational' => 0, 'repair' => 0, 'ber' => 0]]
-        $countsBySubtype = [];
+        // Fetch many-to-one subtype mappings
+        $mapStmt = $pdo->prepare("SELECT jrrs_id, equipment_subtype_id FROM tbl_inventory_jrrs_subtypes");
+        $mapStmt->execute();
+        $mappings = $mapStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $subtypeToJrrsMap = [];
+        foreach ($mappings as $m) {
+            $stId = (int)$m['equipment_subtype_id'];
+            $jId = (int)$m['jrrs_id'];
+            $subtypeToJrrsMap[$stId][] = $jId;
+        }
+
+        // Track equipment counts indexed by jrrs_id
+        $countsByJrrs = [];
         foreach ($jrrsTargets as $jrrs) {
-            $stId = (int)$jrrs['equipment_subtype_id'];
-            $countsBySubtype[$stId] = [
+            $jId = (int)$jrrs['id'];
+            $countsByJrrs[$jId] = [
                 'operational' => 0,
                 'repair' => 0,
                 'ber' => 0
@@ -220,24 +242,23 @@ class G6ReadinessService {
                 SELECT id, equipment_subtype_id, equipment_type_id, status_id, status
                 FROM tbl_inventory_equipment
                 WHERE deleted_at IS NULL
-                  AND equipment_type_id IN (1, 2)
             ");
             $eqStmt->execute();
             $equipRecords = $eqStmt->fetchAll(PDO::FETCH_ASSOC);
 
             foreach ($equipRecords as $row) {
                 $stId = (int)($row['equipment_subtype_id'] ?? 0);
-                if (isset($countsBySubtype[$stId])) {
+                if (isset($subtypeToJrrsMap[$stId])) {
                     $cat = self::categorizeStatus(
                         $row['status_id'] !== null ? (int)$row['status_id'] : null,
                         $row['status'] ?? null
                     );
-                    if ($cat === 'operational') {
-                        $countsBySubtype[$stId]['operational']++;
-                    } elseif ($cat === 'repair') {
-                        $countsBySubtype[$stId]['repair']++;
-                    } elseif ($cat === 'ber') {
-                        $countsBySubtype[$stId]['ber']++;
+                    if ($cat !== 'unknown') {
+                        foreach ($subtypeToJrrsMap[$stId] as $jId) {
+                            if (isset($countsByJrrs[$jId])) {
+                                $countsByJrrs[$jId][$cat]++;
+                            }
+                        }
                     }
                 }
             }
@@ -271,66 +292,83 @@ class G6ReadinessService {
 
             foreach ($histRecords as $row) {
                 $stId = $row['equipment_subtype_id'] !== null ? (int)$row['equipment_subtype_id'] : null;
-                $tId = $row['equipment_type_id'] !== null ? (int)$row['equipment_type_id'] : null;
 
                 // For legacy snapshots where IDs were null, derive from preserved historical text
                 if ($stId === null) {
                     [$mappedStId, $mappedTId] = self::mapLegacyHistoricalSubtype($row['equipment_type'] ?? null);
                     $stId = $mappedStId;
-                    $tId = $mappedTId;
                 }
 
-                // Check scope: must be in ICT (1) or Communications (2)
-                if ($tId !== null && !in_array($tId, self::SCOPE_EQUIPMENT_TYPE_IDS, true)) {
-                    continue;
-                }
-
-                if ($stId !== null && isset($countsBySubtype[$stId])) {
+                if ($stId !== null && isset($subtypeToJrrsMap[$stId])) {
                     $cat = self::categorizeStatus(
                         $row['status_id'] !== null ? (int)$row['status_id'] : null,
                         $row['status'] ?? null
                     );
-                    if ($cat === 'operational') {
-                        $countsBySubtype[$stId]['operational']++;
-                    } elseif ($cat === 'repair') {
-                        $countsBySubtype[$stId]['repair']++;
-                    } elseif ($cat === 'ber') {
-                        $countsBySubtype[$stId]['ber']++;
+                    if ($cat !== 'unknown') {
+                        foreach ($subtypeToJrrsMap[$stId] as $jId) {
+                            if (isset($countsByJrrs[$jId])) {
+                                $countsByJrrs[$jId][$cat]++;
+                            }
+                        }
                     }
                 }
             }
         }
+
+        // Standard C4ISTAR military category prefixes & order
+        $categoryLabels = [
+            'COMMUNICATIONS' => 'A. COMMUNICATIONS',
+            'CYBER SECURITY' => 'B. CYBER SECURITY',
+            'CENSOR INTEGRATION SYSTEM' => 'C. CENSOR INTEGRATION SYSTEM',
+            'INFORMATION MANAGEMENT SYSTEM' => 'D. INFORMATION MANAGEMENT SYSTEM',
+            'OTHER C2 SYSTEM' => 'E. OTHER C2 SYSTEM'
+        ];
+        $categoryIds = [
+            'COMMUNICATIONS' => 1,
+            'CYBER SECURITY' => 2,
+            'CENSOR INTEGRATION SYSTEM' => 3,
+            'INFORMATION MANAGEMENT SYSTEM' => 4,
+            'OTHER C2 SYSTEM' => 5
+        ];
 
         // Build line items
         $lines = [];
         $groupsMap = [];
 
         foreach ($jrrsTargets as $jrrs) {
-            $stId = (int)$jrrs['equipment_subtype_id'];
-            $stName = $jrrs['subtype_name'];
-            $tId = (int)$jrrs['equipment_type_id'];
-            $tName = $jrrs['type_name'];
+            $jId = (int)$jrrs['id'];
+            $catKey = $jrrs['category'] ?: 'OTHER C2 SYSTEM';
+            $catName = $categoryLabels[$catKey] ?? $catKey;
+            $catId = $categoryIds[$catKey] ?? 1;
+            $nomenclature = $jrrs['equipment_type'];
+            $subCategory = $jrrs['sub_category'];
+            $sortOrder = (int)$jrrs['sort_order'];
             $target = (int)$jrrs['target_quantity'];
 
-            $cnt = $countsBySubtype[$stId] ?? ['operational' => 0, 'repair' => 0, 'ber' => 0];
+            $cnt = $countsByJrrs[$jId] ?? ['operational' => 0, 'repair' => 0, 'ber' => 0];
 
             $line = self::calculateLine(
-                $stId,
-                $stName,
-                $tId,
-                $tName,
+                $jId,
+                $nomenclature,
+                $catId,
+                $catName,
                 $target,
                 $cnt['operational'],
                 $cnt['repair'],
-                $cnt['ber']
+                $cnt['ber'],
+                $catKey,
+                $subCategory,
+                $sortOrder,
+                $jId
             );
 
             $lines[] = $line;
 
-            if (!isset($groupsMap[$tId])) {
-                $groupsMap[$tId] = [
-                    'group_id' => $tId,
-                    'group_name' => $tName,
+            if (!isset($groupsMap[$catKey])) {
+                $groupsMap[$catKey] = [
+                    'group_id' => $catId,
+                    'category' => $catKey,
+                    'group_name' => $catName,
                     'lines' => [],
                     'totals' => [
                         'required' => 0,
@@ -343,13 +381,13 @@ class G6ReadinessService {
                 ];
             }
 
-            $groupsMap[$tId]['lines'][] = $line;
-            $groupsMap[$tId]['totals']['required'] += $line['required'];
-            $groupsMap[$tId]['totals']['operational'] += $line['operational'];
-            $groupsMap[$tId]['totals']['repair'] += $line['repair'];
-            $groupsMap[$tId]['totals']['ber'] += $line['ber'];
-            $groupsMap[$tId]['totals']['on_hand'] += $line['on_hand'];
-            $groupsMap[$tId]['totals']['deficit'] += $line['deficit'];
+            $groupsMap[$catKey]['lines'][] = $line;
+            $groupsMap[$catKey]['totals']['required'] += $line['required'];
+            $groupsMap[$catKey]['totals']['operational'] += $line['operational'];
+            $groupsMap[$catKey]['totals']['repair'] += $line['repair'];
+            $groupsMap[$catKey]['totals']['ber'] += $line['ber'];
+            $groupsMap[$catKey]['totals']['on_hand'] += $line['on_hand'];
+            $groupsMap[$catKey]['totals']['deficit'] += $line['deficit'];
         }
 
         // Calculate unweighted group ratings
@@ -366,7 +404,7 @@ class G6ReadinessService {
             'deficit' => 0
         ];
 
-        foreach ($groupsMap as $gId => $group) {
+        foreach ($groupsMap as $gKey => $group) {
             $lineEqRatings = array_column($group['lines'], 'equipment_rating');
             $lineMaintRatings = array_column($group['lines'], 'maintenance_rating');
 

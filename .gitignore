@@ -2,6 +2,7 @@
 # http://git-scm.com/docs/gitignore
 
 *~
+~$*
 *.sw[mnpcod]
 .tmp
 *.tmp
@@ -45,6 +46,7 @@ dist/
 
 docs/ai/
 templates/
+scratch/
 
 # Environment Files
 .env

@@ -125,10 +125,10 @@
                     <ion-icon :icon="getSortIcon('description')" :class="['sort-icon', sortKey === 'description' ? 'active-sort' : '']" />
                   </div>
                 </th>
-                <th class="sortable-th" @click="toggleSort('serial_number')">
+                <th class="sortable-th" @click="toggleSort('property_number')">
                   <div class="th-content">
-                    <span>Serial Number</span>
-                    <ion-icon :icon="getSortIcon('serial_number')" :class="['sort-icon', sortKey === 'serial_number' ? 'active-sort' : '']" />
+                    <span>Property No.</span>
+                    <ion-icon :icon="getSortIcon('property_number')" :class="['sort-icon', sortKey === 'property_number' ? 'active-sort' : '']" />
                   </div>
                 </th>
                 <th class="sortable-th" @click="toggleSort('date_acquired')">
@@ -154,7 +154,7 @@
                 <td v-if="categoryScope === 'All'" class="font-semibold">{{ item.equipment_type_name || item.equipment_type }}</td>
                 <td class="font-bold text-primary">{{ item.equipment_subtype_name || item.equipment_subtype }}</td>
                 <td>{{ item.description || '-' }}</td>
-                <td class="code-text">{{ item.serial_number || 'N/A' }}</td>
+                <td class="code-text">{{ item.property_number || 'N/A' }}</td>
                 <td>{{ formatDate(item.date_acquired) }}</td>
                 <td class="text-center">
                   <span :class="['status-badge', getStatusClass(item.status_name || item.status || '')]">
@@ -581,11 +581,12 @@ const filteredEquipment = computed(() => {
     if (searchQuery.value.trim()) {
       const q = searchQuery.value.toLowerCase()
       const matchDesc = (item.description || '').toLowerCase().includes(q)
+      const matchProp = (item.property_number || '').toLowerCase().includes(q)
       const matchSerial = (item.serial_number || '').toLowerCase().includes(q)
       const matchType = (item.equipment_type_name || item.equipment_type || '').toLowerCase().includes(q)
       const matchSubtype = (item.equipment_subtype_name || item.equipment_subtype || '').toLowerCase().includes(q)
       const matchOffice = (item.office_abbv || item.office_name || '').toLowerCase().includes(q)
-      if (!matchDesc && !matchSerial && !matchType && !matchSubtype && !matchOffice) return false
+      if (!matchDesc && !matchProp && !matchSerial && !matchType && !matchSubtype && !matchOffice) return false
     }
     return true
   })

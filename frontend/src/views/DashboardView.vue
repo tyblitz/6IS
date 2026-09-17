@@ -120,6 +120,27 @@
             </div>
           </router-link>
 
+          <!-- EDFS Accounts Operational Card -->
+          <router-link
+            v-if="isEnabled('edfs')"
+            to="/edfs"
+            class="module-card edfs-card"
+            aria-label="Open EDFS Accounts module: Directory and credential monitoring for Electronic Document Filing System accounts"
+          >
+            <div class="module-card-body">
+              <div class="module-card-top">
+                <div class="module-icon-box edfs-icon" aria-hidden="true">
+                  <ion-icon :icon="documentTextOutline"></ion-icon>
+                </div>
+                <span class="module-arrow" aria-hidden="true">
+                  <ion-icon :icon="arrowForwardOutline"></ion-icon>
+                </span>
+              </div>
+              <h3 class="module-title">EDFS Accounts</h3>
+              <p class="module-desc">Directory and credential monitoring for Electronic Document Filing System accounts.</p>
+            </div>
+          </router-link>
+
         </div>
       </div>
 
@@ -135,7 +156,8 @@ import {
   cubeOutline,
   chatbubbleEllipsesOutline,
   clipboardOutline,
-  arrowForwardOutline
+  arrowForwardOutline,
+  documentTextOutline
 } from 'ionicons/icons'
 
 import MainLayout from '../layouts/MainLayout.vue'
@@ -279,7 +301,7 @@ onMounted(() => {
 /* Module Cards Grid */
 .module-cards-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
 }
 
@@ -362,6 +384,11 @@ onMounted(() => {
 .calendar-icon {
   background: #faf5ff;
   color: #9333ea;
+}
+
+.edfs-icon {
+  background: #f0fdfa;
+  color: #0d9488;
 }
 
 .module-title {

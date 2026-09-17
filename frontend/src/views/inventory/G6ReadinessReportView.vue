@@ -423,7 +423,7 @@ import {
 import MainLayout from '@/layouts/MainLayout.vue'
 import { fetchG6Readiness, fetchReportingPeriods } from '@/services/inventoryService'
 import type { G6ReadinessReport, ReportingPeriod } from '@/types/inventory'
-import { formatDate, formatTime, formatDateTime } from '@/utils/dateUtils'
+import { formatDateTime } from '@/utils/dateUtils'
 
 // State
 const loading = ref(true)
@@ -434,8 +434,6 @@ const selectedPeriod = ref<string>('')
 
 // Current generation timestamp (DD HHmmH MMM YYYY per AGENTS.md)
 const generatedDateTimeFormatted = formatDateTime(new Date())
-const currentDateFormatted = formatDate(new Date())
-const currentTimeFormatted = formatTime(new Date())
 
 // Active period label computed
 const activePeriodLabel = computed(() => {

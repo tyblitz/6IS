@@ -115,8 +115,11 @@
             </thead>
             <tbody>
               <tr v-for="item in paginatedItems" :key="item.id">
-                <td v-if="categoryScope === 'All'"><span class="category-tag">{{ item.equipment_type }}</span></td>
-                <td class="font-semibold text-primary">{{ item.equipment_subtype }}</td>
+                <td v-if="categoryScope === 'All'"><span class="category-tag">{{ item.category || item.equipment_type }}</span></td>
+                <td class="font-semibold text-primary">
+                  <div class="item-nomenclature">{{ item.nomenclature || item.equipment_subtype }}</div>
+                  <div v-if="item.sub_category" class="item-subcategory">{{ item.sub_category }}</div>
+                </td>
                 <td class="text-center font-bold">{{ item.target_quantity }}</td>
                 <td class="text-center">{{ item.current_quantity }}</td>
                 <td class="text-center">
@@ -252,9 +255,8 @@ const loading = ref(true)
 
 const filteredJrrsList = computed(() => {
   return jrrsList.value.filter(item => {
-    const typeStr = (item.equipment_type || '').toUpperCase()
-    const subTypeStr = (item.equipment_subtype || '').toUpperCase()
-    const isComm = typeStr.includes('COMM') || ['MIXER', 'MICROPHONE', 'SPEAKER', 'PUBLIC ADDRESS SYSTEM', 'PAS'].some(k => subTypeStr.includes(k) || typeStr.includes(k))
+    const cat = (item.category || item.equipment_type || '').toUpperCase()
+    const isComm = cat.includes('COMM')
 
     if (categoryScope.value === 'ICT') {
       if (isComm) return false
@@ -277,7 +279,7 @@ const {
   paginatedItems,
   toggleSort,
   setPage
-} = useTablePagination(filteredJrrsList, { pageSize: 10, defaultSortKey: 'equipment_type', defaultSortOrder: 'asc' })
+} = useTablePagination(filteredJrrsList, { pageSize: 15, defaultSortKey: 'sort_order', defaultSortOrder: 'asc' })
 
 function getSortIcon(key: string) {
   if (sortKey.value !== key) return swapVerticalOutline
@@ -299,9 +301,6 @@ async function loadData() {
     if (!selectedPeriod.value) {
       selectedPeriod.value = periods.value[0].year_month
     }
-  }
-
-  if (selectedPeriod.value) {
     const listRes = await fetchJrrsList(selectedPeriod.value)
     if (listRes.success && listRes.data) {
       jrrsList.value = Array.isArray(listRes.data.items) ? listRes.data.items : (Array.isArray(listRes.data) ? listRes.data : [])
@@ -345,7 +344,8 @@ async function saveTarget() {
   saving.value = true
   modalError.value = ''
 
-  const res = await updateJrrsTarget(editItem.value.equipment_subtype_id, editTargetQty.value)
+  const targetId = editItem.value.id || (editItem.value as any).jrrs_id || (editItem.value as any).equipment_subtype_id
+  const res = await updateJrrsTarget(targetId, editTargetQty.value)
   saving.value = false
 
   if (res.success) {
@@ -547,6 +547,19 @@ onMounted(() => {
   border-radius: 6px;
   font-size: 12px;
   font-weight: 700;
+}
+
+.item-nomenclature {
+  font-weight: 600;
+  color: #1e3a8a;
+  font-size: 14px;
+}
+
+.item-subcategory {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  margin-top: 2px;
 }
 
 .badge {

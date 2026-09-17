@@ -97,3 +97,18 @@ All styling must reference centralized CSS variables defined in `frontend/src/as
 3. **Strict Prohibition on Ad-Hoc Styling**:
    - Raw color names (`red`, `green`, `blue`) and arbitrary hex codes (`#333`, `#222`, `#ccc`) are strictly forbidden. Always use design system variables or defined palette tokens.
 
+---
+
+## 3. Session & Task Continuity Protocol
+
+To maintain complete cross-session continuity across coding and architecture sessions:
+
+1. **`CURRENT TASKS.md` (`.agents/CURRENT TASKS.md`)**:
+   - MUST be updated whenever a new task is initiated, when progress is achieved, and when work is concluded or paused.
+   - Always reflects the current focus, active in-progress items, immediate next steps, and test invariants.
+
+2. **`PREVIOUS.md` (`.agents/PREVIOUS.md`)**:
+   - MUST be appended with a chronological journal entry at the conclusion of every session or completed task pass.
+   - Summarizes user requirements, technical decisions made, files modified, test validation results, and git commit SHAs.
+
+

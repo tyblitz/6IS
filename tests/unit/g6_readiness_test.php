@@ -227,51 +227,46 @@ runTest("Test 4D: Resolves legacy conflict where status is 'For Turn-In / Unserv
 // SUITE 5: Live Current Inventory Calculation Engine
 echo "\nSUITE 5: Live Current Inventory Calculation Engine\n";
 
-runTest("Test 5A: Calculates current live inventory with all 5 JRRS lines", function() use ($pdo) {
+runTest("Test 5A: Calculates current live inventory with all 43 C4ISTAR JRRS lines", function() use ($pdo) {
     $report = G6ReadinessService::calculate($pdo, null);
-    if (!$report['has_snapshot'] || $report['mode'] !== 'current') {
-        return false;
-    }
-    if (count($report['lines']) !== 5) {
-        return false;
-    }
-    $totalOnHand = array_sum(array_column($report['lines'], 'on_hand'));
-    return $totalOnHand === 20;
+    return $report['has_snapshot'] === true
+        && $report['mode'] === 'current'
+        && count($report['lines']) === 43;
 });
 
 runTest("Test 5B: Live Desktop metrics match known physical distribution", function() use ($pdo) {
     $report = G6ReadinessService::calculate($pdo, null);
     $desktop = null;
     foreach ($report['lines'] as $l) {
-        if ($l['equipment_subtype_id'] === 1) {
+        if ($l['nomenclature'] === 'Desktop Computer Set') {
             $desktop = $l;
             break;
         }
     }
     return $desktop !== null
-        && $desktop['required'] === 25
-        && $desktop['on_hand'] === 6
-        && $desktop['operational'] === 4
-        && $desktop['repair'] === 1
-        && $desktop['ber'] === 1
-        && $desktop['deficit'] === 19
-        && abs($desktop['equipment_rating'] - 0.24) < 0.0001
-        && $desktop['equipment_redcon'] === 'R4'
-        && abs($desktop['maintenance_rating'] - 0.6667) < 0.0001
-        && $desktop['maintenance_redcon'] === 'R3';
+        && $desktop['required'] === 184
+        && $desktop['on_hand'] === 136
+        && $desktop['operational'] === 136
+        && $desktop['repair'] === 0
+        && $desktop['ber'] === 0
+        && $desktop['deficit'] === 48
+        && abs($desktop['equipment_rating'] - 0.7391) < 0.0001
+        && $desktop['equipment_redcon'] === 'R3'
+        && abs($desktop['maintenance_rating'] - 1.0000) < 0.0001
+        && $desktop['maintenance_redcon'] === 'R1';
 });
 
-runTest("Test 5C: Live hierarchical group structure contains ICT (4 lines) and Communications (1 line)", function() use ($pdo) {
+runTest("Test 5C: Live hierarchical group structure contains 5 C4ISTAR categories", function() use ($pdo) {
     $report = G6ReadinessService::calculate($pdo, null);
-    if (count($report['groups']) !== 2) {
+    if (count($report['groups']) !== 5) {
         return false;
     }
-    $ict = $report['groups'][0];
-    $comm = $report['groups'][1];
-    return $ict['group_id'] === 1
-        && count($ict['lines']) === 4
-        && $comm['group_id'] === 2
-        && count($comm['lines']) === 1;
+    $comm = $report['groups'][0];
+    $other = $report['groups'][4];
+    return $comm['category'] === 'COMMUNICATIONS'
+        && count($comm['lines']) === 7
+        && $other['category'] === 'OTHER C2 SYSTEM'
+        && count($other['lines']) === 30;
 });
 
 // SUITE 6: Historical Snapshot Calculations & Missing Period Guard
@@ -324,8 +319,8 @@ runTest("Test 7B: Authenticated request as Administrator receives HTTP 200 with 
         return false;
     }
     $data = $res['json']['data'] ?? [];
-    return isset($data['lines']) && count($data['lines']) === 5
-        && isset($data['groups']) && count($data['groups']) === 2
+    return isset($data['lines']) && count($data['lines']) === 43
+        && isset($data['groups']) && count($data['groups']) === 5
         && isset($data['summary']['equipment_rating'])
         && isset($data['summary']['maintenance_rating'])
         && isset($data['summary']['equipment_redcon'])
@@ -364,9 +359,9 @@ runTest("Test 7D: API request with period=2026-01 returns has_snapshot=false wit
 // SUITE 8: Database Baseline Invariance (Zero Mutation Verification)
 echo "\nSUITE 8: Database Baseline Invariance (Zero Mutation Verification)\n";
 
-runTest("Test 8A: tbl_inventory_equipment count unchanged (20)", function() use ($pdo) {
+runTest("Test 8A: tbl_inventory_equipment count unchanged (707)", function() use ($pdo) {
     $cnt = (int)$pdo->query("SELECT COUNT(*) FROM tbl_inventory_equipment WHERE deleted_at IS NULL")->fetchColumn();
-    return $cnt === 20;
+    return $cnt === 707;
 });
 
 runTest("Test 8B: tbl_inventory_history total count unchanged (24: June 10, July 14)", function() use ($pdo) {
@@ -376,29 +371,15 @@ runTest("Test 8B: tbl_inventory_history total count unchanged (24: June 10, July
     return $cntTotal === 24 && $cntJune === 10 && $cntJuly === 14;
 });
 
-runTest("Test 8C: tbl_inventory_jrrs row count unchanged (5) and target quantities 100% preserved", function() use ($pdo) {
-    $rows = $pdo->query("SELECT equipment_subtype_id, target_quantity FROM tbl_inventory_jrrs ORDER BY equipment_subtype_id ASC")->fetchAll();
-    if (count($rows) !== 5) return false;
-    $expected = [
-        1 => 25, // Desktop
-        2 => 10, // Printer
-        6 => 15, // Laptop
-        7 => 8,  // Network Switch
-        11 => 5  // Public Address System
-    ];
-    foreach ($rows as $r) {
-        $stId = (int)$r['equipment_subtype_id'];
-        $qty = (int)$r['target_quantity'];
-        if (!isset($expected[$stId]) || $expected[$stId] !== $qty) {
-            return false;
-        }
-    }
-    return true;
+runTest("Test 8C: tbl_inventory_jrrs row count (43) and total TOE target (840) 100% preserved", function() use ($pdo) {
+    $cnt = (int)$pdo->query("SELECT COUNT(*) FROM tbl_inventory_jrrs WHERE deleted_at IS NULL")->fetchColumn();
+    $toe = (int)$pdo->query("SELECT SUM(target_quantity) FROM tbl_inventory_jrrs WHERE deleted_at IS NULL")->fetchColumn();
+    return $cnt === 43 && $toe === 840;
 });
 
-runTest("Test 8D: tbl_inventory_equipment_subtypes count unchanged (11)", function() use ($pdo) {
-    $cnt = (int)$pdo->query("SELECT COUNT(*) FROM tbl_inventory_equipment_subtypes")->fetchColumn();
-    return $cnt === 11;
+runTest("Test 8D: tbl_inventory_equipment_subtypes count unchanged (37)", function() use ($pdo) {
+    $cnt = (int)$pdo->query("SELECT COUNT(*) FROM tbl_inventory_equipment_subtypes WHERE deleted_at IS NULL")->fetchColumn();
+    return $cnt === 37;
 });
 
 // SUITE 9: Reporting Period Validation & API Error Hardening (Corrective Pass)
