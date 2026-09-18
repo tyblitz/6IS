@@ -14,6 +14,9 @@ export enum ModuleName {
   Equipment = 'equipment',
   JRRS = 'JRRS',
 
+  // Budget & R&M Monitoring module
+  Budget = 'budget',
+
   // Future modules
   Performance = 'performance',
   Finances = 'finances',

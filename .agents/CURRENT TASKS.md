@@ -7,32 +7,38 @@ This document tracks active development goals, in-progress tasks, and immediate 
 ---
 
 ## 1. Active Focus
-- **Current Objective**: EDFS Account Monitoring Refinements Complete (Office Derived from tbl_offices, Unified Username/Account Name, Soft Delete); Ready for Phase 1B: R&M Monitoring (Budget Monitoring).
+- **Current Objective**: Phase 1B: Budget & R&M Monitoring Module Delivery & Verification.
 - **Branch**: `development`
 - **Current Base Version**: `0.2.0`
-- **Key Milestones Delivered (17 1550H Sep 2026)**:
-  1. **EDFS Master De-Duplication**: Merged `List for Creation of EDFS Accounts.docx` (124 accounts) and `List for Creation of Additional EDFS Accounts Sept 2026.docx` (169 accounts) into 286 de-duplicated master records based on user recommendations.
-  2. **Office Short Name Integration**: Replaced arbitrary free-text `office_name` input with dynamic `<select>` dropdown populated strictly from `tbl_offices`. Derived short name (`office_code` / `office_name`) automatically stored on create/update.
-  3. **Unified Login Credentials**: Unified `account_name` and `username` as identical login credentials across database, backend API, and frontend interface.
-  4. **Soft Delete Architecture**: Added `deleted_at DATETIME NULL DEFAULT NULL` with index. Standard users and admins can create, edit, and soft delete records. API defaults to excluding soft-deleted accounts (`deleted_at IS NULL`) while preserving audit trail and data integrity.
-  5. **Schema Cleanup**: Removed `source_doc` and `orig_nr` columns from `tbl_edfs_accounts`, backend API, and frontend views.
-  6. **100% Quality Gate Passing**: All test suites passing (EDFS 20/20, Modules & Auth 133/133, Vitest 62/62, ESLint 0 errors, Vite production build clean).
+- **Immediate Task**: Ready for user review / commit & push to `origin/development`.
+  - All 13 core architectural corrections + 7 final corrections implemented.
+  - Baseline operational invariants strictly preserved:
+    - 22 schedule allocation lines = ₱667,875.00 approved MOOE.
+    - 14 historical disbursements = ₱148,408.00 disbursed.
+    - Remaining overall balance = ₱519,467.00.
+    - Active unallocated disbursed total = ₱0.00 (all 14 transactions mapped).
+  - Orphan protection: schedule deletion with active linked disbursements rejected with HTTP 422.
+  - Office derivation: disbursements derive office strictly from active schedule; cross-office or conflicting submissions rejected.
+  - Dynamic calculations only; pure centralized 6IS CSS tokens; zero hardcoded colors.
 
 ---
 
-## 2. In-Progress Items
-- [x] Process and de-duplicate EDFS master lists per user specifications (AFPCOC/GSMO removed, OG4 Message Center de-duplicated, MAJ Delim replaced MAJ Talledo).
-- [x] Create database migration & seed script `database/migrations/migrate_and_seed_edfs.php`.
-- [x] Implement refinement: restrict `office_name` to short name from `tbl_offices` dropdown.
-- [x] Implement refinement: unify `account_name` and `username` as the single login credential.
-- [x] Implement refinement: add soft delete (`deleted_at`) with user/admin create, edit, and soft delete permissions.
-- [x] Remove obsolete `source_doc` and `orig_nr` columns from database, API, and UI.
-- [x] Create backend API `backend/api/edfs/index.php` (GET, POST, PUT, DELETE soft delete, search, filters, CSRF, audit).
-- [x] Create frontend types, service, sidebar menu, routes, and `EdfsView.vue`.
-- [x] Add EDFS card to `DashboardView.vue`.
-- [x] Automated test suite `tests/unit/edfs_test.php` (20/20 passed).
-- [x] Full regression verification (PHP Unit 20/20 & 133/133, Vitest 62/62, Lint 0 errors, Build clean).
-- [ ] Next: Implement Phase 1B — R&M Monitoring (Budget Monitoring Module).
+## 2. Completed Items
+- [x] Create and execute migration & seed script `database/migrations/create_budget_and_rm_tables.php` (idempotent, soft-delete-aware restore, 22 schedules, 14 disbursements).
+- [x] Create backend REST API `backend/api/budget/index.php` with existing RBAC cross-office access, CSRF, audit logging, orphan protection, 0-12 monthly limit validation, and dynamic aggregation.
+- [x] Create frontend types `frontend/src/types/budget.ts`, service `frontend/src/services/budgetService.ts`, and navigation `frontend/src/menus/budgetMenu.ts`.
+- [x] Register `/budget` route in `frontend/src/router/index.ts`, sidebar in `frontend/src/menus/index.ts`, and dashboard card in `DashboardView.vue`.
+- [x] Create frontend view `frontend/src/views/budget/BudgetMonitoringView.vue` using 100% centralized 6IS design tokens, 0-12 monthly limits, and military date formatting.
+- [x] Create automated test suites:
+  - `tests/unit/budget_monitoring_test.php`: 36 / 36 passed.
+  - `tests/unit/budgetService.spec.ts`: 9 / 9 passed.
+  - `tests/e2e/specs/budget.cy.ts`: 5 / 5 passed.
+- [x] Full regression across all 5 project verification layers (100% Green, 0 failures):
+  - PHP Unit Tests: 189 / 189 passed (`budget_monitoring_test.php` 36, `edfs_test.php` 20, `modules_and_auth_test.php` 133).
+  - Vitest Suites: 71 / 71 passed across 11 test files.
+  - ESLint: 0 errors, 0 warnings across the entire repository.
+  - Production Build: `vue-tsc --noEmit && vite build` succeeded cleanly.
+  - Cypress E2E Suites: 29 / 29 passed across all 6 specs (`accomplishments.cy.ts`, `audit_governance.cy.ts`, `budget.cy.ts`, `organization_offices.cy.ts`, `roles_permissions.cy.ts`, `test.cy.ts`).
 
 ---
 

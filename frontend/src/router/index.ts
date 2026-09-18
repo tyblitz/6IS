@@ -51,6 +51,9 @@ import CalendarView from '../views/calendar/CalendarView.vue'
 // EDFS Module Views
 import EdfsView from '../views/edfs/EdfsView.vue'
 
+// Budget & R&M Monitoring Module Views
+import BudgetMonitoringView from '../views/budget/BudgetMonitoringView.vue'
+
 import { ModuleName } from '../types/module'
 import { fetchCurrentUser } from '../services/authService'
 import { useModules } from '../composables/useModules'
@@ -496,6 +499,18 @@ const routes: Array<RouteRecordRaw> = [
       module: ModuleName.EDFS,
       requiresAuth: true,
       permission: 'edfs.view'
+    }
+  },
+
+  // BUDGET & R&M MONITORING MODULE ROUTES
+  {
+    path: '/budget',
+    name: 'Budget & R&M Monitoring',
+    component: BudgetMonitoringView,
+    meta: {
+      module: ModuleName.Budget,
+      requiresAuth: true,
+      permission: 'budget.view'
     }
   }
 ]

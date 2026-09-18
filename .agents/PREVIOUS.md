@@ -117,6 +117,7 @@ This file maintains a persistent chronological record of completed sessions, arc
   3. **Soft Delete Architecture**: Added indexed `deleted_at DATETIME NULL DEFAULT NULL` column to `tbl_edfs_accounts`. Deleted accounts are soft-deleted via timestamp rather than hard deletion, preserving audit logs and historical integrity while excluding them from active lists.
   4. **Standard User CRUD**: Granted `edfs.view`, `edfs.create`, `edfs.edit`, and `edfs.delete` permissions to Role 2 (`User`), empowering standard users and admins alike to create, edit, and soft delete accounts.
   5. **Schema Cleanup**: Dropped `source_doc` and `orig_nr` columns from `tbl_edfs_accounts`, removed from backend endpoints, cleaned from frontend types/views, and excluded from CSV export.
+  6. **UI Decluttering & Alignment**: Removed top KPI summary metric cards to streamline the view. Replaced the "Generic Desk Role" badge with a standard muted dash (`—`) when personnel is blank. Added a clean `.table-card-header` with `EDFS Accounts` title and total items count badge (`{{ pagination.total }} Total`), matching the design patterns in `AdminOfficesView` and `EquipmentView`.
 - Expanded automated test suite `tests/unit/edfs_test.php` to 20 tests, verifying office short name derivation, unified credentials, and soft delete invariants.
 
 ### Verification Results
@@ -130,6 +131,59 @@ This file maintains a persistent chronological record of completed sessions, arc
 ### Commit & Push
 - **Commit SHA**: `4ab729b` (`feat(edfs,inventory): implement EDFS Account Monitoring, C4ISTAR JRRS readiness baseline, and module alignment`)
 - **Pushed To**: `origin/development`
+
+---
+
+## Session: 18 Sep 2026 — Budget & R&M Monitoring Module Implementation & Verification
+
+### Summary
+- Designed, implemented, and verified the complete **Budget & R&M Monitoring** module (Phase 1B) based on operational records (`templates/r&m/R&M 2026.jfif` and `templates/r&m/Received R & M 2026.jfif`).
+- Incorporated all 13 initial architectural corrections and 7 final corrections requested by the user.
+- Enforced strict relational schema integrity with zero duplicate/redundant columns:
+  - `tbl_budget_schedules`: `office_id`, `paps`, `particulars`, `allocated_amount`, `jan`..`dec` (`TINYINT UNSIGNED`), `fiscal_year`, `remarks`, audit columns (`created_by`, `updated_by`, `deleted_at`, `created_at`, `updated_at`).
+  - `tbl_budget_disbursements`: `schedule_id` (nullable FK), `office_id` (FK), `disbursement_date`, `activity_event`, `amount_disbursed`, `recipient`, `dv_number`, `remarks`, audit columns.
+- Reconciled operational baseline data with 100% mathematical precision:
+  - 22 schedule allocation lines = **₱667,875.00** approved MOOE.
+  - 14 historical disbursements = **₱148,408.00** actual disbursed funds.
+  - Overall remaining balance = **₱519,467.00**.
+  - All 14 historical disbursements mapped to their matching schedule line items.
+  - Dynamic derivation of `unallocated_disbursed_total` (explicit baseline ₱0.00 when all linked) to prevent overall balance and visible schedule balance mismatches.
+- Implemented backend REST API at `backend/api/budget/index.php`:
+  - Schedule Matrix view (`?view=schedule`): safe pre-aggregated SQL aggregation resistant to row multiplication; derives `schedule_release_count`, `disbursed_total`, `remaining_balance`, `disbursed_months`, and summary metrics (`mooe_total`, `overall_disbursed_total`, `unallocated_disbursed_total`, `overall_remaining_balance`).
+  - Disbursement Ledger view (`?view=disbursements`): derives calendar quarter (Q1–Q4) from `disbursement_date` dynamically; supports keyword and office filtering.
+  - Authoritative schedule-driven office derivation: new scheduled disbursements require active `schedule_id` and derive `office_id = schedule.office_id`. Conflicting office inputs rejected with HTTP 400.
+  - Multi-tiered RBAC cross-office access via `canAccessCrossOffice()`: allows headquarters/organization-level users (`office_id <= 0`), `Administrator`, or users with command oversight permissions (`offices.configure`, `organization.configure`, `audit.view`, `users.view`) to manage across offices; ordinary users remain strictly isolated to `$_SESSION['office_id']`.
+  - Consistent monthly release-count validation: strictly enforces `0–12` range across DB schema, PHP API, TypeScript types, and Vue inputs.
+  - Orphan record protection: schedules with active linked disbursements cannot be soft-deleted (rejected with HTTP 422).
+  - Soft-delete-aware idempotent migration/seed: restores soft-deleted schedules and disbursements without duplicate key violations or row duplication.
+  - Centralized 6IS audit trail integration (`auditLog()`).
+- Registered canonical module key `budget` (Display: `Budget & R&M Monitoring`, Route: `/budget`, Permissions: `budget.view`, `budget.create`, `budget.edit`, `budget.delete`).
+- Built frontend components & views:
+  - `BudgetMonitoringView.vue`: KPI metric cards, tabs for Annual Schedule Matrix & Released Funds Ledger, release count badges (soft green when disbursed, soft info when scheduled), add/edit modals, delete dialogs.
+  - Labeled CSV export clearly as operational data export (`Export CSV (Data)`), maintaining boundary from official military reporting templates.
+  - 100% centralized CSS variables from `theme.css` (`var(--color-primary)`, `var(--color-success-bg)`, etc.); zero hardcoded hex colors.
+  - Date and military time formatting following `AGENTS.md` standards via `formatMilitaryDate`.
+- Verified across all 5 project testing layers with zero failures:
+  - Added PHP unit tests `tests/unit/budget_monitoring_test.php` (36 / 36 passed).
+  - Added Vitest unit tests `tests/unit/budgetService.spec.ts` (9 / 9 passed).
+  - Added Cypress E2E test `tests/e2e/specs/budget.cy.ts` (5 / 5 passed).
+  - Vitest test suites: 71 / 71 passed across 11 test suites.
+  - PHP Unit tests: 189 / 189 passed across all suites (`budget_monitoring_test.php`, `edfs_test.php`, `modules_and_auth_test.php`).
+  - ESLint: 0 errors, 0 warnings across the entire repository.
+  - Production build: `vue-tsc && vite build` succeeded with 0 errors.
+  - Cypress E2E suite: 29 / 29 passed across all 6 specs.
+
+### Verification Results (All 5 Tiers Green)
+- **PHP Unit Tests**:
+  - `budget_monitoring_test.php`: 36 / 36 passed
+  - `edfs_test.php`: 20 / 20 passed
+  - `modules_and_auth_test.php`: 133 / 133 passed
+  - **Total PHP**: 189 / 189 passed
+- **Vitest**: 71 / 71 passed across 11 test suites
+- **ESLint**: 0 errors, 0 warnings
+- **Production Build**: Successful (`vue-tsc && vite build` clean)
+- **Cypress E2E**: 29 / 29 passed across 6 specs (`accomplishments.cy.ts`, `audit_governance.cy.ts`, `budget.cy.ts`, `organization_offices.cy.ts`, `roles_permissions.cy.ts`, `test.cy.ts`)
+
 
 
 

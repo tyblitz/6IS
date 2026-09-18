@@ -37,49 +37,6 @@
         </div>
       </div>
 
-      <!-- KPI METRIC CARDS -->
-      <div class="kpi-grid">
-        <div class="kpi-card">
-          <div class="kpi-icon-box kpi-blue">
-            <ion-icon :icon="documentTextOutline"></ion-icon>
-          </div>
-          <div class="kpi-content">
-            <span class="kpi-label">Total Accounts</span>
-            <span class="kpi-value">{{ metrics.total }}</span>
-          </div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-icon-box kpi-green">
-            <ion-icon :icon="checkmarkCircleOutline"></ion-icon>
-          </div>
-          <div class="kpi-content">
-            <span class="kpi-label">Active Accounts</span>
-            <span class="kpi-value">{{ metrics.active }}</span>
-          </div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-icon-box kpi-purple">
-            <ion-icon :icon="personOutline"></ion-icon>
-          </div>
-          <div class="kpi-content">
-            <span class="kpi-label">Assigned Personnel</span>
-            <span class="kpi-value">{{ metrics.assigned }}</span>
-          </div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-icon-box kpi-amber">
-            <ion-icon :icon="businessOutline"></ion-icon>
-          </div>
-          <div class="kpi-content">
-            <span class="kpi-label">Generic / Desk Roles</span>
-            <span class="kpi-value">{{ metrics.generic_desk }}</span>
-          </div>
-        </div>
-      </div>
-
       <!-- FILTER & SEARCH TOOLBAR -->
       <div class="toolbar-card">
         <div class="search-input-box">
@@ -123,21 +80,16 @@
               <option value="For Renewal">For Renewal</option>
             </select>
           </div>
-
-          <!-- Type Filter (Personnel vs Generic) -->
-          <div class="filter-select-group">
-            <label class="filter-label">Account Type:</label>
-            <select v-model="selectedType" class="filter-select" @change="applyFilters">
-              <option value="">All Types</option>
-              <option value="1">Assigned Personnel</option>
-              <option value="0">Generic / Desk Roles</option>
-            </select>
-          </div>
         </div>
       </div>
 
       <!-- MAIN DATA TABLE -->
       <div class="table-container-card">
+        <div class="table-card-header">
+          <h3>EDFS Accounts</h3>
+          <span class="count-badge">{{ pagination.total }} Total</span>
+        </div>
+
         <div v-if="isLoading" class="state-container">
           <div class="spinner"></div>
           <p class="state-text">Loading EDFS accounts...</p>
@@ -184,7 +136,7 @@
                     <ion-icon :icon="personCircleOutline" class="person-icon"></ion-icon>
                     <span>{{ item.personnel_name }}</span>
                   </div>
-                  <span v-else class="generic-badge">Generic Desk Role</span>
+                  <span v-else class="text-muted">—</span>
                 </td>
                 <td class="td-account">
                   <code v-if="item.username || item.account_name" class="account-code">
@@ -438,10 +390,8 @@ import {
   downloadOutline,
   searchOutline,
   closeCircleOutline,
-  documentTextOutline,
   checkmarkCircleOutline,
-  personOutline,
-  businessOutline,
+  documentTextOutline,
   personCircleOutline,
   createOutline,
   trashOutline,
@@ -456,7 +406,6 @@ import MainLayout from '../../layouts/MainLayout.vue'
 import { usePermissions } from '../../composables/usePermissions'
 import type {
   EdfsAccount,
-  EdfsMetrics,
   EdfsOfficeOption,
   EdfsAccountFormData
 } from '../../types/edfs'
@@ -472,14 +421,6 @@ const { hasPermission } = usePermissions()
 // State
 const accounts = ref<EdfsAccount[]>([])
 const offices = ref<EdfsOfficeOption[]>([])
-const metrics = reactive<EdfsMetrics>({
-  total: 0,
-  active: 0,
-  inactive: 0,
-  for_renewal: 0,
-  assigned: 0,
-  generic_desk: 0
-})
 
 const pagination = reactive({
   total: 0,
@@ -495,7 +436,6 @@ const errorMessage = ref<string | null>(null)
 const searchQuery = ref('')
 const selectedOffice = ref('')
 const selectedStatus = ref('')
-const selectedType = ref('')
 
 // Modal state
 const showModal = ref(false)
@@ -568,7 +508,6 @@ async function loadData() {
       search: searchQuery.value,
       office: selectedOffice.value,
       status: selectedStatus.value,
-      has_personnel: selectedType.value,
       page: pagination.page,
       per_page: pagination.per_page
     })
@@ -578,13 +517,6 @@ async function loadData() {
     pagination.page = res.pagination.page
     pagination.per_page = res.pagination.per_page
     pagination.total_pages = res.pagination.total_pages
-
-    metrics.total = res.metrics.total
-    metrics.active = res.metrics.active
-    metrics.inactive = res.metrics.inactive
-    metrics.for_renewal = res.metrics.for_renewal
-    metrics.assigned = res.metrics.assigned
-    metrics.generic_desk = res.metrics.generic_desk
 
     if (res.offices) {
       offices.value = res.offices
@@ -802,74 +734,6 @@ onMounted(() => {
   font-size: 1.1rem;
 }
 
-/* KPI Cards */
-.kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
-}
-
-.kpi-card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: 16px 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.kpi-icon-box {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-sm);
-  font-size: 1.5rem;
-}
-
-.kpi-blue {
-  background-color: #EFF6FF;
-  color: #2563EB;
-}
-
-.kpi-green {
-  background-color: #F0FDF4;
-  color: #16A34A;
-}
-
-.kpi-purple {
-  background-color: #FAF5FF;
-  color: #9333EA;
-}
-
-.kpi-amber {
-  background-color: #FFFBEB;
-  color: #D97706;
-}
-
-.kpi-content {
-  display: flex;
-  flex-direction: column;
-}
-
-.kpi-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-secondary);
-}
-
-.kpi-value {
-  font-size: 1.6rem;
-  font-weight: 800;
-  color: var(--color-primary-dark);
-  line-height: 1.2;
-}
-
 /* Toolbar */
 .toolbar-card {
   display: flex;
@@ -964,6 +828,32 @@ onMounted(() => {
   border-radius: var(--radius-md);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   overflow: hidden;
+}
+
+.table-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-surface-hover);
+}
+
+.table-card-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-primary-dark);
+}
+
+.count-badge {
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--radius-sm);
+  background-color: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  color: var(--color-primary-light);
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
 .table-responsive {

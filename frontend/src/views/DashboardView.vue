@@ -141,6 +141,27 @@
             </div>
           </router-link>
 
+          <!-- Budget & R&M Monitoring Operational Card -->
+          <router-link
+            v-if="isEnabled('budget')"
+            to="/budget"
+            class="module-card budget-card"
+            aria-label="Open Budget & R&M Monitoring module: Schedule of fund releases and R&M disbursement tracking"
+          >
+            <div class="module-card-body">
+              <div class="module-card-top">
+                <div class="module-icon-box budget-icon" aria-hidden="true">
+                  <ion-icon :icon="cashOutline"></ion-icon>
+                </div>
+                <span class="module-arrow" aria-hidden="true">
+                  <ion-icon :icon="arrowForwardOutline"></ion-icon>
+                </span>
+              </div>
+              <h3 class="module-title">Budget & R&M</h3>
+              <p class="module-desc">Schedule of fund releases and R&M disbursement tracking across offices.</p>
+            </div>
+          </router-link>
+
         </div>
       </div>
 
@@ -157,7 +178,8 @@ import {
   chatbubbleEllipsesOutline,
   clipboardOutline,
   arrowForwardOutline,
-  documentTextOutline
+  documentTextOutline,
+  cashOutline
 } from 'ionicons/icons'
 
 import MainLayout from '../layouts/MainLayout.vue'
@@ -391,6 +413,11 @@ onMounted(() => {
   color: #0d9488;
 }
 
+.budget-icon {
+  background: var(--color-info-bg);
+  color: var(--color-primary-light);
+}
+
 .module-title {
   font-size: 1.05rem;
   font-weight: 700;
@@ -442,6 +469,13 @@ onMounted(() => {
 }
 .calendar-card:hover .module-arrow {
   background: #9333ea;
+}
+
+.budget-card:hover {
+  border-bottom-color: var(--color-primary-light);
+}
+.budget-card:hover .module-arrow {
+  background: var(--color-primary-light);
 }
 
 /* Responsive Breakpoints */

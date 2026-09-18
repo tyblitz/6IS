@@ -7,6 +7,7 @@ import { accomplishmentsMenu } from './accomplishmentsMenu'
 import { calendarMenu } from './calendarMenu'
 import { administratorMenu } from './administratorMenu'
 import { edfsMenu } from './edfsMenu'
+import { budgetMenu } from './budgetMenu'
 
 export const moduleMenus: Record<ModuleName, SidebarItem[]> = {
   [ModuleName.Dashboard]: [],
@@ -16,6 +17,7 @@ export const moduleMenus: Record<ModuleName, SidebarItem[]> = {
   [ModuleName.Calendar]: calendarMenu,
   [ModuleName.Administrator]: administratorMenu,
   [ModuleName.EDFS]: edfsMenu,
+  [ModuleName.Budget]: budgetMenu,
 
   // Mappings for subpages
   [ModuleName.Equipment]: inventoryMenu,
