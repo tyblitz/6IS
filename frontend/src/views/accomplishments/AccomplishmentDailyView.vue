@@ -9,15 +9,16 @@
           <p class="subtitle">Daily accomplishment records log and management.</p>
         </div>
         <div class="header-action-group">
-          <button class="btn-print" type="button" @click="handlePrint">
+          <button class="btn-secondary btn-print" type="button" @click="handlePrint">
             <ion-icon :icon="printOutline"></ion-icon>
             <span>Print Report</span>
           </button>
-          <button class="add-btn" type="button" @click="openCreateModal">
+          <button class="btn-primary add-btn" type="button" @click="openCreateModal">
             <ion-icon :icon="addOutline"></ion-icon>
             <span>Add Activity</span>
           </button>
         </div>
+
       </div>
 
       <!-- Printable Document Header (Visible in print) -->
@@ -87,9 +88,10 @@
 
           <!-- Filter Action Buttons -->
           <div class="filter-actions">
-            <button class="btn-filter" type="button" @click="loadData">Apply Filter</button>
-            <button class="btn-reset" type="button" @click="resetFilters">Reset</button>
+            <button class="btn-primary btn-filter" type="button" @click="loadData">Apply Filter</button>
+            <button class="btn-secondary btn-reset" type="button" @click="resetFilters">Reset</button>
           </div>
+
 
         </div>
       </div>
@@ -364,8 +366,8 @@ async function handleDeletePrompt(item: AccomplishmentItem) {
 
 <style scoped>
 .report-page-container {
-  padding: 24px;
-  max-width: 1400px;
+  padding: var(--space-lg, 24px) var(--space-xl, 32px);
+  max-width: 1360px;
   margin: 0 auto;
 }
 
@@ -374,18 +376,20 @@ async function handleDeletePrompt(item: AccomplishmentItem) {
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .module-header-bar h2 {
-  font-size: 24px;
-  font-weight: 800;
-  color: #0f172a;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-primary-dark, #172554);
   margin: 0 0 4px 0;
 }
 
 .subtitle {
-  font-size: 14px;
-  color: #64748b;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #64748B);
   margin: 0;
 }
 
@@ -395,61 +399,12 @@ async function handleDeletePrompt(item: AccomplishmentItem) {
   gap: 12px;
 }
 
-.add-btn {
-  background: #2563eb;
-  color: #ffffff;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
-  transition: background-color 0.15s ease;
-}
-
-.add-btn:hover { background: #1d4ed8; }
-.add-btn ion-icon { font-size: 18px; }
-
-.btn-print {
-  background: #ffffff;
-  color: #334155;
-  border: 1px solid #cbd5e1;
-  padding: 10px 18px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.15s ease;
-}
-
-.btn-print:hover {
-  background: #f8fafc;
-  border-color: #94a3b8;
-}
-
-.btn-print ion-icon { font-size: 18px; }
-
-.toolbar-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 18px 20px;
-  margin-bottom: 24px;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
-}
-
 .toolbar-grid {
   display: flex;
   gap: 16px;
   align-items: flex-end;
   flex-wrap: wrap;
+  width: 100%;
 }
 
 .filter-item {
@@ -469,14 +424,6 @@ async function handleDeletePrompt(item: AccomplishmentItem) {
   min-width: 240px;
 }
 
-label {
-  font-size: 12px;
-  font-weight: 700;
-  color: #475569;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
 .date-input-container {
   position: relative;
   display: flex;
@@ -493,7 +440,7 @@ label {
   right: 8px;
   background: transparent;
   border: none;
-  color: #2563eb;
+  color: var(--color-primary-light, #2563EB);
   font-size: 18px;
   cursor: pointer;
   display: flex;
@@ -503,68 +450,12 @@ label {
 }
 
 .calendar-icon-btn:hover {
-  color: #1d4ed8;
-}
-
-input[type="date"],
-select,
-input[type="text"] {
-  width: 100%;
-  padding: 9px 12px;
-  font-size: 14px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  outline: none;
-  background: #ffffff;
-  color: #0f172a;
-}
-
-input[type="date"]:focus,
-select:focus,
-input[type="text"]:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  color: var(--color-primary, #1E3A8A);
 }
 
 .filter-actions {
   display: flex;
   gap: 10px;
-}
-
-.btn-filter {
-  background: #2563eb;
-  color: #ffffff;
-  border: none;
-  padding: 9px 18px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.btn-filter:hover { background: #1d4ed8; }
-
-.btn-reset {
-  background: #f1f5f9;
-  color: #475569;
-  border: 1px solid #cbd5e1;
-  padding: 9px 16px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.btn-reset:hover { background: #e2e8f0; }
-
-.table-card {
-  background: #ffffff;
-  border-radius: 14px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
-  padding: 20px;
 }
 
 .state-container {
@@ -573,65 +464,17 @@ input[type="text"]:focus {
   align-items: center;
   justify-content: center;
   padding: 60px 20px;
-  color: #64748b;
+  color: var(--color-text-secondary, #64748B);
   gap: 12px;
   text-align: center;
 }
 
 .empty-icon {
   font-size: 48px;
-  color: #cbd5e1;
-}
-
-.table-responsive {
-  width: 100%;
-  overflow-x: auto;
-}
-
-.report-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.report-table th {
-  text-align: left;
-  font-size: 12px;
-  font-weight: 700;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 12px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.report-table td {
-  padding: 14px 12px;
-  font-size: 14px;
-  color: #334155;
-  border-bottom: 1px solid #f1f5f9;
-  vertical-align: top;
+  color: var(--color-border, #CBD5E1);
 }
 
 .whitespace-nowrap { white-space: nowrap; }
-
-.office-tag {
-  background: #eff6ff;
-  color: #2563eb;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 6px;
-}
-
-.category-tag {
-  background: #f1f5f9;
-  color: #0f172a;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 6px;
-  border: 1px solid #cbd5e1;
-}
 
 .desc-cell {
   line-height: 1.5;
@@ -639,8 +482,8 @@ input[type="text"]:focus {
 }
 
 .remarks-cell {
-  color: #64748b;
-  font-size: 13px;
+  color: var(--color-text-secondary, #64748B);
+  font-size: 0.8125rem;
   max-width: 250px;
 }
 
@@ -651,29 +494,6 @@ input[type="text"]:focus {
   justify-content: flex-end;
   gap: 6px;
 }
-
-.icon-action-btn {
-  background: #f1f5f9;
-  border: none;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.view-btn { color: #2563eb; }
-.view-btn:hover { background: #dbeafe; }
-
-.edit-btn { color: #d97706; }
-.edit-btn:hover { background: #fef3c7; }
-
-.delete-btn { color: #dc2626; }
-.delete-btn:hover { background: #fee2e2; }
 
 /* PRINT MEDIA STYLES */
 .printable-header,
@@ -714,3 +534,4 @@ input[type="text"]:focus {
   }
 }
 </style>
+

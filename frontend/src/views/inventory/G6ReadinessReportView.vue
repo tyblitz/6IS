@@ -765,58 +765,7 @@ onMounted(async () => {
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 
-/* Buttons */
-.btn-print {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #FFFFFF;
-  background-color: var(--color-primary-light, #2563EB);
-  border: none;
-  border-radius: var(--radius-sm, 6px);
-  cursor: pointer;
-  transition: background-color 0.2s, transform 0.1s;
-}
-
-.btn-print:hover {
-  background-color: var(--color-primary, #1E3A8A);
-}
-
-.btn-print:active {
-  transform: translateY(1px);
-}
-
-.btn-export {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #334155;
-  background-color: var(--color-surface, #FFFFFF);
-  border: 1px solid var(--color-border, #CBD5E1);
-  border-radius: var(--radius-sm, 6px);
-  cursor: pointer;
-  transition: background-color 0.2s, border-color 0.2s, transform 0.1s;
-}
-
-.btn-export:hover:not(:disabled) {
-  background-color: var(--color-surface-hover, #F8FAFC);
-  border-color: #94A3B8;
-}
-
-.btn-export:active:not(:disabled) {
-  transform: translateY(1px);
-}
-
-.btn-export:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+/* Buttons inherit from buttons.css */
 
 /* Banners */
 .historical-banner {

@@ -188,3 +188,49 @@ This file maintains a persistent chronological record of completed sessions, arc
 - Commit: `bfc6715` (`feat(budget): implement Budget & R&M Monitoring module with multi-tiered RBAC, safe aggregations, and 5-tier test verification`)
 - Pushed to: `origin/development`
 
+---
+
+## Session: 21 Sep 2026 — Application-Wide Design System Unification & Anti-Divergence Standards
+
+### Summary
+- Assessed, standardized, and unified UI styling, typography scale, border radiuses, and color palettes across the entire 6IS application (all 9 functional and administrative modules).
+- Centralized component CSS into modular files (`forms.css`, `cards.css`, `buttons.css`, `tables.css`) imported globally via `main.css`.
+- Preserved 100% of automated test selectors (`.btn-print`, `.btn-export-doc`, `.add-btn`, `.save-btn`, `.btn-save`, `.action-main-btn`, `.btn-primary-add`, etc.) as canonical aliases in `buttons.css`.
+- Removed hundreds of lines of duplicate scoped CSS and stripped all `#082f6d` hardcoded button styles across Inventory, Accomplishments, Communications, Login, Calendar, and Administrator views in favor of centralized design tokens (`var(--color-primary-light)`, `var(--radius-sm)`, `var(--radius-md)`).
+- Documented **Decision 15** in `docs/decisions.md` and updated Section 2 of `.agents/AGENTS.md` to prevent future styling divergence.
+- Re-ran all 5 project verification tiers achieving 100% green status across the entire suite.
+
+### Key Changes
+1. **Centralized CSS Foundations**:
+   - `frontend/src/assets/styles/components/forms.css`: Standardized inputs, selects, textareas, search boxes, focus rings (`rgba(37, 99, 235, 0.12)`), and error alerts.
+   - `frontend/src/assets/styles/components/cards.css`: Standardized `.card`, `.table-card`, `.table-card-header`, `.toolbar-card`, `.summary-card`, and modal dialog containers (`.modal-backdrop`, `.modal-card`, `.modal-header`, `.modal-body`, `.modal-footer`).
+   - `frontend/src/assets/styles/components/buttons.css`: Standardized `.btn-primary` (Royal Blue `#2563EB`, `6px` radius), `.btn-secondary`, `.btn-danger`, `.btn-sm`, and `.btn-icon` (32x32px), with backwards-compatible test aliases.
+   - `frontend/src/assets/styles/components/tables.css`: Standardized table layout, uppercase headers with `0.05em` letter-spacing, and status pills.
+   - `frontend/src/assets/styles/layouts/header.css` & `AppBreadcrumb.vue`: Tokenized navigation bar gradients and surfaces.
+2. **Module Views Standardized**:
+   - **Inventory**: `JRRS.vue`, `EquipmentView.vue`, `EquipmentDetailView.vue`, `G6ReadinessReportView.vue`.
+   - **Accomplishments**: `AccomplishmentDailyView.vue`, `AccomplishmentMonthlyView.vue`, `AccomplishmentQuarterlyView.vue`, `AccomplishmentAnnualView.vue`, `AccomplishmentCustomView.vue`, `AccomplishmentView.vue`, `AccomplishmentDetailView.vue`.
+   - **Communications**: `CommunicationsView.vue`, `IncomingCommunicationsView.vue`, `OutgoingCommunicationsView.vue`, `CommunicationDetailView.vue`, `CommunicationEditView.vue`, `CommunicationReportsView.vue`.
+   - **Auth & Calendar**: `LoginView.vue`, `CalendarHeader.vue`.
+   - **Administrator Reference Views**: `AdminInventoryView.vue`, `AdminEquipmentTypesView.vue`, `AdminEquipmentSubtypesView.vue`, `AdminEquipmentStatusesView.vue`, `AdminEquipmentAttributesView.vue`, `AdminEquipmentDetailView.vue`, `AdminCommunicationsView.vue`, `AdminCommunicationStatusesView.vue`, `AdminCommunicationPurposesView.vue`, `AdminCommunicationCategoriesView.vue`, `AdminAccomplishmentsView.vue`, `AdminAccomplishmentCategoriesView.vue`, `AdminUsersView.vue`.
+3. **Architecture & Governance Documentation**:
+   - Added **Decision 15** (Unified Design System, Tokenized Component Styles, and Anti-Divergence Standards) in `docs/decisions.md`.
+   - Expanded `.agents/AGENTS.md` Section 2 with Component CSS specifications, mandatory test selector aliases, and the strict prohibition on local scoped overrides.
+
+### Verification Results (All 5 Tiers Green)
+- **PHP Unit Tests**:
+  - `modules_and_auth_test.php`: 133 / 133 passed
+  - `budget_monitoring_test.php`: 36 / 36 passed
+  - `edfs_test.php`: 20 / 20 passed
+  - **Total PHP**: 189 / 189 passed
+- **Vitest Unit Tests**: 71 / 71 passed across 11 test suites
+- **ESLint**: 0 errors, 0 warnings across the entire codebase
+- **Production Build**: Clean compilation (`vue-tsc --noEmit && vite build` succeeded)
+- **Cypress E2E Tests**: 29 / 29 passed across 6 test specs (`accomplishments.cy.ts`, `audit_governance.cy.ts`, `budget.cy.ts`, `organization_offices.cy.ts`, `roles_permissions.cy.ts`, `test.cy.ts`)
+
+### Git Commit & Push
+- Commit: `96dbb55` (`style(design-system): centralize component CSS tokens, standardize buttons and inputs, and enforce anti-divergence rules`)
+- Pushed to: `origin/development`
+
+
+

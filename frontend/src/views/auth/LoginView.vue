@@ -86,7 +86,7 @@
           </div>
         </div>
 
-        <button type="submit" class="submit-btn" :disabled="loading || !form.username || !form.password">
+        <button type="submit" class="btn-primary submit-btn" :disabled="loading || !form.username || !form.password">
           <span v-if="loading" class="spinner"></span>
           <span>{{ loading ? 'Authenticating...' : 'Login' }}</span>
         </button>
@@ -163,8 +163,8 @@ async function handleLogin() {
 .login-card {
   width: 100%;
   max-width: 440px;
-  background: #ffffff;
-  border-radius: 16px;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
   padding: 36px 32px 32px 32px;
   box-sizing: border-box;
@@ -184,14 +184,14 @@ async function handleLogin() {
 .brand-title {
   font-size: 28px;
   font-weight: 800;
-  color: #082f6d;
+  color: var(--color-primary-dark);
   margin: 0 0 4px 0;
   letter-spacing: -0.02em;
 }
 
 .brand-subtitle {
   font-size: 14px;
-  color: #64748b;
+  color: var(--color-text-secondary);
   margin: 0;
   font-weight: 500;
 }
@@ -344,28 +344,28 @@ async function handleLogin() {
   width: 100%;
   padding: 12px 14px 12px 42px;
   font-size: 14px;
-  border: 1.5px solid #cbd5e1;
-  border-radius: 8px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
   outline: none;
   transition: all 0.15s ease;
-  background: #f8fafc;
-  color: #0f172a;
+  background: var(--color-surface-hover);
+  color: var(--color-text);
 }
 
 .input-wrapper input:focus {
-  border-color: #2563eb;
-  background: #ffffff;
+  border-color: var(--color-primary-light);
+  background: var(--color-surface);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 .submit-btn {
   margin-top: 4px;
   width: 100%;
-  padding: 13px;
-  background: #082f6d;
+  padding: 12px;
+  background: var(--color-primary-light);
   color: #ffffff;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
@@ -377,7 +377,7 @@ async function handleLogin() {
 }
 
 .submit-btn:hover:not(:disabled) {
-  background: #1d4ed8;
+  background: var(--color-primary);
 }
 
 .submit-btn:disabled {

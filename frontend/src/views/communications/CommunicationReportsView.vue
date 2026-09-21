@@ -174,22 +174,22 @@ function getStatusClass(status?: string): string {
 }
 
 .module-header-bar h2 {
-  font-size: 24px;
-  font-weight: 800;
-  color: #0f172a;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--color-primary-dark);
   margin: 0 0 4px 0;
 }
 
 .subtitle {
-  font-size: 14px;
-  color: #64748b;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
   margin: 0;
 }
 
 .loading-state {
   padding: 48px;
   text-align: center;
-  color: #64748b;
+  color: var(--color-text-secondary);
 }
 
 .reports-grid {
@@ -199,41 +199,41 @@ function getStatusClass(status?: string): string {
 }
 
 .report-card {
-  background: #ffffff;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   overflow: hidden;
 }
 
 .card-header {
   padding: 16px 20px;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+  background: var(--color-surface-hover);
+  border-bottom: 1px solid var(--color-border-subtle);
 }
 
 .card-header h3 {
-  font-size: 16px;
-  font-weight: 700;
-  color: #0f172a;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-primary-dark);
   margin: 0;
 }
 
 .report-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .report-table th {
-  background: #ffffff;
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 600;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   padding: 12px 20px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .report-table td {

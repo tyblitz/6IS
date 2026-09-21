@@ -96,3 +96,16 @@
 - **Decision**: Server evaluates the resulting state of all user mutations. If a mutation would leave zero active Administrator accounts (via deactivation, soft deletion, or role change), it is rejected with HTTP 400. Administrators cannot self-deactivate. Deactivating the last active organization is similarly rejected.
 - **Rationale**: Guarantees continuous platform availability and administrative governance.
 
+---
+
+## Decision 15: Unified Design System, Tokenized Component Styles, and Anti-Divergence Standards
+- **Context**: Discrepancies in button sizing, border radiuses, font weights, input padding, modal dialogs, and hardcoded hex colors arose across modules due to isolated scoped CSS copying.
+- **Decision**: Centralized CSS tokens in `frontend/src/assets/styles/theme.css` govern all UI elements. Standard component styles are centralized into modular CSS files imported via `main.css`:
+  - `forms.css`: Standardized inputs, selects, textareas, labels, search boxes, and focus rings (`rgba(37, 99, 235, 0.12)`).
+  - `cards.css`: Standardized `.card`, `.table-card`, `.table-card-header`, `.toolbar-card`, `.summary-card`, and modal containers (`.modal-card`, `.modal-header`, `.modal-body`, `.modal-footer`).
+  - `buttons.css`: Standardized `.btn-primary`, `.btn-secondary`, `.btn-danger`, `.btn-sm`, `.btn-icon` (32x32px), with backward-compatible aliases for test selectors (`.btn-print`, `.btn-export-doc`, `.add-btn`, `.save-btn`, etc.).
+  - `tables.css`: Standardized `.data-table`, `.table-row`, header uppercase styling, and unified status pills (`.status-badge`, `.status-pill`).
+  - Local views and scoped `<style>` blocks MUST NOT redeclare or override core button, form input, or card styles. Ad-hoc hex codes and raw color names are strictly prohibited.
+- **Rationale**: Guarantees visual uniformity, improves maintainability, eliminates hundreds of lines of duplicate CSS across views, and protects automated test selectors from breaking changes.
+
+

@@ -389,11 +389,11 @@ onMounted(() => {
 }
 
 .action-main-btn {
-  background: #082f6d; color: #ffffff; border: none; padding: 10px 18px; border-radius: 8px;
+  background: var(--color-primary-light); color: #ffffff; border: none; padding: 10px 18px; border-radius: var(--radius-sm);
   font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px;
-  box-shadow: 0 2px 6px rgba(8, 47, 109, 0.2); transition: background 0.15s ease;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2); transition: background 0.15s ease;
 }
-.action-main-btn:hover { background: #1d4ed8; }
+.action-main-btn:hover { background: var(--color-primary); }
 
 .table-card {
   background: #ffffff; border-radius: 14px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
@@ -537,6 +537,7 @@ onMounted(() => {
 .checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: #334155; cursor: pointer; }
 .modal-error { background: #fef2f2; color: #dc2626; padding: 10px; border-radius: 6px; font-size: 13px; }
 .modal-footer { padding: 16px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px; }
-.cancel-btn { padding: 10px 16px; background: #f1f5f9; color: #475569; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
-.save-btn { padding: 10px 20px; background: #082f6d; color: #ffffff; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.cancel-btn { padding: 10px 16px; background: #f1f5f9; color: #475569; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; cursor: pointer; }
+.save-btn { padding: 10px 20px; background: var(--color-primary-light); color: #ffffff; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; cursor: pointer; }
+.save-btn:hover { background: var(--color-primary); }
 </style>

@@ -1,7 +1,14 @@
 /* frontend/src/assets/styles/components/buttons.css */
 /* Standardized Button System matching 6IS Design System Specification */
 
-.btn-primary {
+.btn-primary,
+.add-btn,
+.save-btn,
+.btn-save,
+.action-main-btn,
+.add-user-btn,
+.btn-primary-add,
+.btn-export-doc {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -16,29 +23,61 @@
   cursor: pointer;
   transition: background-color var(--transition-fast, 0.2s ease), transform 0.1s ease, box-shadow 0.15s ease;
   line-height: 1.2;
+  white-space: nowrap;
+  text-decoration: none;
+  font-family: inherit;
 }
 
-.btn-primary:hover {
+.btn-primary:hover,
+.add-btn:hover,
+.save-btn:hover,
+.btn-save:hover,
+.action-main-btn:hover,
+.add-user-btn:hover,
+.btn-primary-add:hover,
+.btn-export-doc:hover {
   background-color: var(--color-primary, #1E3A8A);
   border-color: var(--color-primary, #1E3A8A);
 }
 
-.btn-primary:active {
+.btn-primary:active,
+.add-btn:active,
+.save-btn:active,
+.btn-save:active,
+.action-main-btn:active,
+.add-user-btn:active,
+.btn-primary-add:active,
+.btn-export-doc:active {
   transform: translateY(1px);
 }
 
-.btn-primary:disabled {
+.btn-primary:disabled,
+.add-btn:disabled,
+.save-btn:disabled,
+.btn-save:disabled,
+.action-main-btn:disabled,
+.add-user-btn:disabled,
+.btn-primary-add:disabled,
+.btn-export-doc:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
 }
 
-.btn-secondary {
+/* Secondary Action Buttons */
+.btn-secondary,
+.cancel-btn,
+.btn-cancel,
+.btn-reset,
+.retry-btn,
+.btn-retry,
+.btn-print,
+.btn-export {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background-color: #FFFFFF;
+  background-color: var(--color-surface, #FFFFFF);
   color: #334155;
   border: 1px solid var(--color-border, #CBD5E1);
   padding: 8px 16px;
@@ -48,25 +87,51 @@
   cursor: pointer;
   transition: all 0.15s ease;
   line-height: 1.2;
+  white-space: nowrap;
+  text-decoration: none;
+  font-family: inherit;
 }
 
-.btn-secondary:hover {
-  background-color: #F8FAFC;
+.btn-secondary:hover,
+.cancel-btn:hover,
+.btn-cancel:hover,
+.btn-reset:hover,
+.retry-btn:hover,
+.btn-retry:hover,
+.btn-print:hover,
+.btn-export:hover:not(:disabled) {
+  background-color: var(--color-surface-hover, #F8FAFC);
   border-color: #94A3B8;
   color: #1E293B;
 }
 
-.btn-secondary:active {
+.btn-secondary:active,
+.cancel-btn:active,
+.btn-cancel:active,
+.btn-reset:active,
+.retry-btn:active,
+.btn-retry:active,
+.btn-print:active,
+.btn-export:active:not(:disabled) {
   transform: translateY(1px);
 }
 
-.btn-secondary:disabled {
+.btn-secondary:disabled,
+.cancel-btn:disabled,
+.btn-cancel:disabled,
+.btn-reset:disabled,
+.retry-btn:disabled,
+.btn-retry:disabled,
+.btn-print:disabled,
+.btn-export:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
 }
 
-.btn-danger {
+/* Danger Action Buttons */
+.btn-danger,
+.confirm-delete-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -81,49 +146,124 @@
   cursor: pointer;
   transition: all 0.15s ease;
   line-height: 1.2;
+  white-space: nowrap;
+  font-family: inherit;
 }
 
-.btn-danger:hover {
+.btn-danger:hover,
+.confirm-delete-btn:hover {
   background-color: #FEE2E2;
   border-color: #F87171;
   color: #B91C1C;
 }
 
-.btn-danger:active {
+.btn-danger:active,
+.confirm-delete-btn:active {
   transform: translateY(1px);
 }
 
-.btn-danger:disabled {
+.btn-danger:disabled,
+.confirm-delete-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
 }
 
 /* Compact button size for tables, action bars & toolbars */
-.btn-sm {
+.btn-sm,
+.btn-warning-sm {
   padding: 6px 12px;
   font-size: 0.75rem;
   font-weight: 600;
   border-radius: var(--radius-sm, 6px);
 }
 
-/* Icon-only action button */
-.btn-icon {
+.btn-warning-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--color-warning-bg, #FFFBEB);
+  color: var(--color-warning-text, #B45309);
+  border: 1px solid var(--color-warning-border, #FDE68A);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-warning-sm:hover {
+  background-color: #FEF3C7;
+  border-color: #F59E0B;
+}
+
+/* Icon-only action button (Standardized 32x32px) */
+.btn-icon,
+.icon-btn,
+.icon-action-btn,
+.btn-icon-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 32px;
+  min-width: 32px;
   border-radius: var(--radius-sm, 6px);
   border: 1px solid var(--color-border, #CBD5E1);
-  background: #FFFFFF;
+  background: var(--color-surface, #FFFFFF);
   color: #475569;
   cursor: pointer;
   transition: all 0.15s ease;
+  padding: 0;
 }
 
-.btn-icon:hover {
-  background: #F8FAFC;
+.btn-icon:hover,
+.icon-btn:hover,
+.icon-action-btn:hover,
+.btn-icon-action:hover {
+  background: var(--color-surface-hover, #F8FAFC);
   border-color: var(--color-primary-light, #2563EB);
   color: var(--color-primary-light, #2563EB);
+}
+
+/* Specific Action Variants for Table Action Icons */
+.icon-btn.view-btn,
+.icon-action-btn.view-btn {
+  color: var(--color-primary-light, #2563EB);
+}
+.icon-btn.view-btn:hover,
+.icon-action-btn.view-btn:hover {
+  background: var(--color-info-bg, #EFF6FF);
+  border-color: var(--color-info-border, #BFDBFE);
+}
+
+.icon-btn.edit-btn,
+.icon-action-btn.edit-btn {
+  color: var(--color-warning-text, #B45309);
+}
+.icon-btn.edit-btn:hover,
+.icon-action-btn.edit-btn:hover {
+  background: var(--color-warning-bg, #FFFBEB);
+  border-color: var(--color-warning-border, #FDE68A);
+}
+
+.icon-btn.delete-btn,
+.icon-action-btn.delete-btn {
+  color: var(--color-danger, #DC2626);
+}
+.icon-btn.delete-btn:hover,
+.icon-action-btn.delete-btn:hover {
+  background: var(--color-danger-bg, #FEF2F2);
+  border-color: var(--color-danger-border, #FECACA);
+}
+
+/* Icon within primary/secondary buttons */
+.btn-primary ion-icon,
+.btn-secondary ion-icon,
+.btn-danger ion-icon,
+.add-btn ion-icon,
+.save-btn ion-icon,
+.btn-print ion-icon,
+.btn-export ion-icon,
+.btn-icon ion-icon,
+.icon-btn ion-icon {
+  font-size: 1.125rem;
+  line-height: 1;
 }

@@ -9,16 +9,17 @@
           <p class="subtitle">Breakdown of accomplishments and outgoing communications for the month.</p>
         </div>
         <div class="action-btn-group">
-          <button class="btn-export-doc" type="button" :disabled="isGeneratingDocx" @click="handleExportDocx">
+          <button class="btn-primary btn-export-doc" type="button" :disabled="isGeneratingDocx" @click="handleExportDocx">
             <ion-spinner v-if="isGeneratingDocx" name="crescent" style="width: 18px; height: 18px; color: #ffffff;"></ion-spinner>
             <ion-icon v-else :icon="documentTextOutline"></ion-icon>
             <span>{{ isGeneratingDocx ? 'Generating report...' : 'Export DOCX Report' }}</span>
           </button>
-          <button class="btn-print" type="button" @click="handlePrint">
+          <button class="btn-secondary btn-print" type="button" @click="handlePrint">
             <ion-icon :icon="printOutline"></ion-icon>
             <span>Print Report</span>
           </button>
         </div>
+
       </div>
 
       <!-- Printable Document Header (Visible in print) -->
@@ -321,8 +322,8 @@ async function handleExportDocx() {
 
 <style scoped>
 .report-page-container {
-  padding: 24px;
-  max-width: 1400px;
+  padding: var(--space-lg, 24px) var(--space-xl, 32px);
+  max-width: 1360px;
   margin: 0 auto;
 }
 
@@ -331,18 +332,20 @@ async function handleExportDocx() {
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .module-header-bar h2 {
-  font-size: 24px;
-  font-weight: 800;
-  color: #0f172a;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-primary-dark, #172554);
   margin: 0 0 4px 0;
 }
 
 .subtitle {
-  font-size: 14px;
-  color: #64748b;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #64748B);
   margin: 0;
 }
 
@@ -352,43 +355,6 @@ async function handleExportDocx() {
   align-items: center;
 }
 
-.btn-export-doc {
-  background: #2563eb;
-  color: #ffffff;
-  border: none;
-  padding: 10px 18px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
-  transition: background-color 0.15s ease;
-}
-
-.btn-export-doc:hover { background: #1d4ed8; }
-
-.btn-print {
-  background: #ffffff;
-  color: #334155;
-  border: 1px solid #cbd5e1;
-  padding: 10px 18px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.15s ease;
-}
-
-.btn-print:hover {
-  background: #f1f5f9;
-  color: #0f172a;
-}
 
 .toolbar-card {
   background: #ffffff;

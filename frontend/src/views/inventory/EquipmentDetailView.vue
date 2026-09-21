@@ -12,12 +12,13 @@
         </div>
 
         <div class="header-right">
-          <button type="button" class="cancel-btn" @click="goBack">Cancel</button>
-          <button type="button" class="save-btn" :disabled="saving || loading" @click="handleSaveEquipment">
+          <button type="button" class="btn-secondary cancel-btn" @click="goBack">Cancel</button>
+          <button type="button" class="btn-primary save-btn" :disabled="saving || loading" @click="handleSaveEquipment">
             <ion-icon :icon="saveOutline" />
             <span>{{ saving ? 'Saving Changes...' : 'Save Changes' }}</span>
           </button>
         </div>
+
       </div>
 
       <!-- Toast Feedback -->
@@ -434,7 +435,9 @@ onMounted(() => {
 
 <style scoped>
 .equipment-detail-page {
-  padding: 24px;
+  padding: var(--space-lg, 24px) var(--space-xl, 32px);
+  max-width: 1360px;
+  margin: 0 auto;
 }
 
 .header-action-bar {
@@ -442,110 +445,75 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .title-group h2 {
-  font-size: 24px;
+  font-size: 1.5rem;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--color-primary-dark, #172554);
   margin: 0 0 4px 0;
 }
 
 .subtitle {
-  font-size: 14px;
-  color: #64748b;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #64748B);
   margin: 0;
 }
 
 .header-right {
   display: flex;
   gap: 12px;
-}
-
-.cancel-btn {
-  padding: 9px 18px;
-  border-radius: 8px;
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  color: #475569;
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.cancel-btn:hover {
-  background: #f8fafc;
-  border-color: #94a3b8;
-}
-
-.save-btn {
-  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 9px 20px;
-  border-radius: 8px;
-  border: none;
-  background: #2563eb;
-  color: #ffffff;
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.save-btn:hover:not(:disabled) {
-  background: #1d4ed8;
-}
-
-.save-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .toast-feedback {
   padding: 12px 16px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm, 6px);
   margin-bottom: 20px;
-  font-weight: 500;
-  font-size: 14px;
+  font-weight: 600;
+  font-size: 0.875rem;
 }
 
 .toast-success {
-  background: #dcfce7;
-  color: #15803d;
-  border: 1px solid #bbf7d0;
+  background: var(--color-success-bg, #F0FDF4);
+  color: var(--color-success-text, #15803D);
+  border: 1px solid var(--color-success-border, #BBF7D0);
 }
 
 .toast-error {
-  background: #fee2e2;
-  color: #b91c1c;
-  border: 1px solid #fecaca;
+  background: var(--color-danger-bg, #FEF2F2);
+  color: var(--color-danger-text, #B91C1C);
+  border: 1px solid var(--color-danger-border, #FECACA);
 }
 
 .error-banner {
   padding: 14px 18px;
-  background: #fee2e2;
-  color: #991b1b;
-  border-radius: 8px;
+  background: var(--color-danger-bg, #FEF2F2);
+  color: var(--color-danger-text, #B91C1C);
+  border: 1px solid var(--color-danger-border, #FECACA);
+  border-radius: var(--radius-sm, 6px);
   margin-bottom: 20px;
   font-weight: 600;
+  font-size: 0.875rem;
 }
 
 .loading-card {
   padding: 60px;
   text-align: center;
-  background: #ffffff;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface, #FFFFFF);
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--color-border, #CBD5E1);
+  color: var(--color-text-secondary, #64748B);
 }
 
 .spinner {
   display: inline-block;
   width: 32px;
   height: 32px;
-  border: 3px solid #e2e8f0;
-  border-top-color: #2563eb;
+  border: 3px solid var(--color-border, #CBD5E1);
+  border-top-color: var(--color-primary-light, #2563EB);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin-bottom: 12px;
@@ -561,45 +529,27 @@ onMounted(() => {
   gap: 24px;
 }
 
-.form-card {
-  background: #ffffff;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  overflow: hidden;
-}
-
 .card-header {
-  padding: 18px 24px;
-  border-bottom: 1px solid #f1f5f9;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--color-border, #CBD5E1);
+  background-color: var(--color-surface-hover, #F8FAFC);
 }
 
 .card-header h3 {
-  font-size: 16px;
-  font-weight: 700;
-  color: #0f172a;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-primary-dark, #172554);
   margin: 0;
 }
 
 .section-subheading {
-  font-size: 13px;
-  color: #64748b;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary, #64748B);
   margin: 4px 0 0 0;
 }
 
 .card-body {
-  padding: 24px;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 18px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  padding: 20px;
 }
 
 .form-group.full-width {
@@ -610,36 +560,6 @@ onMounted(() => {
   margin-top: 16px;
 }
 
-.form-group label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #334155;
-}
-
-.required-star {
-  color: #ef4444;
-}
-
-.input-text,
-.input-select,
-.textarea-input {
-  padding: 10px 14px;
-  border-radius: 8px;
-  border: 1px solid #cbd5e1;
-  font-size: 14px;
-  color: #1e293b;
-  outline: none;
-  background: #ffffff;
-  transition: all 0.2s ease;
-}
-
-.input-text:focus,
-.input-select:focus,
-.textarea-input:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
-}
-
 .code-font {
   font-family: monospace;
   font-weight: 600;
@@ -648,9 +568,10 @@ onMounted(() => {
 .no-attributes-box {
   padding: 24px;
   text-align: center;
-  background: #f8fafc;
-  border-radius: 8px;
-  color: #64748b;
-  font-size: 14px;
+  background: var(--color-surface-hover, #F8FAFC);
+  border: 1px dashed var(--color-border, #CBD5E1);
+  border-radius: var(--radius-sm, 6px);
+  color: var(--color-text-secondary, #64748B);
+  font-size: 0.875rem;
 }
 </style>

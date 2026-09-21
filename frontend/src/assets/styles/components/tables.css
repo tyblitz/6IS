@@ -1,13 +1,70 @@
 /* frontend/src/assets/styles/components/tables.css */
+/* Standardized Table and Data Grid System matching 6IS Design System Specification */
 
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* Standardized Data Table Styling */
+.data-table,
+.report-table,
+.todays-table,
+.audit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  color: var(--color-text, #1F2937);
+}
+
+.data-table th,
+.report-table th,
+.todays-table th,
+.audit-table th {
+  background-color: var(--color-surface-hover, #F8FAFC);
+  padding: 12px 16px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-text-secondary, #64748B);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--color-border, #CBD5E1);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.data-table td,
+.report-table td,
+.todays-table td,
+.audit-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #F1F5F9;
+  color: var(--color-text, #1F2937);
+  vertical-align: middle;
+}
+
+.clickable-row {
+  cursor: pointer;
+  transition: background-color var(--transition-fast, 0.2s ease);
+}
+
+.clickable-row:hover,
+.data-table tbody tr:hover,
+.report-table tbody tr:hover,
+.todays-table tbody tr:hover,
+.audit-table tbody tr:hover {
+  background-color: var(--color-surface-hover, #F8FAFC);
+}
+
+/* Sortable Headers */
 .sortable-th {
   cursor: pointer;
   user-select: none;
-  transition: background 0.15s ease;
+  transition: background-color 0.15s ease;
 }
 
 .sortable-th:hover {
-  background: rgba(0, 0, 0, 0.04) !important;
+  background-color: rgba(0, 0, 0, 0.04) !important;
 }
 
 .th-content {
@@ -25,52 +82,33 @@
 .sortable-th:hover .sort-icon,
 .sort-icon.active-sort {
   opacity: 1;
-  color: #2563eb;
+  color: var(--color-primary-light, #2563EB);
 }
 
 /* Global Table Filter & Search Controls Bar */
-.table-filter-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  background: #ffffff;
-  padding: 14px 20px;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-}
-
-.search-box-input {
-  position: relative;
-  display: flex;
-  align-items: center;
-  min-width: 260px;
-  flex: 1;
-}
-
-.search-box-input ion-icon {
-  position: absolute;
-  left: 12px;
-  font-size: 18px;
-  color: #94a3b8;
-  pointer-events: none;
-}
-
-.search-box-input input {
-  width: 100%;
-  padding: 8px 12px 8px 38px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  font-size: 13px;
-  color: #1e293b;
+.filter-select,
+.toolbar-grid select,
+.filter-controls select,
+.filter-item select,
+.filter-group select {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border, #CBD5E1);
+  border-radius: var(--radius-sm, 6px);
+  font-size: 0.875rem;
+  color: var(--color-text, #1E293B);
+  background-color: var(--color-surface, #FFFFFF);
   outline: none;
+  font-weight: 500;
+  cursor: pointer;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.search-box-input input:focus {
-  border-color: #2563eb;
+.filter-select:focus,
+.toolbar-grid select:focus,
+.filter-controls select:focus,
+.filter-item select:focus,
+.filter-group select:focus {
+  border-color: var(--color-primary-light, #2563EB);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
@@ -81,53 +119,24 @@
   flex-wrap: wrap;
 }
 
-.filter-select,
-.input-select,
-.toolbar-grid select,
-.filter-controls select,
-.filter-item select,
-.filter-group select {
-  padding: 8px 12px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  font-size: 13px;
-  color: #1e293b;
-  background: #ffffff;
-  outline: none;
-  font-weight: 500;
-  cursor: pointer;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.filter-select:focus,
-.input-select:focus,
-.toolbar-grid select:focus,
-.filter-controls select:focus,
-.filter-item select:focus,
-.filter-group select:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
-}
-
-/* Lighter placeholder text color for filter select elements matching search bar placeholder */
+/* Placeholder styling for filter select elements */
 select:has(option[value="0"]:checked),
 select:has(option[value=""]:checked),
 select:has(option[value="all"]:checked) {
-  color: #94a3b8 !important;
+  color: var(--color-text-secondary, #94A3B8) !important;
   font-weight: 400;
 }
 
-/* Default placeholder options inside dropdown list */
 select option[value="0"],
 select option[value=""],
 select option[value="all"],
 select option:disabled {
-  color: #94a3b8;
+  color: var(--color-text-secondary, #94A3B8);
   font-weight: 400;
 }
 
 select option {
-  color: #1e293b;
+  color: var(--color-text, #1E293B);
   font-weight: 500;
 }
 
@@ -137,7 +146,8 @@ select option {
 
 .status-badge,
 .status-pill,
-.table-badge {
+.table-badge,
+.badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -155,6 +165,7 @@ select option {
 .status-pill-success,
 .badge-success,
 .status-serviceable,
+.status-active,
 .status-completed {
   background-color: var(--color-success-bg, #F0FDF4);
   color: var(--color-success-text, #15803D);
@@ -176,7 +187,8 @@ select option {
 .status-badge-danger,
 .status-pill-danger,
 .badge-danger,
-.status-unserviceable {
+.status-unserviceable,
+.status-inactive {
   background-color: var(--color-danger-bg, #FEF2F2);
   color: var(--color-danger-text, #B91C1C);
   border: 1px solid var(--color-danger-border, #FECACA);
@@ -186,13 +198,14 @@ select option {
 .status-badge-info,
 .status-pill-info,
 .badge-info,
-.status-ongoing {
+.status-ongoing,
+.badge-system {
   background-color: var(--color-info-bg, #EFF6FF);
   color: var(--color-info-text, #1D4ED8);
   border: 1px solid var(--color-info-border, #BFDBFE);
 }
 
-/* Activity Categories */
+/* Operational Activity Categories */
 .badge-cat-conf {
   background-color: var(--color-cat-conf-bg, #EFF6FF);
   color: var(--color-cat-conf, #2563EB);
@@ -217,3 +230,30 @@ select option {
   border: 1px solid var(--color-cat-cer-border, #FDE68A);
 }
 
+/* Office and Tag Badges */
+.office-tag,
+.office-code-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  background-color: var(--color-surface-hover, #F8FAFC);
+  color: var(--color-text, #0F172A);
+  border: 1px solid var(--color-border, #CBD5E1);
+  border-radius: var(--radius-sm, 6px);
+  font-size: 0.725rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.category-tag,
+.module-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  background-color: var(--color-info-bg, #EFF6FF);
+  color: var(--color-primary, #1E3A8A);
+  border: 1px solid var(--color-info-border, #BFDBFE);
+  border-radius: var(--radius-sm, 6px);
+  font-size: 0.725rem;
+  font-weight: 700;
+}

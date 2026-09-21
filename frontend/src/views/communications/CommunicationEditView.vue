@@ -12,8 +12,8 @@
         </div>
 
         <div class="header-right">
-          <button type="button" class="cancel-btn" @click="cancelEdit">Cancel</button>
-          <button type="button" class="save-btn" :disabled="saving || loading" @click="handleSaveCommunication">
+          <button type="button" class="btn-secondary cancel-btn" @click="cancelEdit">Cancel</button>
+          <button type="button" class="btn-primary save-btn" :disabled="saving || loading" @click="handleSaveCommunication">
             <ion-icon :icon="saveOutline" />
             <span>{{ saving ? 'Saving Changes...' : 'Save Changes' }}</span>
           </button>
@@ -394,16 +394,16 @@ onMounted(() => {
 }
 
 .title-group h2 {
-  font-size: 22px;
+  font-size: 1.4rem;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--color-primary-dark);
   margin: 0 0 4px 0;
   line-height: 1.3;
 }
 
 .subtitle {
-  font-size: 14px;
-  color: #64748b;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
   margin: 0;
 }
 
@@ -413,53 +413,12 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
-.cancel-btn {
-  padding: 9px 18px;
-  border-radius: 8px;
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  color: #475569;
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.cancel-btn:hover {
-  background: #f8fafc;
-  border-color: #94a3b8;
-}
-
-.save-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 20px;
-  border-radius: 8px;
-  border: none;
-  background: #2563eb;
-  color: #ffffff;
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.save-btn:hover:not(:disabled) {
-  background: #1d4ed8;
-}
-
-.save-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .toast-feedback {
   padding: 12px 16px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   margin-bottom: 20px;
   font-weight: 500;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .toast-success {

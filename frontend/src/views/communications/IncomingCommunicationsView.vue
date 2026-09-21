@@ -7,7 +7,7 @@
           <h2>Incoming Communications</h2>
           <p class="subtitle">Register, track, and route incoming organizational communications.</p>
         </div>
-        <button class="add-btn" type="button" @click="openCreateModal">
+        <button class="btn-primary add-btn" type="button" @click="openCreateModal">
           <ion-icon :icon="addOutline" />
           <span>Log Incoming Communication</span>
         </button>
@@ -234,44 +234,27 @@ async function handleDelete(item: Communication) {
 }
 
 .module-header-bar h2 {
-  font-size: 24px;
-  font-weight: 800;
-  color: #0f172a;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--color-primary-dark);
   margin: 0 0 4px 0;
 }
 
 .subtitle {
-  font-size: 14px;
-  color: #64748b;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
   margin: 0;
 }
-
-.add-btn {
-  background: #2563eb;
-  color: #ffffff;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
-}
-
-.add-btn:hover { background: #1d4ed8; }
 
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 20px;
-  background: #ffffff;
+  background: var(--color-surface);
   padding: 16px;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
@@ -293,12 +276,12 @@ async function handleDelete(item: Communication) {
 .search-box input {
   width: 100%;
   padding: 9px 12px 9px 38px;
-  font-size: 14px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  font-size: 0.875rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   outline: none;
-  background: #ffffff;
-  color: #0f172a;
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 
 .filter-controls {
@@ -309,12 +292,12 @@ async function handleDelete(item: Communication) {
 
 .filter-controls select {
   padding: 9px 12px;
-  font-size: 14px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  font-size: 0.875rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   outline: none;
-  background: #ffffff;
-  color: #0f172a;
+  background: var(--color-surface);
+  color: var(--color-text);
   min-width: 130px;
   font-weight: 500;
   cursor: pointer;

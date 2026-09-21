@@ -4,7 +4,7 @@
     <div class="header-info">
       <h2>Calendar of Activities</h2>
     </div>
-    <button class="btn-primary-add" type="button" @click="$emit('add-event')">
+    <button class="btn-primary btn-primary-add" type="button" @click="$emit('add-event')">
       <ion-icon :icon="addOutline" />
       <span>Add Activity</span>
     </button>

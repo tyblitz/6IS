@@ -12,11 +12,11 @@
         </div>
 
         <div class="header-right">
-          <button type="button" class="back-btn" @click="goBackList">
+          <button type="button" class="btn-secondary back-btn" @click="goBackList">
             <ion-icon :icon="arrowBackOutline" />
             <span>Back</span>
           </button>
-          <button type="button" class="edit-btn" @click="goToEdit">
+          <button type="button" class="btn-primary edit-btn" @click="goToEdit">
             <ion-icon :icon="createOutline" />
             <span>Edit Details</span>
           </button>
@@ -264,70 +264,29 @@ onMounted(() => {
 }
 
 .title-group h2 {
-  font-size: 22px;
+  font-size: 1.4rem;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--color-primary-dark);
   margin: 0 0 4px 0;
-  line-height: 1.3;
 }
 
 .subtitle {
-  font-size: 14px;
-  color: #64748b;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
   margin: 0;
 }
 
 .header-right {
   display: flex;
   gap: 12px;
-  flex-shrink: 0;
-}
-
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 18px;
-  border-radius: 8px;
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  color: #475569;
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.back-btn:hover {
-  background: #f8fafc;
-  border-color: #94a3b8;
-}
-
-.edit-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 20px;
-  border-radius: 8px;
-  border: none;
-  background: #2563eb;
-  color: #ffffff;
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.edit-btn:hover {
-  background: #1d4ed8;
 }
 
 .toast-feedback {
   padding: 12px 16px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   margin-bottom: 20px;
   font-weight: 500;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .toast-success {
@@ -346,7 +305,7 @@ onMounted(() => {
   padding: 14px 18px;
   background: #fee2e2;
   color: #991b1b;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   margin-bottom: 20px;
   font-weight: 600;
 }
@@ -354,9 +313,9 @@ onMounted(() => {
 .loading-card {
   padding: 60px;
   text-align: center;
-  background: #ffffff;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
 }
 
 .spinner {
@@ -364,7 +323,7 @@ onMounted(() => {
   width: 32px;
   height: 32px;
   border: 3px solid #e2e8f0;
-  border-top-color: #2563eb;
+  border-top-color: var(--color-primary-light);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin-bottom: 12px;

@@ -647,9 +647,9 @@ onMounted(() => {
 }
 
 .active-page {
-  background: #082f6d !important;
+  background: var(--color-primary-light) !important;
   color: #ffffff !important;
-  border-color: #082f6d !important;
+  border-color: var(--color-primary-light) !important;
 }
 
 /* Modal */
@@ -663,6 +663,7 @@ onMounted(() => {
 .input-textarea { resize: vertical; font-family: inherit; }
 .modal-error { background: #fef2f2; color: #dc2626; padding: 10px; border-radius: 6px; font-size: 13px; }
 .modal-footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px; }
-.cancel-btn { padding: 10px 16px; background: #f1f5f9; color: #475569; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
-.save-btn { padding: 10px 20px; background: #082f6d; color: #ffffff; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.cancel-btn { padding: 10px 16px; background: #f1f5f9; color: #475569; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; cursor: pointer; }
+.save-btn { padding: 10px 20px; background: var(--color-primary-light); color: #ffffff; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; cursor: pointer; }
+.save-btn:hover { background: var(--color-primary); }
 </style>

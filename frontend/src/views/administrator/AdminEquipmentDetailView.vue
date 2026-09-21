@@ -686,7 +686,7 @@ onMounted(() => {
   padding: 10px 20px;
   font-size: 14px;
   font-weight: 600;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: #f1f5f9;
   color: #475569;
   border: 1px solid #cbd5e1;
@@ -700,8 +700,8 @@ onMounted(() => {
   padding: 10px 22px;
   font-size: 14px;
   font-weight: 700;
-  border-radius: 8px;
-  background: #082f6d;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-light);
   color: #ffffff;
   border: none;
   cursor: pointer;
@@ -709,10 +709,10 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   transition: background 0.15s ease;
-  box-shadow: 0 2px 6px rgba(8, 47, 109, 0.2);
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
 }
 
-.save-btn:hover:not(:disabled) { background: #1d4ed8; }
+.save-btn:hover:not(:disabled) { background: var(--color-primary); }
 
 .save-btn:disabled {
   opacity: 0.6;

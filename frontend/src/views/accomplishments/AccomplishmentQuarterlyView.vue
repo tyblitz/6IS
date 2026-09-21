@@ -9,11 +9,12 @@
           <p class="subtitle">Breakdown of accomplishments and outgoing communications for the quarter.</p>
         </div>
         <div class="action-btn-group">
-          <button class="btn-print" type="button" @click="handlePrint">
+          <button class="btn-secondary btn-print" type="button" @click="handlePrint">
             <ion-icon :icon="printOutline"></ion-icon>
             <span>Print Report</span>
           </button>
         </div>
+
       </div>
 
       <!-- Printable Document Header (Visible in print) -->
@@ -289,8 +290,8 @@ function handlePrint() {
 
 <style scoped>
 .report-page-container {
-  padding: 24px;
-  max-width: 1400px;
+  padding: var(--space-lg, 24px) var(--space-xl, 32px);
+  max-width: 1360px;
   margin: 0 auto;
 }
 
@@ -298,19 +299,21 @@ function handlePrint() {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .module-header-bar h2 {
-  font-size: 24px;
-  font-weight: 800;
-  color: #0f172a;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-primary-dark, #172554);
   margin: 0 0 4px 0;
 }
 
 .subtitle {
-  font-size: 14px;
-  color: #64748b;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #64748B);
   margin: 0;
 }
 
@@ -319,40 +322,6 @@ function handlePrint() {
   gap: 10px;
 }
 
-.btn-print {
-  background: #ffffff;
-  color: #334155;
-  border: 1px solid #cbd5e1;
-  padding: 10px 18px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.15s ease;
-}
-
-.btn-print:hover {
-  background: #f8fafc;
-  border-color: #94a3b8;
-}
-
-.btn-disabled {
-  background: #f1f5f9;
-  color: #94a3b8;
-  border: 1px solid #cbd5e1;
-  padding: 10px 16px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: not-allowed;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  opacity: 0.7;
-}
 
 .toolbar-card {
   background: #ffffff;

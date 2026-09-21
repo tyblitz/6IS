@@ -362,11 +362,11 @@ onMounted(() => {
 }
 
 .action-main-btn {
-  background: #082f6d;
+  background: var(--color-primary-light);
   color: #ffffff;
   border: none;
   padding: 10px 18px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
@@ -374,11 +374,9 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   transition: background 0.15s ease;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
 }
-
-.action-main-btn:hover {
-  background: #1d4ed8;
-}
+.action-main-btn:hover { background: var(--color-primary); }
 
 /* Search Bar Card */
 .filter-controls-card {
@@ -673,7 +671,7 @@ onMounted(() => {
   background: #f1f5f9;
   color: #475569;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -681,14 +679,14 @@ onMounted(() => {
 
 .save-btn {
   padding: 10px 20px;
-  background: #082f6d;
+  background: var(--color-primary-light);
   color: #ffffff;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
 
-.save-btn:hover { background: #1d4ed8; }
+.save-btn:hover { background: var(--color-primary); }
 </style>

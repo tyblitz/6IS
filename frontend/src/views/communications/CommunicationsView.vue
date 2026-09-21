@@ -7,7 +7,7 @@
           <h2>Communications Overview</h2>
           <p class="subtitle">Summary of communications for the current month and today's activity.</p>
         </div>
-        <button class="add-btn" type="button" @click="openCreateModal()">
+        <button class="btn-primary add-btn" type="button" @click="openCreateModal()">
           <ion-icon :icon="addOutline" />
           <span>Log Communication</span>
         </button>
@@ -294,36 +294,16 @@ async function handleDetailRefresh() {
 }
 
 .module-header-bar h2 {
-  font-size: 24px;
+  font-size: 1.4rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-primary-dark);
   margin: 0 0 4px 0;
 }
 
 .subtitle {
-  font-size: 14px;
-  color: #64748b;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
   margin: 0;
-}
-
-.add-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: #2563eb;
-  color: #ffffff;
-  border: none;
-  padding: 10px 18px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  transition: background-color 0.15s ease;
-}
-
-.add-btn:hover {
-  background: #1d4ed8;
 }
 
 /* Monthly Summary Cards Grid */
@@ -335,10 +315,10 @@ async function handleDetailRefresh() {
 }
 
 .summary-card {
-  background: #ffffff;
-  border-radius: 12px;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
   padding: 20px 24px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   display: flex;
   align-items: center;
@@ -348,7 +328,7 @@ async function handleDetailRefresh() {
 .card-icon {
   width: 52px;
   height: 52px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -377,7 +357,7 @@ async function handleDetailRefresh() {
 
 .card-label {
   font-size: 13px;
-  color: #64748b;
+  color: var(--color-text-secondary);
   font-weight: 500;
   margin-bottom: 4px;
 }
@@ -385,7 +365,7 @@ async function handleDetailRefresh() {
 .card-value {
   font-size: 28px;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--color-text);
   line-height: 1;
 }
 
@@ -397,20 +377,20 @@ async function handleDetailRefresh() {
 }
 
 .todays-card {
-  background: #ffffff;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   overflow: hidden;
 }
 
 .card-header {
   padding: 16px 20px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--color-border-subtle);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #f8fafc;
+  background: var(--color-surface-hover);
 }
 
 .header-title {
@@ -420,9 +400,9 @@ async function handleDetailRefresh() {
 }
 
 .card-header h3 {
-  font-size: 15px;
-  font-weight: 700;
-  color: #0f172a;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-primary-dark);
   margin: 0;
 }
 

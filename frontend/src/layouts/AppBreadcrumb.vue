@@ -114,32 +114,32 @@ const breadcrumbs = computed<BreadcrumbItem[]>(() => {
   align-items: center;
   gap: 8px;
   padding: 0 28px;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
-  font-size: 13px;
+  background-color: var(--color-surface-hover, #F8FAFC);
+  border-bottom: 1px solid var(--color-border, #CBD5E1);
+  font-size: 0.8125rem;
   white-space: nowrap;
   overflow: hidden;
 }
 
 .breadcrumb-link {
-  color: #2563eb;
+  color: var(--color-primary-light, #2563EB);
   text-decoration: none;
   font-weight: 500;
   transition: color 0.15s ease;
 }
 
 .breadcrumb-link:hover {
-  color: #1d4ed8;
+  color: var(--color-primary, #1E3A8A);
   text-decoration: underline;
 }
 
 .breadcrumb-current {
   font-weight: 600;
-  color: #475569;
+  color: var(--color-text, #1F2937);
 }
 
 .separator {
-  color: #94a3b8;
+  color: var(--color-text-secondary, #64748B);
   font-size: 12px;
 }
-</style>
+</style>

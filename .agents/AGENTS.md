@@ -95,7 +95,17 @@ All styling must reference centralized CSS variables defined in `frontend/src/as
    - **Secondary Action**: White surface with `#CBD5E1` border and `#334155` text (`.btn-secondary`).
    - **Danger Action**: Soft red background (`#FEF2F2`) with `#DC2626` border/text (`.btn-danger`).
 3. **Strict Prohibition on Ad-Hoc Styling**:
-   - Raw color names (`red`, `green`, `blue`) and arbitrary hex codes (`#333`, `#222`, `#ccc`) are strictly forbidden. Always use design system variables or defined palette tokens.
+   - Raw color names (`red`, `green`, `blue`) and arbitrary hex codes (`#082f6d`, `#333`, `#222`, `#ccc`) are strictly forbidden in scoped styles. Always use design system variables or defined palette tokens.
+
+### D. Centralized Component Styles & Anti-Divergence Standards
+All component styles are centralized into modular CSS files in `frontend/src/assets/styles/components/` and imported globally via `main.css`:
+1. **Forms (`forms.css`)**: Standard `.form-group`, `.input-text`, `.input-select`, `.textarea-input`, `.search-box`, focus ring (`rgba(37, 99, 235, 0.12)`), and error alerts.
+2. **Cards & Modals (`cards.css`)**: Standard `.card`, `.table-card`, `.table-card-header`, `.table-card-title`, `.toolbar-card`, `.summary-card`, and modal dialog containers (`.modal-backdrop`, `.modal-card`, `.modal-header`, `.modal-body`, `.modal-footer`).
+3. **Buttons (`buttons.css`)**: Standard `.btn-primary`, `.btn-secondary`, `.btn-danger`, `.btn-sm`, and `.btn-icon` (32x32px).
+   - **Mandatory Test Aliases**: All legacy and automated test selectors (`.btn-print`, `.btn-export-doc`, `.add-btn`, `.save-btn`, `.btn-save`, `.action-main-btn`, `.btn-primary-add`, `.cancel-btn`, `.btn-cancel`, `.confirm-delete-btn`, `.btn-retry`) are canonical aliases inside `buttons.css`. They MUST NEVER be removed or redefined in scoped styles.
+4. **Tables (`tables.css`)**: Standard `.data-table`, uppercase headers (letter-spacing `0.05em`), hover zebra striping, and status pills (`.status-badge`, `.status-pill`).
+5. **No Scoped Overrides**:
+   - Vue components and views MUST NOT declare scoped CSS rules that override core buttons (`.btn-primary`, `.btn-secondary`, `.btn-danger`, `.add-btn`, `.save-btn`), standard inputs, or `.table-card`. All views inherit directly from the global design system.
 
 ---
 

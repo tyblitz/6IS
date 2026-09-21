@@ -9,7 +9,7 @@
           <p class="subtitle">Maintain user accounts, access roles, active status, and password credentials.</p>
         </div>
 
-        <button class="add-user-btn" @click="openCreateModal">
+        <button class="btn-primary add-user-btn" @click="openCreateModal">
           <ion-icon :icon="personAddOutline" />
           <span>Add New User</span>
         </button>
@@ -500,11 +500,11 @@ onMounted(() => {
 }
 
 .add-user-btn {
-  background: #082f6d;
+  background: var(--color-primary-light);
   color: #ffffff;
   border: none;
   padding: 10px 18px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
@@ -513,6 +513,7 @@ onMounted(() => {
   gap: 8px;
   transition: background 0.15s ease;
 }
+.add-user-btn:hover { background: var(--color-primary); }
 
 .add-user-btn:hover {
   background: #1d4ed8;
@@ -829,7 +830,7 @@ onMounted(() => {
   background: #f1f5f9;
   color: #475569;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -837,14 +838,14 @@ onMounted(() => {
 
 .save-btn {
   padding: 10px 20px;
-  background: #082f6d;
+  background: var(--color-primary-light);
   color: #ffffff;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
 
-.save-btn:hover { background: #1d4ed8; }
+.save-btn:hover { background: var(--color-primary); }
 </style>

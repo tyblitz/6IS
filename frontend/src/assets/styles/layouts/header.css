@@ -15,8 +15,8 @@
 
     background: linear-gradient(
         90deg,
-        #082F6D 0%,
-        #0B5ED7 100%
+        var(--color-primary-dark, #172554) 0%,
+        var(--color-primary, #1E3A8A) 100%
     );
 
     color: white;

@@ -12,8 +12,8 @@
         </div>
 
         <div class="header-right">
-          <button type="button" class="cancel-btn" @click="goBack">Cancel</button>
-          <button type="button" class="save-btn" :disabled="saving || loading" @click="handleSaveAccomplishment">
+          <button type="button" class="btn-secondary cancel-btn" @click="goBack">Cancel</button>
+          <button type="button" class="btn-primary save-btn" :disabled="saving || loading" @click="handleSaveAccomplishment">
             <ion-icon :icon="saveOutline" />
             <span>{{ saving ? 'Saving Changes...' : 'Save Changes' }}</span>
           </button>
@@ -256,15 +256,15 @@ onMounted(() => {
 }
 
 .title-group h2 {
-  font-size: 24px;
+  font-size: 1.4rem;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--color-primary-dark);
   margin: 0 0 4px 0;
 }
 
 .subtitle {
-  font-size: 14px;
-  color: #64748b;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
   margin: 0;
 }
 
@@ -273,53 +273,12 @@ onMounted(() => {
   gap: 12px;
 }
 
-.cancel-btn {
-  padding: 9px 18px;
-  border-radius: 8px;
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  color: #475569;
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.cancel-btn:hover {
-  background: #f8fafc;
-  border-color: #94a3b8;
-}
-
-.save-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 20px;
-  border-radius: 8px;
-  border: none;
-  background: #2563eb;
-  color: #ffffff;
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.save-btn:hover:not(:disabled) {
-  background: #1d4ed8;
-}
-
-.save-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .toast-feedback {
   padding: 12px 16px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   margin-bottom: 20px;
   font-weight: 500;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .toast-success {
@@ -338,7 +297,7 @@ onMounted(() => {
   padding: 14px 18px;
   background: #fee2e2;
   color: #991b1b;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   margin-bottom: 20px;
   font-weight: 600;
 }
@@ -346,9 +305,9 @@ onMounted(() => {
 .loading-card {
   padding: 60px;
   text-align: center;
-  background: #ffffff;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
 }
 
 .spinner {
@@ -356,7 +315,7 @@ onMounted(() => {
   width: 32px;
   height: 32px;
   border: 3px solid #e2e8f0;
-  border-top-color: #2563eb;
+  border-top-color: var(--color-primary-light);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin-bottom: 12px;
@@ -373,21 +332,21 @@ onMounted(() => {
 }
 
 .form-card {
-  background: #ffffff;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
   overflow: hidden;
 }
 
 .card-header {
   padding: 18px 24px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--color-border-subtle);
 }
 
 .card-header h3 {
-  font-size: 16px;
-  font-weight: 700;
-  color: #0f172a;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--color-primary-dark);
   margin: 0;
 }
 
@@ -416,32 +375,12 @@ onMounted(() => {
 }
 
 .form-group label {
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
-  color: #334155;
+  color: var(--color-text);
 }
 
 .required-star {
-  color: #ef4444;
-}
-
-.input-text,
-.input-select,
-.textarea-input {
-  padding: 10px 14px;
-  border-radius: 8px;
-  border: 1px solid #cbd5e1;
-  font-size: 14px;
-  color: #1e293b;
-  outline: none;
-  background: #ffffff;
-  transition: all 0.2s ease;
-}
-
-.input-text:focus,
-.input-select:focus,
-.textarea-input:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  color: #dc2626;
 }
 </style>
