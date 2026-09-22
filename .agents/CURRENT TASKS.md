@@ -35,7 +35,13 @@ This document tracks active development goals, in-progress tasks, and immediate 
 ---
 
 ## 3. Pending / Upcoming Backlog
-- [ ] Commit & push verified design system and baseline to `origin/development`.
+- [ ] Implement Executive UI Micro-Refinements (from Design Assessment):
+  - Add `white-space: nowrap` and `min-width: 110px` on office column badges to eliminate compound acronym wrapping (e.g. `AFP K-9`).
+  - Set fixed 32px centered column cells for the 12-month release matrix (`JAN`–`DEC`).
+  - Optimize matrix table horizontal balance so rightmost balance and actions fit without viewport clipping.
+  - Align module header category badges (`MOOE`) with `inline-flex` cap-height centering.
+  - Standardize action toolbar button icons to uniform 18px stroke weight.
+  - Compress breadcrumb strip vertical padding to reclaim grid viewport height.
 - [ ] Receive updated military inventory format and templates from user.
 - [ ] Implement template-based export engine for Accomplishments (`.docx`) and Inventory (`.xlsx`).
 - [ ] Design and scaffold the Performance Monitoring Module (Annual Programs & Office Dashboards).

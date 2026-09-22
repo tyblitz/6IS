@@ -96,6 +96,14 @@ All styling must reference centralized CSS variables defined in `frontend/src/as
    - **Danger Action**: Soft red background (`#FEF2F2`) with `#DC2626` border/text (`.btn-danger`).
 3. **Strict Prohibition on Ad-Hoc Styling**:
    - Raw color names (`red`, `green`, `blue`) and arbitrary hex codes (`#082f6d`, `#333`, `#222`, `#ccc`) are strictly forbidden in scoped styles. Always use design system variables or defined palette tokens.
+4. **Table Badge Integrity & Matrix Grid Alignment**:
+   - Status badges, office acronyms, and category tags must declare `white-space: nowrap;` so compound military designations (e.g. `AFP K-9`) never break awkwardly across multiple lines.
+   - Periodic/month matrix grid columns (`JAN`–`DEC`) must use uniform fixed column widths (30–34px) with centered header text and centered cell values for crisp ledger alignment.
+   - Data tables must balance padding across description columns so critical financial metrics and rightmost action buttons are never clipped on standard desktop displays.
+5. **Header & Badge Baseline Alignment**:
+   - Category badges adjacent to page headers (`h2`) must be locked in a flex container (`display: inline-flex; align-items: center; gap: 10px;`) so the badge centers with the title font cap-height.
+6. **Action Toolbar Group Consistency**:
+   - All buttons within a toolbar action group must use uniform 18px outline icon weights and identical vertical button heights.
 
 ### D. Centralized Component Styles & Anti-Divergence Standards
 All component styles are centralized into modular CSS files in `frontend/src/assets/styles/components/` and imported globally via `main.css`:
